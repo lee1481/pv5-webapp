@@ -18,6 +18,7 @@ export interface ProductPackage {
   price: number;
   image: string;
   sections: PackageSection[];
+  hasPositionOption?: boolean; // 좌/우 선택 옵션 여부
 }
 
 // 밀워키 제품 패키지
@@ -141,6 +142,7 @@ export const milwaukeePackages: ProductPackage[] = [
     description: '밀워키 단품 - 3단 부품선반',
     price: 1800000,
     image: '/static/images/milwaukee-3shelf-parts.jpg',
+    hasPositionOption: true,
     sections: [
       {
         title: '3단 부품선반 (좌/우측)',
@@ -164,6 +166,7 @@ export const milwaukeePackages: ProductPackage[] = [
     description: '밀워키 단품 - 3단 선반',
     price: 1900000,
     image: '/static/images/milwaukee-3shelf-standard.jpg',
+    hasPositionOption: true,
     sections: [
       {
         title: '3단 선반 (좌/우측)',
@@ -330,6 +333,7 @@ export const kiaPackages: ProductPackage[] = [
     description: '기아 단품 - 3단 부품선반',
     price: 1600000,
     image: '/static/images/kia-3shelf-parts.jpg',
+    hasPositionOption: true,
     sections: [
       {
         title: '3단 부품선반 (좌/우측)',
@@ -354,6 +358,7 @@ export const kiaPackages: ProductPackage[] = [
     description: '기아 단품 - 3단 선반',
     price: 1700000,
     image: '/static/images/kia-3shelf-standard.jpg',
+    hasPositionOption: true,
     sections: [
       {
         title: '3단 선반 (좌/우측)',

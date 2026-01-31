@@ -3,6 +3,7 @@ let currentStep = 1;
 let ocrData = null;
 let selectedPackage = null;
 let allPackages = [];
+let packagePositions = {}; // 패키지별 좌/우 선택 상태 저장
 
 // 초기화
 document.addEventListener('DOMContentLoaded', async () => {
@@ -494,6 +495,25 @@ function displayPackages(packages) {
       </div>
       <h3 style="color: #1a202c !important; font-size: 1.125rem !important; font-weight: 700 !important; margin-bottom: 0.5rem !important; display: block !important;">${pkg.name}</h3>
       <p style="color: #718096 !important; font-size: 0.875rem !important; margin-bottom: 1rem !important; display: block !important;">${pkg.description}</p>
+      ${pkg.hasPositionOption ? `
+        <div style="margin-bottom: 1rem; padding: 0.75rem; background-color: #f9fafb; border-radius: 0.5rem;" onclick="event.stopPropagation();">
+          <p style="color: #374151 !important; font-size: 0.875rem !important; font-weight: 600 !important; margin-bottom: 0.5rem !important; display: block !important;">설치 위치 선택:</p>
+          <div style="display: flex; gap: 1rem;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+              <input type="checkbox" id="position-left-${pkg.id}" value="left" 
+                     style="width: 1rem; height: 1rem; cursor: pointer;"
+                     onchange="updatePackagePosition('${pkg.id}', 'left', this.checked)">
+              <span style="color: #374151 !important; font-size: 0.875rem !important;">좌측</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+              <input type="checkbox" id="position-right-${pkg.id}" value="right" 
+                     style="width: 1rem; height: 1rem; cursor: pointer;"
+                     onchange="updatePackagePosition('${pkg.id}', 'right', this.checked)">
+              <span style="color: #374151 !important; font-size: 0.875rem !important;">우측</span>
+            </label>
+          </div>
+        </div>
+      ` : ''}
       <button onclick="event.stopPropagation(); selectPackage('${pkg.id}')" 
               style="width: 100%; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; cursor: pointer; transition: all 0.3s; ${
         selectedPackage?.id === pkg.id 
@@ -507,6 +527,16 @@ function displayPackages(packages) {
   `).join('');
   
   console.log('Displayed', packages.length, 'packages');
+}
+
+// 패키지 위치 선택 업데이트
+function updatePackagePosition(packageId, position, isChecked) {
+  if (!packagePositions[packageId]) {
+    packagePositions[packageId] = { left: false, right: false };
+  }
+  
+  packagePositions[packageId][position] = isChecked;
+  console.log('Package positions updated:', packagePositions);
 }
 
 // 제품 선택
@@ -672,6 +702,14 @@ function displayFinalPreview() {
           <div class="flex-1">
             <div class="font-bold text-lg">${selectedPackage?.fullName || '-'}</div>
             <div class="text-sm text-gray-600 mt-1">${selectedPackage?.description || '-'}</div>
+            ${selectedPackage?.hasPositionOption && packagePositions[selectedPackage.id] ? `
+              <div class="mt-2 text-sm">
+                <strong>설치 위치:</strong> 
+                ${packagePositions[selectedPackage.id].left ? '<span class="inline-block px-2 py-1 bg-blue-100 text-blue-700 rounded mr-2">좌측</span>' : ''}
+                ${packagePositions[selectedPackage.id].right ? '<span class="inline-block px-2 py-1 bg-blue-100 text-blue-700 rounded">우측</span>' : ''}
+                ${!packagePositions[selectedPackage.id].left && !packagePositions[selectedPackage.id].right ? '<span class="text-red-600">미선택</span>' : ''}
+              </div>
+            ` : ''}
           </div>
         </div>
       </div>
