@@ -165,22 +165,28 @@ function displayOCRResult(data) {
   const uploadResult = document.getElementById('uploadResult');
   const ocrDataDiv = document.getElementById('ocrData');
   
+  if (!uploadResult || !ocrDataDiv) {
+    console.error('uploadResult or ocrData element not found');
+    return;
+  }
+  
   // OCR 실패 체크
   const hasFailure = data.customerName === '(인식 실패)' || 
                      data.phone === '(인식 실패)' || 
                      data.address === '(인식 실패)';
   
   ocrDataDiv.innerHTML = `
-    <div><strong>고객명:</strong> ${data.customerName || '-'}</div>
-    <div><strong>연락처:</strong> ${data.phone || '-'}</div>
-    <div><strong>주소:</strong> ${data.address || '-'}</div>
-    <div><strong>제품명:</strong> ${data.productName || '-'}</div>
-    <div><strong>주문번호:</strong> ${data.productCode || '-'}</div>
-    <div><strong>금액:</strong> ${data.amount ? data.amount.toLocaleString() + '원' : '-'}</div>
+    <div style="color: #1a202c; font-size: 0.875rem;"><strong>고객명:</strong> ${data.customerName || '-'}</div>
+    <div style="color: #1a202c; font-size: 0.875rem;"><strong>연락처:</strong> ${data.phone || '-'}</div>
+    <div style="color: #1a202c; font-size: 0.875rem;"><strong>주소:</strong> ${data.address || '-'}</div>
+    <div style="color: #1a202c; font-size: 0.875rem;"><strong>제품명:</strong> ${data.productName || '-'}</div>
+    <div style="color: #1a202c; font-size: 0.875rem;"><strong>주문번호:</strong> ${data.productCode || '-'}</div>
+    <div style="color: #1a202c; font-size: 0.875rem;"><strong>금액:</strong> ${data.amount ? data.amount.toLocaleString() + '원' : '-'}</div>
     ${hasFailure ? `
       <div class="col-span-2 mt-2">
         <button onclick="showManualInputForm()" 
-                class="w-full bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 transition">
+                class="w-full bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 transition"
+                style="width: 100%; background-color: #f97316; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer;">
           <i class="fas fa-edit mr-2"></i>정보 수정하기
         </button>
       </div>
@@ -188,6 +194,9 @@ function displayOCRResult(data) {
   `;
   
   uploadResult.classList.remove('hidden');
+  uploadResult.style.display = 'block';
+  
+  console.log('OCR result displayed:', data);
   
   // 제품명 기반 자동 선택을 위한 매칭
   if (data.productName && data.productName !== '(인식 실패)') {
@@ -364,30 +373,42 @@ function showBrand(brand) {
 function displayPackages(packages) {
   const grid = document.getElementById('packageGrid');
   
+  if (!packages || packages.length === 0) {
+    grid.innerHTML = '<div class="col-span-full text-center text-gray-500">제품이 없습니다.</div>';
+    return;
+  }
+  
   grid.innerHTML = packages.map(pkg => `
-    <div class="package-card border-2 border-gray-200 rounded-lg p-6 ${selectedPackage?.id === pkg.id ? 'selected' : ''}" 
-         onclick="selectPackage('${pkg.id}')">
+    <div class="package-card border-2 border-gray-200 rounded-lg p-6 bg-white ${selectedPackage?.id === pkg.id ? 'selected' : ''}" 
+         onclick="selectPackage('${pkg.id}')"
+         style="cursor: pointer; transition: all 0.3s;">
       <div class="mb-4">
         <img src="${pkg.image}" 
              alt="${pkg.name}" 
-             class="w-full h-48 object-cover rounded-lg"
+             class="w-full h-48 object-cover rounded-lg bg-gray-200"
              onerror="this.src='https://via.placeholder.com/400x300?text=${encodeURIComponent(pkg.name)}'">
       </div>
-      <h3 class="font-bold text-lg mb-2">${pkg.name}</h3>
-      <p class="text-sm text-gray-600 mb-3">${pkg.description}</p>
-      <div class="text-blue-600 font-bold text-xl mb-4">
+      <h3 class="font-bold text-lg mb-2" style="color: #1a202c; font-size: 1.125rem;">${pkg.name}</h3>
+      <p class="text-sm text-gray-600 mb-3" style="color: #718096; font-size: 0.875rem;">${pkg.description}</p>
+      <div class="text-blue-600 font-bold text-xl mb-4" style="color: #2563eb; font-size: 1.25rem; font-weight: 700;">
         ${pkg.price.toLocaleString()}원
       </div>
       <button class="w-full py-2 px-4 rounded-lg transition ${
         selectedPackage?.id === pkg.id 
           ? 'bg-blue-600 text-white' 
           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+      }" style="width: 100%; padding: 0.5rem 1rem; border-radius: 0.5rem; ${
+        selectedPackage?.id === pkg.id 
+          ? 'background-color: #2563eb; color: white;' 
+          : 'background-color: #f3f4f6; color: #374151;'
       }">
         <i class="fas ${selectedPackage?.id === pkg.id ? 'fa-check-circle' : 'fa-circle'} mr-2"></i>
         ${selectedPackage?.id === pkg.id ? '선택됨' : '선택하기'}
       </button>
     </div>
   `).join('');
+  
+  console.log('Displayed', packages.length, 'packages');
 }
 
 // 제품 선택
