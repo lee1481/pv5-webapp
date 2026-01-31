@@ -8,8 +8,87 @@ let allPackages = [];
 document.addEventListener('DOMContentLoaded', async () => {
   await loadPackages();
   setupFileUpload();
+  setupStepNavigation();
   updateStepIndicator();
 });
+
+// 단계 네비게이션 설정 (상단 메뉴 클릭)
+function setupStepNavigation() {
+  for (let i = 1; i <= 4; i++) {
+    const stepElement = document.getElementById(`step${i}`);
+    if (stepElement) {
+      stepElement.style.cursor = 'pointer';
+      stepElement.addEventListener('click', () => goToStep(i));
+    }
+  }
+}
+
+// 특정 단계로 이동 (클릭 시)
+function goToStep(step) {
+  // 이전 단계로만 이동 가능 (완료된 단계)
+  if (step < currentStep) {
+    currentStep = step;
+    updateStepIndicator();
+    showCurrentSection();
+    
+    // 섹션별 초기화
+    if (step === 2) {
+      showBrand('milwaukee');
+    }
+    return;
+  }
+  
+  // 현재 단계는 그냥 머물기
+  if (step === currentStep) {
+    return;
+  }
+  
+  // 다음 단계로 이동 시도
+  if (step === 2) {
+    if (!ocrData) {
+      alert('먼저 거래명세서를 업로드하거나 수동으로 입력해주세요.');
+      return;
+    }
+    currentStep = 2;
+    updateStepIndicator();
+    showCurrentSection();
+    showBrand('milwaukee');
+  } else if (step === 3) {
+    if (!ocrData) {
+      alert('먼저 거래명세서를 업로드하거나 수동으로 입력해주세요.');
+      return;
+    }
+    if (!selectedPackage) {
+      alert('제품을 선택해주세요.');
+      return;
+    }
+    currentStep = 3;
+    updateStepIndicator();
+    showCurrentSection();
+    // OCR 데이터로 주소 자동 입력
+    if (ocrData && ocrData.address) {
+      document.getElementById('installAddress').value = ocrData.address;
+    }
+  } else if (step === 4) {
+    if (!ocrData) {
+      alert('먼저 거래명세서를 업로드하거나 수동으로 입력해주세요.');
+      return;
+    }
+    if (!selectedPackage) {
+      alert('제품을 선택해주세요.');
+      return;
+    }
+    const installDate = document.getElementById('installDate')?.value;
+    if (!installDate) {
+      alert('설치 날짜를 입력해주세요.');
+      return;
+    }
+    currentStep = 4;
+    updateStepIndicator();
+    showCurrentSection();
+    displayFinalPreview();
+  }
+}
 
 // 제품 패키지 로드
 async function loadPackages() {
