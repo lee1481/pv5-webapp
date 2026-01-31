@@ -349,6 +349,10 @@ function displayOCRResult(data) {
     return;
   }
   
+  // 전역 ocrData 업데이트 - 수동 입력 폼에서 사용
+  ocrData = data;
+  console.log('Global ocrData updated:', ocrData);
+  
   // OCR 실패 체크
   const hasFailure = !data.receiverName || !data.receiverPhone || !data.receiverAddress;
   
