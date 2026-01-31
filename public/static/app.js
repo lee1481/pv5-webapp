@@ -33,7 +33,9 @@ function goToStep(step) {
     
     // 섹션별 초기화
     if (step === 2) {
-      showBrand('milwaukee');
+      setTimeout(() => {
+        showBrand('milwaukee');
+      }, 100);
     }
     return;
   }
@@ -52,7 +54,9 @@ function goToStep(step) {
     currentStep = 2;
     updateStepIndicator();
     showCurrentSection();
-    showBrand('milwaukee');
+    setTimeout(() => {
+      showBrand('milwaukee');
+    }, 100);
   } else if (step === 3) {
     if (!ocrData) {
       alert('먼저 거래명세서를 업로드하거나 수동으로 입력해주세요.');
@@ -423,6 +427,9 @@ function submitManualInput() {
 
 // 브랜드별 제품 표시
 function showBrand(brand) {
+  console.log('showBrand called with:', brand);
+  console.log('allPackages:', allPackages.length);
+  
   const tabs = document.querySelectorAll('.brand-tab');
   tabs.forEach(tab => {
     if (tab.dataset.brand === brand) {
@@ -435,14 +442,22 @@ function showBrand(brand) {
   });
 
   const packages = allPackages.filter(pkg => pkg.brand === brand);
+  console.log('Filtered packages for', brand, ':', packages.length);
   displayPackages(packages);
 }
 
 // 제품 패키지 카드 표시
 function displayPackages(packages) {
+  console.log('displayPackages called with', packages?.length, 'packages');
   const grid = document.getElementById('packageGrid');
   
+  if (!grid) {
+    console.error('packageGrid element not found');
+    return;
+  }
+  
   if (!packages || packages.length === 0) {
+    console.warn('No packages to display');
     grid.innerHTML = '<div class="col-span-full text-center text-gray-500">제품이 없습니다.</div>';
     return;
   }
@@ -515,8 +530,11 @@ function nextStep(step) {
   
   // 섹션별 초기화
   if (step === 2) {
+    console.log('Moving to step 2, showing milwaukee packages');
     // 밀워키를 기본으로 표시
-    showBrand('milwaukee');
+    setTimeout(() => {
+      showBrand('milwaukee');
+    }, 100);
   }
   
   if (step === 3) {
