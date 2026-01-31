@@ -42,58 +42,93 @@ app.post('/api/ocr', async (c) => {
       return c.json({ error: 'No file uploaded' }, 400)
     }
 
-    // 이미지를 배열로 변환
+    console.log('OCR request received:', file.name, file.type, file.size);
+
+    // 이미지를 Base64로 변환
     const arrayBuffer = await file.arrayBuffer()
-    const imageArray = Array.from(new Uint8Array(arrayBuffer))
+    const base64Image = Buffer.from(arrayBuffer).toString('base64')
     
-    // Cloudflare Workers AI를 사용한 OCR
-    let ocrText = '';
-    let aiSuccess = false;
+    // Google Cloud Vision API 키 확인
+    const GOOGLE_VISION_API_KEY = c.env?.GOOGLE_VISION_API_KEY;
     
-    try {
-      // AI 바인딩 확인
-      if (c.env && c.env.AI) {
-        console.log('Starting AI OCR with llava-1.5-7b-hf model...');
-        
-        // @cf/llava-hf/llava-1.5-7b-hf 모델 사용 (이미지 분석)
-        const aiResponse = await c.env.AI.run('@cf/llava-hf/llava-1.5-7b-hf', {
-          image: imageArray,
-          prompt: `This is a Korean transaction statement (거래명세서) or delivery invoice.
-
-Please extract the following information from the image:
-
-1. Recipient Name (수령자/받는사람): Look for fields labeled "수령자명", "수령자", "받는사람", "수평자명"
-2. Phone Number (전화번호): Look for "전화번호", "연락처", numbers starting with 010 or 031
-3. Address (주소): Look for complete address starting with postal code or city name like "(경기도", "서울시"
-4. Product Name (상품명): Look for item description, typically longer text with product details
-5. Order Number (주문번호): Long number sequence, typically 15-20 digits
-6. Product Code (상품번호): Number sequence near product name, typically 6-10 digits
-
-IMPORTANT: Extract the ACTUAL VALUES from the image, not example values.
-
-Return ONLY a JSON object in this exact format:
-{
-  "수령자": "",
-  "전화번호": "",
-  "주소": "",
-  "상품명": "",
-  "주문번호": "",
-  "상품번호": ""
-}
-
-Fill in the actual values you see in the image. If a field is not found, use empty string "".`,
-          max_tokens: 1024
+    if (!GOOGLE_VISION_API_KEY) {
+      console.error('GOOGLE_VISION_API_KEY not found in environment');
+      return c.json({ 
+        success: false, 
+        data: {
+          customerName: '',
+          phone: '',
+          address: '',
+          productName: '',
+          productCode: '',
+          orderNumber: '',
+          orderDate: new Date().toLocaleDateString('ko-KR'),
+          ocrRawText: '',
+          aiSuccess: false,
+          recognitionSuccess: false
+        },
+        message: 'OCR 서비스 설정이 필요합니다. 관리자에게 문의하세요.'
+      }, 200)
+    }
+    
+    console.log('Calling Google Cloud Vision API...');
+    
+    // Google Cloud Vision API 호출
+    const visionResponse = await fetch(
+      `https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_VISION_API_KEY}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          requests: [{
+            image: {
+              content: base64Image
+            },
+            features: [{
+              type: 'DOCUMENT_TEXT_DETECTION', // 문서 OCR에 최적화
+              maxResults: 1
+            }]
+          }]
         })
-        
-        ocrText = aiResponse.description || '';
-        aiSuccess = true;
-        console.log('AI OCR Raw Response:', ocrText);
-      } else {
-        console.warn('AI binding not available - running in local development mode');
       }
-    } catch (aiError) {
-      console.error('AI OCR Error:', aiError);
-      aiSuccess = false;
+    );
+    
+    if (!visionResponse.ok) {
+      const errorText = await visionResponse.text();
+      console.error('Google Vision API error:', visionResponse.status, errorText);
+      throw new Error(`Google Vision API error: ${visionResponse.status}`);
+    }
+    
+    const visionData = await visionResponse.json();
+    console.log('Google Vision API response received');
+    
+    // OCR 텍스트 추출
+    const fullTextAnnotation = visionData.responses?.[0]?.fullTextAnnotation;
+    const ocrText = fullTextAnnotation?.text || '';
+    
+    console.log('Extracted OCR text length:', ocrText.length);
+    console.log('OCR text preview:', ocrText.substring(0, 200));
+    
+    if (!ocrText || ocrText.length < 10) {
+      console.warn('No text detected in image');
+      return c.json({
+        success: false,
+        data: {
+          customerName: '',
+          phone: '',
+          address: '',
+          productName: '',
+          productCode: '',
+          orderNumber: '',
+          orderDate: new Date().toLocaleDateString('ko-KR'),
+          ocrRawText: ocrText,
+          aiSuccess: true,
+          recognitionSuccess: false
+        },
+        message: '이미지에서 텍스트를 인식할 수 없습니다. 이미지 품질을 확인해주세요.'
+      }, 200);
     }
     
     // OCR 결과 파싱 (강화된 파싱 로직)
