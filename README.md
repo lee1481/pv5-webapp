@@ -1,21 +1,257 @@
-```txt
+# PV5 시공 확인 점검표 시스템
+
+## 프로젝트 개요
+- **이름**: PV5 시공 확인 점검표 시스템
+- **목표**: 거래명세서 OCR 자동 인식을 통한 시공 점검표 자동 생성 및 관리
+- **주요 기능**:
+  - 거래명세서 이미지 업로드 및 OCR 자동 인식
+  - 밀워키/기아 PV5 제품 패키지 선택
+  - 설치 일정 및 장소 정보 입력
+  - 자재 점검표 자동 생성
+  - PDF 다운로드 (인쇄 기능)
+  - 이메일 발송 (추가 개발 예정)
+
+## URLs
+- **샌드박스**: https://3000-inp02hvmtwly55jeexe2a-c81df28e.sandbox.novita.ai
+- **Production**: (배포 후 업데이트 예정)
+- **GitHub**: (설정 후 업데이트 예정)
+
+## 현재 완료된 기능
+
+### ✅ 1단계: 거래명세서 업로드 및 OCR 인식
+- 드래그 앤 드롭 파일 업로드
+- 이미지 파일 선택
+- OCR 자동 인식 (현재: 샘플 데이터 반환)
+- 고객 정보 자동 추출:
+  - 고객명
+  - 연락처
+  - 주소
+  - 제품명
+  - 주문번호
+  - 금액
+  - 주문일
+
+### ✅ 2단계: 제품 선택
+- 브랜드별 탭 (밀워키/기아)
+- 제품 패키지 카드 UI
+- 실시간 제품 선택 및 표시
+
+**밀워키 에디션:**
+1. PV5 밀워키 워크스테이션 (₩4,850,000)
+2. PV5 밀워키 스마트 에디션 (₩5,200,000)
+3. PV5 밀워키 3단 부품선반 (₩1,800,000)
+4. PV5 밀워키 3단 선반 (₩1,900,000)
+
+**기아 순정형:**
+1. 기아 PV5 워크스테이션 (₩4,200,000)
+2. 기아 PV5 스마트 패키지 (₩4,500,000)
+3. 기아 PV5 3단 부품선반 (₩1,600,000)
+4. 기아 PV5 3단 선반 (₩1,700,000)
+
+### ✅ 3단계: 설치 정보 입력
+- 설치 날짜 선택
+- 설치 시간 입력
+- 설치 주소 입력 (OCR 데이터 자동 입력)
+- 특이사항/비고 입력
+
+### ✅ 4단계: 최종 확인 및 발송
+- 고객 정보 요약
+- 선택 제품 상세 정보
+- 설치 정보 확인
+- 자재 점검표 (체크박스)
+- 서명란 (시공 담당자/고객)
+- PDF 다운로드 (브라우저 인쇄 기능)
+- 이메일 발송 API 준비
+
+## 기능 URI 요약
+
+### API 엔드포인트
+| 경로 | 메소드 | 설명 | 파라미터 |
+|------|--------|------|----------|
+| `/` | GET | 메인 페이지 | - |
+| `/api/packages` | GET | 전체 제품 패키지 리스트 | - |
+| `/api/packages/:id` | GET | 특정 제품 패키지 조회 | `id`: 패키지 ID |
+| `/api/ocr` | POST | 거래명세서 OCR 분석 | `file`: 이미지 파일 |
+| `/api/generate-report` | POST | 시공 확인서 생성 | JSON: customerInfo, packageId, installDate, etc. |
+
+### 정적 리소스
+| 경로 | 설명 |
+|------|------|
+| `/static/app.js` | 프론트엔드 JavaScript |
+| `/static/style.css` | 커스텀 스타일 |
+| `/static/images/*` | 제품 이미지 (추가 예정) |
+
+## 데이터 구조
+
+### 제품 패키지 (ProductPackage)
+```typescript
+{
+  id: string;                    // 패키지 ID
+  brand: 'milwaukee' | 'kia';    // 브랜드
+  name: string;                  // 제품명
+  fullName: string;              // 전체 제품명
+  description: string;           // 설명
+  price: number;                 // 가격
+  image: string;                 // 이미지 URL
+  sections: [                    // 자재 섹션
+    {
+      title: string;             // 섹션명
+      items: [                   // 자재 항목
+        {
+          name: string;          // 자재명
+          quantity: number | string; // 수량
+        }
+      ]
+    }
+  ]
+}
+```
+
+### 자재 섹션 구조
+각 제품 패키지는 다음과 같은 섹션으로 구성:
+- **기초자재**: 태고합판, 알루미늄체크판, 논슬립
+- **격벽타공판**: 타공판, 보강대, 브라켓
+- **선반 시스템**: 2단/3단 트레이, 프레임, 로고
+- **워크스페이스**: 워크 타공판, 조명커버, 세로보강대
+- **툴박스**: 팩아웃 거치대, 라지 툴박스 (밀워키 전용)
+
+## 사용자 가이드
+
+### 1. 거래명세서 업로드
+1. 메인 페이지 접속
+2. 거래명세서 이미지를 드래그하거나 "파일 선택" 클릭
+3. OCR 자동 인식 완료 대기
+4. 인식된 고객 정보 확인
+
+### 2. 제품 선택
+1. 브랜드 탭 선택 (밀워키/기아)
+2. 원하는 제품 패키지 카드 클릭
+3. 선택된 제품 확인 (파란색 테두리)
+
+### 3. 설치 정보 입력
+1. 설치 날짜 선택
+2. 설치 시간 입력
+3. 설치 주소 확인/수정
+4. 특이사항 입력 (선택)
+
+### 4. 최종 확인 및 발송
+1. 모든 정보 최종 확인
+2. 자재 점검표 확인
+3. "PDF 다운로드" 클릭 → 브라우저 인쇄 창에서 PDF 저장
+4. "이메일 발송" 클릭 → 본사 및 고객에게 발송
+
+## 아직 구현되지 않은 기능
+
+### 🚧 추가 개발 필요
+1. **실제 OCR API 통합**
+   - 현재: 샘플 데이터 반환
+   - 필요: Google Vision API, Tesseract, 또는 Cloudflare AI 통합
+
+2. **제품 이미지 업로드**
+   - 현재: placeholder 이미지
+   - 필요: 실제 제품 사진 업로드 및 관리
+
+3. **PDF 생성 라이브러리**
+   - 현재: 브라우저 인쇄 기능 사용
+   - 필요: 서버 사이드 PDF 생성 (jsPDF, PDFKit 등)
+
+4. **이메일 발송 통합**
+   - 현재: API 준비 완료
+   - 필요: SendGrid, Resend 등 이메일 서비스 연동
+
+5. **데이터 저장소**
+   - 현재: 메모리 기반 (새로고침 시 초기화)
+   - 필요: Cloudflare D1 또는 KV 스토리지 통합
+
+6. **사용자 인증**
+   - 담당자별 접근 권한 관리
+   - 시공 이력 관리
+
+## 다음 개발 단계 (권장)
+
+### Phase 1: 핵심 기능 강화 (우선순위 높음)
+1. **실제 OCR API 통합**
+   - Cloudflare Workers AI 또는 Google Vision API
+   - 한글 거래명세서 양식에 최적화된 파싱 로직
+
+2. **제품 이미지 관리**
+   - Cloudflare R2 스토리지 활용
+   - 실제 제품 사진 업로드 및 표시
+
+3. **데이터 영속성**
+   - Cloudflare D1 데이터베이스 설정
+   - 시공 이력 저장 및 조회
+
+### Phase 2: 사용성 개선 (우선순위 중간)
+4. **PDF 생성 개선**
+   - 서버 사이드 PDF 생성
+   - 전문적인 레이아웃 및 디자인
+
+5. **이메일 자동 발송**
+   - SendGrid 또는 Resend 통합
+   - 고객 및 본사 자동 발송
+
+6. **모바일 최적화**
+   - 반응형 디자인 개선
+   - 터치 인터페이스 최적화
+
+### Phase 3: 고급 기능 (우선순위 낮음)
+7. **대시보드 추가**
+   - 시공 현황 통계
+   - 월별 실적 차트
+
+8. **알림 시스템**
+   - 설치 일정 리마인더
+   - 자재 부족 알림
+
+9. **다국어 지원**
+   - 영어, 일본어 등
+
+## 기술 스택
+- **프론트엔드**: HTML, TailwindCSS, JavaScript
+- **백엔드**: Hono Framework (TypeScript)
+- **런타임**: Cloudflare Workers/Pages
+- **라이브러리**:
+  - Axios (HTTP 클라이언트)
+  - Font Awesome (아이콘)
+  - Tailwind CSS (스타일링)
+
+## 배포 상태
+- **플랫폼**: Cloudflare Pages (준비 완료)
+- **상태**: 🟡 샌드박스 테스트 중
+- **마지막 업데이트**: 2025-01-31
+
+## 개발 환경 설정
+
+### 로컬 개발
+```bash
+# 의존성 설치
 npm install
+
+# 빌드
+npm run build
+
+# 샌드박스에서 개발 서버 시작
+pm2 start ecosystem.config.cjs
+
+# 로컬 머신에서 개발 서버 시작
 npm run dev
 ```
 
-```txt
-npm run deploy
+### 배포
+```bash
+# Cloudflare Pages 배포
+npm run deploy:prod
+
+# 또는 수동 배포
+npm run build
+npx wrangler pages deploy dist --project-name webapp
 ```
 
-[For generating/synchronizing types based on your Worker configuration run](https://developers.cloudflare.com/workers/wrangler/commands/#types):
+## 문의 및 지원
+- **개발자**: 사인마스터 AI 팀
+- **용도**: PV5 간판/시공 관리 시스템
 
-```txt
-npm run cf-typegen
-```
+---
 
-Pass the `CloudflareBindings` as generics when instantiation `Hono`:
-
-```ts
-// src/index.ts
-const app = new Hono<{ Bindings: CloudflareBindings }>()
-```
+**Note**: 이 시스템은 초기 버전(v0.1)으로, 지속적인 업데이트가 예정되어 있습니다.
