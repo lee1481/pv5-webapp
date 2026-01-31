@@ -1122,27 +1122,53 @@ async function sendEmail() {
     const installAddress = document.getElementById('installAddress').value;
     const notes = document.getElementById('notes').value;
     
-    const reportData = {
-      customerInfo: ocrData,
-      packageId: selectedPackages.map(pkg => pkg.id),
-      packages: selectedPackages,
+    // 로딩 표시
+    const originalText = event.target.innerHTML;
+    event.target.disabled = true;
+    event.target.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>발송 중...';
+    
+    const emailData = {
       recipientEmail,
+      customerInfo: ocrData,
+      packages: selectedPackages,
       installDate,
       installTime,
       installAddress,
       notes
     };
     
-    const response = await axios.post('/api/generate-report', reportData);
+    const response = await axios.post('/api/send-email', emailData, {
+      timeout: 30000 // 30초 타임아웃
+    });
+    
+    // 버튼 복원
+    event.target.disabled = false;
+    event.target.innerHTML = originalText;
     
     if (response.data.success) {
-      alert(`시공 확인서가 성공적으로 생성되었습니다!\n\n이메일 발송 주소: ${recipientEmail}\n\n이메일 발송 기능은 추가 개발 예정입니다.`);
-      console.log('Report:', response.data.report);
-      console.log('Email:', recipientEmail);
+      alert(`✅ 이메일이 성공적으로 발송되었습니다!\n\n받는 사람: ${recipientEmail}\n\n확인해주세요.`);
+      console.log('Email sent successfully:', response.data);
+    } else {
+      alert(`❌ ${response.data.message || '이메일 발송에 실패했습니다.'}\n\n다시 시도해주세요.`);
+      console.error('Email sending failed:', response.data);
     }
   } catch (error) {
-    console.error('Email sending failed:', error);
-    alert('이메일 발송에 실패했습니다. 다시 시도해주세요.');
+    // 버튼 복원
+    if (event && event.target) {
+      event.target.disabled = false;
+      event.target.innerHTML = '<i class="fas fa-envelope mr-2"></i>이메일 발송';
+    }
+    
+    console.error('Email sending error:', error);
+    
+    let errorMessage = '이메일 발송에 실패했습니다.';
+    if (error.code === 'ECONNABORTED') {
+      errorMessage = '요청 시간이 초과되었습니다. 네트워크를 확인하고 다시 시도해주세요.';
+    } else if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    }
+    
+    alert(`❌ ${errorMessage}`);
   }
 }
 

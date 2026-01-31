@@ -5,6 +5,7 @@ import { allPackages, getPackageById } from './packages'
 
 type Bindings = {
   AI: any;
+  RESEND_API_KEY?: string;
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -413,6 +414,134 @@ app.post('/api/generate-report', async (c) => {
   } catch (error) {
     console.error('Report Generation Error:', error)
     return c.json({ error: 'Failed to generate report' }, 500)
+  }
+})
+
+// API: 이메일 발송
+app.post('/api/send-email', async (c) => {
+  try {
+    const { env } = c
+    const body = await c.req.json()
+    
+    const {
+      recipientEmail,
+      customerInfo,
+      packages,
+      installDate,
+      installTime,
+      installAddress,
+      notes
+    } = body
+    
+    // Resend API 키 확인
+    if (!env.RESEND_API_KEY) {
+      console.warn('RESEND_API_KEY not configured')
+      return c.json({ 
+        success: false, 
+        message: '이메일 서비스가 설정되지 않았습니다. 관리자에게 문의하세요.' 
+      }, 200)
+    }
+    
+    // 이메일 내용 생성
+    const packageList = packages.map((pkg: any) => `
+      <li><strong>${pkg.fullName || pkg.name}</strong></li>
+    `).join('')
+    
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          body { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #2563eb; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background-color: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+          .section { margin-bottom: 25px; background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #2563eb; }
+          .section-title { font-size: 18px; font-weight: bold; color: #1e40af; margin-bottom: 10px; }
+          .info-row { margin: 8px 0; }
+          .label { font-weight: bold; color: #4b5563; }
+          .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
+          ul { list-style-type: none; padding-left: 0; }
+          li { padding: 5px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🚗 PV5 시공 확인 점검표</h1>
+          </div>
+          <div class="content">
+            <div class="section">
+              <div class="section-title">👤 고객 정보</div>
+              <div class="info-row"><span class="label">고객명:</span> ${customerInfo?.receiverName || '-'}</div>
+              <div class="info-row"><span class="label">연락처:</span> ${customerInfo?.receiverPhone || '-'}</div>
+              <div class="info-row"><span class="label">주소:</span> ${customerInfo?.receiverAddress || '-'}</div>
+              <div class="info-row"><span class="label">주문번호:</span> ${customerInfo?.orderNumber || '-'}</div>
+            </div>
+            
+            <div class="section">
+              <div class="section-title">📦 선택 제품</div>
+              <ul>${packageList}</ul>
+            </div>
+            
+            <div class="section">
+              <div class="section-title">📅 설치 정보</div>
+              <div class="info-row"><span class="label">설치 날짜:</span> ${installDate || '-'}</div>
+              <div class="info-row"><span class="label">설치 시간:</span> ${installTime || '-'}</div>
+              <div class="info-row"><span class="label">설치 주소:</span> ${installAddress || '-'}</div>
+              ${notes ? `<div class="info-row"><span class="label">특이사항:</span> ${notes}</div>` : ''}
+            </div>
+          </div>
+          <div class="footer">
+            <p>© 2026 사인마스터 PV5 시공관리 시스템</p>
+            <p>이 메일은 PV5 시공 확인 점검표 시스템에서 자동으로 발송되었습니다.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+    
+    // Resend API 호출
+    const resendResponse = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: 'PV5 시공관리 <onboarding@resend.dev>',
+        to: [recipientEmail],
+        subject: `[PV5 시공 확인서] ${customerInfo?.receiverName || '고객'}님 시공 확인서`,
+        html: htmlContent
+      })
+    })
+    
+    const resendData = await resendResponse.json()
+    
+    if (!resendResponse.ok) {
+      console.error('Resend API Error:', resendData)
+      return c.json({ 
+        success: false, 
+        message: '이메일 발송에 실패했습니다. 다시 시도해주세요.',
+        error: resendData
+      }, 200)
+    }
+    
+    console.log('Email sent successfully:', resendData)
+    return c.json({ 
+      success: true, 
+      message: '이메일이 성공적으로 발송되었습니다!',
+      emailId: resendData.id 
+    })
+    
+  } catch (error) {
+    console.error('Email sending error:', error)
+    return c.json({ 
+      success: false, 
+      message: '이메일 발송 중 오류가 발생했습니다.',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500)
   }
 })
 
