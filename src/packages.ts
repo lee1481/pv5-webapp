@@ -203,6 +203,25 @@ export const milwaukeePackages: ProductPackage[] = [
     ]
   },
   {
+    id: 'milwaukee-partition-panel',
+    brand: 'milwaukee',
+    name: 'PV5 밀워키 격벽타공판',
+    fullName: 'PV5 카고 밀워키 격벽타공판',
+    description: '밀워키 단품 - 격벽타공판',
+    price: 1200000,
+    image: '/static/images/milwaukee-partition-panel.jpg',
+    sections: [
+      {
+        title: '격벽타공판',
+        items: [
+          { name: 'M 격벽타공판', quantity: 1 },
+          { name: 'M 타공판보강대', quantity: 3 },
+          { name: '브라켓 (상/중/하)', quantity: '각 2' }
+        ]
+      }
+    ]
+  },
+  {
     id: 'milwaukee-floor-board',
     brand: 'milwaukee',
     name: '적재함 평탄화 보드',
@@ -392,6 +411,25 @@ export const kiaPackages: ProductPackage[] = [
           { name: '2단 트레이 로고', quantity: 1 },
           { name: '2단 프레임', quantity: 2 },
           { name: '트레이보강대', quantity: 4 }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'kia-partition-panel',
+    brand: 'kia',
+    name: '기아 PV5 격벽타공판',
+    fullName: '기아 PV5 순정형 격벽타공판',
+    description: '기아 단품 - 격벽타공판',
+    price: 1100000,
+    image: '/static/images/kia-partition-panel.jpg',
+    sections: [
+      {
+        title: '격벽타공판',
+        items: [
+          { name: '격벽타공판', quantity: 1 },
+          { name: '타공판보강대', quantity: 3 },
+          { name: '브라켓 (상/중/하)', quantity: '각 2' }
         ]
       }
     ]
