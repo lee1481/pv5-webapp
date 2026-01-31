@@ -484,28 +484,24 @@ function displayPackages(packages) {
   }
   
   grid.innerHTML = packages.map(pkg => `
-    <div class="package-card border-2 border-gray-200 rounded-lg p-6 bg-white ${selectedPackage?.id === pkg.id ? 'selected' : ''}" 
-         onclick="selectPackage('${pkg.id}')"
-         style="cursor: pointer; transition: all 0.3s;">
-      <div class="mb-4">
+    <div style="border: 2px solid #e2e8f0; border-radius: 0.5rem; padding: 1.5rem; background-color: white; cursor: pointer; transition: all 0.3s; ${selectedPackage?.id === pkg.id ? 'border-color: #4299e1; background-color: #ebf8ff;' : ''}" 
+         onclick="selectPackage('${pkg.id}')">
+      <div style="margin-bottom: 1rem;">
         <img src="${pkg.image}" 
              alt="${pkg.name}" 
-             class="w-full h-48 object-cover rounded-lg bg-gray-200"
+             style="width: 100%; height: 12rem; object-fit: cover; border-radius: 0.5rem; background-color: #e2e8f0;"
              onerror="this.src='https://via.placeholder.com/400x300?text=${encodeURIComponent(pkg.name)}'">
       </div>
-      <h3 class="font-bold text-lg mb-2" style="color: #1a202c; font-size: 1.125rem;">${pkg.name}</h3>
-      <p class="text-sm text-gray-600 mb-4" style="color: #718096; font-size: 0.875rem;">${pkg.description}</p>
-      <button class="w-full py-2 px-4 rounded-lg transition ${
-        selectedPackage?.id === pkg.id 
-          ? 'bg-blue-600 text-white' 
-          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-      }" style="width: 100%; padding: 0.5rem 1rem; border-radius: 0.5rem; ${
+      <h3 style="color: #1a202c !important; font-size: 1.125rem !important; font-weight: 700 !important; margin-bottom: 0.5rem !important; display: block !important;">${pkg.name}</h3>
+      <p style="color: #718096 !important; font-size: 0.875rem !important; margin-bottom: 1rem !important; display: block !important;">${pkg.description}</p>
+      <button onclick="event.stopPropagation(); selectPackage('${pkg.id}')" 
+              style="width: 100%; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; cursor: pointer; transition: all 0.3s; ${
         selectedPackage?.id === pkg.id 
           ? 'background-color: #2563eb; color: white;' 
           : 'background-color: #f3f4f6; color: #374151;'
       }">
-        <i class="fas ${selectedPackage?.id === pkg.id ? 'fa-check-circle' : 'fa-circle'} mr-2"></i>
-        ${selectedPackage?.id === pkg.id ? '선택됨' : '선택하기'}
+        <i class="fas ${selectedPackage?.id === pkg.id ? 'fa-check-circle' : 'fa-circle'}"></i>
+        ${selectedPackage?.id === pkg.id ? ' 선택됨' : ' 선택하기'}
       </button>
     </div>
   `).join('');
