@@ -87,19 +87,23 @@ async function handleFileSelect(event) {
     
   } catch (error) {
     console.error('OCR Error:', error);
-    alert('거래명세서 분석에 실패했습니다. 다시 시도해주세요.');
     
-    // 원래 상태로 복구
+    // OCR 실패 시 수동 입력 폼 표시
     dropZone.innerHTML = `
-      <i class="fas fa-cloud-upload-alt text-6xl text-gray-400 mb-4"></i>
-      <p class="text-lg text-gray-600 mb-4">거래명세서 이미지를 드래그하거나 클릭하여 업로드</p>
-      <input type="file" id="fileInput" accept="image/*" class="hidden">
-      <button onclick="document.getElementById('fileInput').click()" 
-              class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">
-          <i class="fas fa-folder-open mr-2"></i>파일 선택
-      </button>
+      <div class="text-center">
+        <i class="fas fa-exclamation-triangle text-6xl text-yellow-500 mb-4"></i>
+        <p class="text-lg text-gray-800 mb-2 font-bold">자동 인식 실패</p>
+        <p class="text-sm text-gray-600 mb-4">거래명세서 정보를 수동으로 입력해주세요.</p>
+        <button onclick="showManualInputForm()" 
+                class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition mr-2">
+            <i class="fas fa-keyboard mr-2"></i>수동 입력
+        </button>
+        <button onclick="location.reload()" 
+                class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition">
+            <i class="fas fa-redo mr-2"></i>다시 시도
+        </button>
+      </div>
     `;
-    setupFileUpload();
   }
 }
 
@@ -108,6 +112,11 @@ function displayOCRResult(data) {
   const uploadResult = document.getElementById('uploadResult');
   const ocrDataDiv = document.getElementById('ocrData');
   
+  // OCR 실패 체크
+  const hasFailure = data.customerName === '(인식 실패)' || 
+                     data.phone === '(인식 실패)' || 
+                     data.address === '(인식 실패)';
+  
   ocrDataDiv.innerHTML = `
     <div><strong>고객명:</strong> ${data.customerName || '-'}</div>
     <div><strong>연락처:</strong> ${data.phone || '-'}</div>
@@ -115,12 +124,20 @@ function displayOCRResult(data) {
     <div><strong>제품명:</strong> ${data.productName || '-'}</div>
     <div><strong>주문번호:</strong> ${data.productCode || '-'}</div>
     <div><strong>금액:</strong> ${data.amount ? data.amount.toLocaleString() + '원' : '-'}</div>
+    ${hasFailure ? `
+      <div class="col-span-2 mt-2">
+        <button onclick="showManualInputForm()" 
+                class="w-full bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 transition">
+          <i class="fas fa-edit mr-2"></i>정보 수정하기
+        </button>
+      </div>
+    ` : ''}
   `;
   
   uploadResult.classList.remove('hidden');
   
   // 제품명 기반 자동 선택을 위한 매칭
-  if (data.productName) {
+  if (data.productName && data.productName !== '(인식 실패)') {
     const matchedPackage = allPackages.find(pkg => 
       data.productName.includes(pkg.name) || 
       data.productName.includes(pkg.fullName)
@@ -132,6 +149,146 @@ function displayOCRResult(data) {
     }
   }
 }
+
+// 수동 입력 폼 표시
+function showManualInputForm() {
+  const uploadSection = document.getElementById('upload-section');
+  const existingForm = document.getElementById('manualInputForm');
+  
+  // 기존 폼이 있으면 제거
+  if (existingForm) {
+    existingForm.remove();
+  }
+  
+  // 수동 입력 폼 생성
+  const formHTML = `
+    <div id="manualInputForm" class="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 mt-6">
+      <h3 class="text-xl font-bold mb-4 text-gray-800">
+        <i class="fas fa-keyboard text-blue-600 mr-2"></i>
+        거래명세서 정보 수동 입력
+      </h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-2">고객명 *</label>
+          <input type="text" id="manual_customerName" 
+                 value="${ocrData?.customerName && ocrData.customerName !== '(인식 실패)' ? ocrData.customerName : ''}"
+                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                 placeholder="홍길동">
+        </div>
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-2">연락처 *</label>
+          <input type="tel" id="manual_phone" 
+                 value="${ocrData?.phone && ocrData.phone !== '(인식 실패)' ? ocrData.phone : ''}"
+                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                 placeholder="010-1234-5678">
+        </div>
+        <div class="md:col-span-2">
+          <label class="block text-sm font-bold text-gray-700 mb-2">주소 *</label>
+          <input type="text" id="manual_address" 
+                 value="${ocrData?.address && ocrData.address !== '(인식 실패)' ? ocrData.address : ''}"
+                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                 placeholder="서울시 강남구...">
+        </div>
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-2">제품명</label>
+          <input type="text" id="manual_productName" 
+                 value="${ocrData?.productName && ocrData.productName !== '(인식 실패)' ? ocrData.productName : ''}"
+                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                 placeholder="PV5 밀워키 워크스테이션">
+        </div>
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-2">주문번호</label>
+          <input type="text" id="manual_productCode" 
+                 value="${ocrData?.productCode || ''}"
+                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                 placeholder="202601300939847917">
+        </div>
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-2">금액</label>
+          <input type="number" id="manual_amount" 
+                 value="${ocrData?.amount || ''}"
+                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                 placeholder="4850000">
+        </div>
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-2">주문일</label>
+          <input type="text" id="manual_orderDate" 
+                 value="${ocrData?.orderDate || new Date().toLocaleDateString('ko-KR')}"
+                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                 placeholder="2025년 01월 20일">
+        </div>
+      </div>
+      <div class="mt-6 flex justify-end space-x-3">
+        <button onclick="cancelManualInput()" 
+                class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+          <i class="fas fa-times mr-2"></i>취소
+        </button>
+        <button onclick="submitManualInput()" 
+                class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
+          <i class="fas fa-check mr-2"></i>확인
+        </button>
+      </div>
+    </div>
+  `;
+  
+  uploadSection.insertAdjacentHTML('beforeend', formHTML);
+}
+
+// 수동 입력 취소
+function cancelManualInput() {
+  const form = document.getElementById('manualInputForm');
+  if (form) form.remove();
+}
+
+// 수동 입력 제출
+function submitManualInput() {
+  const customerName = document.getElementById('manual_customerName').value.trim();
+  const phone = document.getElementById('manual_phone').value.trim();
+  const address = document.getElementById('manual_address').value.trim();
+  const productName = document.getElementById('manual_productName').value.trim();
+  const productCode = document.getElementById('manual_productCode').value.trim();
+  const amount = parseInt(document.getElementById('manual_amount').value) || 0;
+  const orderDate = document.getElementById('manual_orderDate').value.trim();
+  
+  // 필수 입력 검증
+  if (!customerName || !phone || !address) {
+    alert('고객명, 연락처, 주소는 필수 입력 항목입니다.');
+    return;
+  }
+  
+  // ocrData 업데이트
+  ocrData = {
+    customerName,
+    phone,
+    address,
+    productName,
+    productCode,
+    amount,
+    orderDate
+  };
+  
+  // OCR 결과 표시 업데이트
+  displayOCRResult(ocrData);
+  
+  // 수동 입력 폼 제거
+  cancelManualInput();
+  
+  // 성공 메시지
+  const uploadResult = document.getElementById('uploadResult');
+  uploadResult.classList.remove('bg-green-50', 'border-green-200');
+  uploadResult.classList.add('bg-blue-50', 'border-blue-200');
+  
+  setTimeout(() => {
+    uploadResult.classList.remove('bg-blue-50', 'border-blue-200');
+    uploadResult.classList.add('bg-green-50', 'border-green-200');
+  }, 500);
+  
+  // 다음 단계로 이동
+  setTimeout(() => {
+    nextStep(2);
+  }, 1000);
+}
+
 
 // 브랜드별 제품 표시
 function showBrand(brand) {

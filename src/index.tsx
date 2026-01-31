@@ -4,7 +4,7 @@ import { serveStatic } from 'hono/cloudflare-workers'
 import { allPackages, getPackageById } from './packages'
 
 type Bindings = {
-  AI?: any;
+  AI: any;
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -42,28 +42,97 @@ app.post('/api/ocr', async (c) => {
       return c.json({ error: 'No file uploaded' }, 400)
     }
 
-    // 이미지를 base64로 변환
+    // 이미지를 배열로 변환
     const arrayBuffer = await file.arrayBuffer()
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
+    const imageArray = Array.from(new Uint8Array(arrayBuffer))
     
-    // Cloudflare Workers AI를 사용한 OCR (선택사항)
-    // 또는 외부 OCR API 사용 (Google Vision API, Tesseract 등)
-    
-    // 임시: 샘플 데이터 반환 (실제로는 OCR 결과 파싱)
-    const mockData = {
-      customerName: '이승민',
-      phone: '010-2966-7497',
-      address: '(28217) 충북4로 세종시 연동면 15호-3305',
-      productName: 'PV5 기아 밀워키 워크스테이션',
-      productCode: '202601300939847917',
-      amount: 4850000,
-      orderDate: '2025년 01월 20일'
+    // Cloudflare Workers AI를 사용한 OCR
+    let ocrText = '';
+    try {
+      // @cf/llava-hf/llava-1.5-7b-hf 모델 사용 (이미지 분석)
+      const aiResponse = await c.env.AI.run('@cf/llava-hf/llava-1.5-7b-hf', {
+        image: imageArray,
+        prompt: "이 이미지는 한국어 거래명세서입니다. 다음 정보를 추출해주세요: 고객명(수령인), 연락처, 주소, 제품명, 주문번호, 금액. JSON 형식으로 답변해주세요.",
+        max_tokens: 512
+      })
+      
+      ocrText = aiResponse.description || '';
+      console.log('AI OCR Result:', ocrText);
+    } catch (aiError) {
+      console.error('AI OCR Error:', aiError);
+      // AI 실패시 폴백
     }
     
-    return c.json({ success: true, data: mockData })
+    // OCR 결과 파싱 (간단한 파싱 로직)
+    const parseOCRResult = (text: string) => {
+      // 실제로는 더 정교한 파싱이 필요하지만, 기본 구조
+      const data: any = {
+        customerName: '',
+        phone: '',
+        address: '',
+        productName: '',
+        productCode: '',
+        amount: 0,
+        orderDate: ''
+      };
+      
+      // JSON 응답 시도
+      try {
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          return { ...data, ...parsed };
+        }
+      } catch (e) {
+        console.log('JSON parsing failed, using text extraction');
+      }
+      
+      // 텍스트에서 패턴 추출
+      const nameMatch = text.match(/(?:고객명|수령인|이름)[\s:：]*([가-힣]+)/);
+      if (nameMatch) data.customerName = nameMatch[1];
+      
+      const phoneMatch = text.match(/(?:연락처|전화|휴대폰)[\s:：]*([\d-]+)/);
+      if (phoneMatch) data.phone = phoneMatch[1];
+      
+      const addressMatch = text.match(/(?:주소)[\s:：]*([^\n]+)/);
+      if (addressMatch) data.address = addressMatch[1].trim();
+      
+      const productMatch = text.match(/(?:제품명|상품명|품명)[\s:：]*([^\n]+)/);
+      if (productMatch) data.productName = productMatch[1].trim();
+      
+      const codeMatch = text.match(/(?:주문번호|코드)[\s:：]*([\d]+)/);
+      if (codeMatch) data.productCode = codeMatch[1];
+      
+      const amountMatch = text.match(/(?:금액|가격)[\s:：]*([\d,]+)/);
+      if (amountMatch) {
+        data.amount = parseInt(amountMatch[1].replace(/,/g, ''));
+      }
+      
+      return data;
+    };
+    
+    const extractedData = ocrText ? parseOCRResult(ocrText) : {};
+    
+    // 기본값 또는 추출된 데이터 반환
+    const resultData = {
+      customerName: extractedData.customerName || '(인식 실패)',
+      phone: extractedData.phone || '(인식 실패)',
+      address: extractedData.address || '(인식 실패)',
+      productName: extractedData.productName || '(인식 실패)',
+      productCode: extractedData.productCode || '',
+      amount: extractedData.amount || 0,
+      orderDate: extractedData.orderDate || new Date().toLocaleDateString('ko-KR'),
+      ocrRawText: ocrText // 디버깅용
+    };
+    
+    return c.json({ success: true, data: resultData })
   } catch (error) {
     console.error('OCR Error:', error)
-    return c.json({ error: 'OCR processing failed' }, 500)
+    return c.json({ 
+      error: 'OCR processing failed', 
+      message: error instanceof Error ? error.message : 'Unknown error',
+      suggestion: '수동으로 입력해주세요.'
+    }, 500)
   }
 })
 
