@@ -445,49 +445,42 @@ function showManualInputForm() {
           <div>
             <label class="block text-sm font-bold text-gray-700 mb-2">출력일자</label>
             <input type="text" id="manual_outputDate" 
-                   value="${ocrData?.outputDate || ''}"
                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                    placeholder="2026년 01월 30일">
           </div>
           <div>
             <label class="block text-sm font-bold text-gray-700 mb-2">배송번호</label>
             <input type="text" id="manual_deliveryNumber" 
-                   value="${ocrData?.deliveryNumber || ''}"
                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                    placeholder="83100276">
           </div>
           <div>
             <label class="block text-sm font-bold text-gray-700 mb-2">수령자명 *</label>
             <input type="text" id="manual_receiverName" 
-                   value="${ocrData?.receiverName || ''}"
                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                    placeholder="이승현">
           </div>
           <div>
             <label class="block text-sm font-bold text-gray-700 mb-2">주문자명</label>
             <input type="text" id="manual_ordererName" 
-                   value="${ocrData?.ordererName || ''}"
                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                    placeholder="이승현">
           </div>
           <div class="md:col-span-2">
             <label class="block text-sm font-bold text-gray-700 mb-2">수령자 주소 *</label>
             <input type="text" id="manual_receiverAddress" 
-                   value="${ocrData?.receiverAddress || ''}"
                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                    placeholder="(18021) 경기도 평택시 고덕면 도시지원1길 52...">
           </div>
           <div>
             <label class="block text-sm font-bold text-gray-700 mb-2">수령자 연락처 *</label>
             <input type="tel" id="manual_receiverPhone" 
-                   value="${ocrData?.receiverPhone || ''}"
                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                    placeholder="010-2966-7497">
           </div>
           <div>
             <label class="block text-sm font-bold text-gray-700 mb-2">배송메모</label>
             <input type="text" id="manual_deliveryMemo" 
-                   value="${ocrData?.deliveryMemo || ''}"
                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                    placeholder="부재 시 문앞">
           </div>
@@ -501,21 +494,18 @@ function showManualInputForm() {
           <div>
             <label class="block text-sm font-bold text-gray-700 mb-2">주문번호</label>
             <input type="text" id="manual_orderNumber" 
-                   value="${ocrData?.orderNumber || ''}"
                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                    placeholder="202601300939047917">
           </div>
           <div>
             <label class="block text-sm font-bold text-gray-700 mb-2">상품번호</label>
             <input type="text" id="manual_productCode" 
-                   value="${ocrData?.productCode || ''}"
                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                    placeholder="131432322">
           </div>
           <div class="md:col-span-2">
             <label class="block text-sm font-bold text-gray-700 mb-2">상품명</label>
             <input type="text" id="manual_productName" 
-                   value="${ocrData?.productName || ''}"
                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                    placeholder="PV5 카고 밀워키 워크스테이션">
           </div>
@@ -536,6 +526,34 @@ function showManualInputForm() {
   `;
   
   uploadSection.insertAdjacentHTML('beforeend', formHTML);
+  
+  // OCR 데이터가 있으면 폼 필드에 자동으로 채우기
+  if (ocrData) {
+    console.log('Filling form with OCR data:', ocrData);
+    
+    // 각 필드에 값 설정
+    const fields = {
+      'manual_outputDate': ocrData.outputDate,
+      'manual_deliveryNumber': ocrData.deliveryNumber,
+      'manual_receiverName': ocrData.receiverName,
+      'manual_ordererName': ocrData.ordererName,
+      'manual_receiverAddress': ocrData.receiverAddress,
+      'manual_receiverPhone': ocrData.receiverPhone,
+      'manual_deliveryMemo': ocrData.deliveryMemo,
+      'manual_orderNumber': ocrData.orderNumber,
+      'manual_productCode': ocrData.productCode,
+      'manual_productName': ocrData.productName
+    };
+    
+    // 각 필드에 값 채우기
+    for (const [fieldId, value] of Object.entries(fields)) {
+      const element = document.getElementById(fieldId);
+      if (element && value) {
+        element.value = value;
+        console.log(`Filled ${fieldId} with:`, value);
+      }
+    }
+  }
 }
 
 // 수동 입력 취소
