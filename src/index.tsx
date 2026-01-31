@@ -58,30 +58,30 @@ app.post('/api/ocr', async (c) => {
         // @cf/llava-hf/llava-1.5-7b-hf 모델 사용 (이미지 분석)
         const aiResponse = await c.env.AI.run('@cf/llava-hf/llava-1.5-7b-hf', {
           image: imageArray,
-          prompt: `이 이미지는 한국어 거래명세서 또는 택배 송장입니다.
+          prompt: `This is a Korean transaction statement (거래명세서) or delivery invoice.
 
-다음 정보를 이미지에서 찾아서 정확히 추출해주세요:
+Please extract the following information from the image:
 
-1. **수령자 이름**: 받는사람, 수령인, 고객명, 성명 항목의 값
-2. **전화번호**: 연락처, 휴대폰, 핸드폰, TEL 항목의 값 (010-XXXX-XXXX 형식)
-3. **배송 주소**: 주소, 배송지 항목의 전체 주소 (시/구/동/번지 포함)
-4. **상품명**: 제품명, 품명, 상품명 항목의 값
-5. **주문번호**: 주문번호, 오더번호, ORDER NO 항목의 값
-6. **상품번호**: 상품번호, 품번, 제품번호 항목의 값
+1. Recipient Name (수령자/받는사람): Look for fields labeled "수령자명", "수령자", "받는사람", "수평자명"
+2. Phone Number (전화번호): Look for "전화번호", "연락처", numbers starting with 010 or 031
+3. Address (주소): Look for complete address starting with postal code or city name like "(경기도", "서울시"
+4. Product Name (상품명): Look for item description, typically longer text with product details
+5. Order Number (주문번호): Long number sequence, typically 15-20 digits
+6. Product Code (상품번호): Number sequence near product name, typically 6-10 digits
 
-**중요**: 각 항목의 **값만** 추출하고, 라벨이나 설명은 제외하세요.
+IMPORTANT: Extract the ACTUAL VALUES from the image, not example values.
 
-다음 JSON 형식으로 **정확히** 답변해주세요:
+Return ONLY a JSON object in this exact format:
 {
-  "수령자": "홍길동",
-  "전화번호": "010-1234-5678",
-  "주소": "서울시 강남구 테헤란로 123",
-  "상품명": "PV5 워크스테이션",
-  "주문번호": "ORD20260131",
-  "상품번호": "PRD12345"
+  "수령자": "",
+  "전화번호": "",
+  "주소": "",
+  "상품명": "",
+  "주문번호": "",
+  "상품번호": ""
 }
 
-값이 없으면 빈 문자열 ""로 표시하세요.`,
+Fill in the actual values you see in the image. If a field is not found, use empty string "".`,
           max_tokens: 1024
         })
         
