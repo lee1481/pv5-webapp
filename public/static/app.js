@@ -936,37 +936,25 @@ function displayFinalPreview() {
         ${materialsHTML}
       </div>
       
-      <!-- 서명란 -->
+      <!-- 접수/작성자 정보 -->
       <div class="grid grid-cols-2 gap-6 mt-8">
         <div class="border-2 border-gray-300 rounded-lg p-4">
-          <div class="font-bold mb-2">시공 담당자 확인</div>
-          <canvas id="installerSignature" 
-                  width="400" 
-                  height="80" 
-                  style="border-bottom: 2px solid #9ca3af; cursor: crosshair; width: 100%; height: 80px; display: block;"
-                  class="mb-2"></canvas>
-          <div class="flex justify-between items-center">
-            <div class="text-sm text-gray-600">서명 / 날짜</div>
-            <button onclick="clearSignature('installerSignature')" 
-                    class="text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded">
-              지우기
-            </button>
-          </div>
+          <label for="installerName" class="font-bold mb-2 block">시공 담당자 확인</label>
+          <input type="text" 
+                 id="installerName" 
+                 placeholder="접수/작성자: 홍길동"
+                 class="w-full px-4 py-3 border-b-2 border-gray-300 focus:border-blue-500 focus:outline-none"
+                 style="border-top: none; border-left: none; border-right: none;">
+          <div class="text-sm text-gray-600 mt-2">접수 / 작성자</div>
         </div>
         <div class="border-2 border-gray-300 rounded-lg p-4">
-          <div class="font-bold mb-2">고객 확인</div>
-          <canvas id="customerSignature" 
-                  width="400" 
-                  height="80" 
-                  style="border-bottom: 2px solid #9ca3af; cursor: crosshair; width: 100%; height: 80px; display: block;"
-                  class="mb-2"></canvas>
-          <div class="flex justify-between items-center">
-            <div class="text-sm text-gray-600">서명 / 날짜</div>
-            <button onclick="clearSignature('customerSignature')" 
-                    class="text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded">
-              지우기
-            </button>
-          </div>
+          <label for="customerName" class="font-bold mb-2 block">고객 확인</label>
+          <input type="text" 
+                 id="customerName" 
+                 placeholder="접수/작성자: 홍길동"
+                 class="w-full px-4 py-3 border-b-2 border-gray-300 focus:border-blue-500 focus:outline-none"
+                 style="border-top: none; border-left: none; border-right: none;">
+          <div class="text-sm text-gray-600 mt-2">접수 / 작성자</div>
         </div>
       </div>
       
@@ -992,12 +980,6 @@ function displayFinalPreview() {
       </div>
     </div>
   `;
-  
-  // 서명 캔버스 초기화
-  setTimeout(() => {
-    initSignatureCanvas('installerSignature');
-    initSignatureCanvas('customerSignature');
-  }, 100);
 }
 
 // PDF 다운로드
@@ -1006,100 +988,6 @@ async function downloadPDF() {
   window.print();
 }
 
-// 서명 캔버스 초기화
-function initSignatureCanvas(canvasId) {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas) return;
-  
-  const ctx = canvas.getContext('2d');
-  let isDrawing = false;
-  let lastX = 0;
-  let lastY = 0;
-  
-  // 캔버스 배경을 흰색으로 설정
-  ctx.fillStyle = 'white';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  
-  // 펜 스타일 설정
-  ctx.strokeStyle = '#000000';
-  ctx.lineWidth = 2;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  
-  // 마우스 이벤트
-  canvas.addEventListener('mousedown', (e) => {
-    isDrawing = true;
-    const rect = canvas.getBoundingClientRect();
-    lastX = (e.clientX - rect.left) * (canvas.width / rect.width);
-    lastY = (e.clientY - rect.top) * (canvas.height / rect.height);
-  });
-  
-  canvas.addEventListener('mousemove', (e) => {
-    if (!isDrawing) return;
-    
-    const rect = canvas.getBoundingClientRect();
-    const currentX = (e.clientX - rect.left) * (canvas.width / rect.width);
-    const currentY = (e.clientY - rect.top) * (canvas.height / rect.height);
-    
-    ctx.beginPath();
-    ctx.moveTo(lastX, lastY);
-    ctx.lineTo(currentX, currentY);
-    ctx.stroke();
-    
-    lastX = currentX;
-    lastY = currentY;
-  });
-  
-  canvas.addEventListener('mouseup', () => {
-    isDrawing = false;
-  });
-  
-  canvas.addEventListener('mouseleave', () => {
-    isDrawing = false;
-  });
-  
-  // 터치 이벤트 (모바일 지원)
-  canvas.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    isDrawing = true;
-    const rect = canvas.getBoundingClientRect();
-    const touch = e.touches[0];
-    lastX = (touch.clientX - rect.left) * (canvas.width / rect.width);
-    lastY = (touch.clientY - rect.top) * (canvas.height / rect.height);
-  });
-  
-  canvas.addEventListener('touchmove', (e) => {
-    e.preventDefault();
-    if (!isDrawing) return;
-    
-    const rect = canvas.getBoundingClientRect();
-    const touch = e.touches[0];
-    const currentX = (touch.clientX - rect.left) * (canvas.width / rect.width);
-    const currentY = (touch.clientY - rect.top) * (canvas.height / rect.height);
-    
-    ctx.beginPath();
-    ctx.moveTo(lastX, lastY);
-    ctx.lineTo(currentX, currentY);
-    ctx.stroke();
-    
-    lastX = currentX;
-    lastY = currentY;
-  });
-  
-  canvas.addEventListener('touchend', () => {
-    isDrawing = false;
-  });
-}
-
-// 서명 지우기
-function clearSignature(canvasId) {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas) return;
-  
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = 'white';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-}
 
 // 이메일 발송
 async function sendEmail() {
