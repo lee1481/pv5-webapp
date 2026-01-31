@@ -875,11 +875,11 @@ function displayFinalPreview() {
           <i class="fas fa-user mr-2 text-blue-600"></i>고객 정보
         </h4>
         <div class="grid grid-cols-2 gap-4 text-sm">
-          <div><strong>고객명:</strong> ${ocrData?.customerName || '-'}</div>
-          <div><strong>연락처:</strong> ${ocrData?.phone || '-'}</div>
-          <div class="col-span-2"><strong>주소:</strong> ${ocrData?.address || '-'}</div>
+          <div><strong>고객명:</strong> ${ocrData?.receiverName || '-'}</div>
+          <div><strong>연락처:</strong> ${ocrData?.receiverPhone || '-'}</div>
+          <div class="col-span-2"><strong>주소:</strong> ${ocrData?.receiverAddress || '-'}</div>
           <div><strong>주문번호:</strong> ${ocrData?.productCode || '-'}</div>
-          <div><strong>주문일:</strong> ${ocrData?.orderDate || '-'}</div>
+          <div><strong>주문일:</strong> ${ocrData?.outputDate || '-'}</div>
         </div>
       </div>
       
