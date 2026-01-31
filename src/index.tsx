@@ -107,6 +107,7 @@ app.post('/api/ocr', async (c) => {
     // OCR 텍스트 추출
     const fullTextAnnotation = visionData.responses?.[0]?.fullTextAnnotation;
     const ocrText = fullTextAnnotation?.text || '';
+    const aiSuccess = !!ocrText; // Vision API 성공 여부
     
     console.log('Extracted OCR text length:', ocrText.length);
     console.log('OCR text preview:', ocrText.substring(0, 200));
