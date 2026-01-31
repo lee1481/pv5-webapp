@@ -531,28 +531,31 @@ function showManualInputForm() {
   if (ocrData) {
     console.log('Filling form with OCR data:', ocrData);
     
-    // 각 필드에 값 설정
-    const fields = {
-      'manual_outputDate': ocrData.outputDate,
-      'manual_deliveryNumber': ocrData.deliveryNumber,
-      'manual_receiverName': ocrData.receiverName,
-      'manual_ordererName': ocrData.ordererName,
-      'manual_receiverAddress': ocrData.receiverAddress,
-      'manual_receiverPhone': ocrData.receiverPhone,
-      'manual_deliveryMemo': ocrData.deliveryMemo,
-      'manual_orderNumber': ocrData.orderNumber,
-      'manual_productCode': ocrData.productCode,
-      'manual_productName': ocrData.productName
-    };
-    
-    // 각 필드에 값 채우기
-    for (const [fieldId, value] of Object.entries(fields)) {
-      const element = document.getElementById(fieldId);
-      if (element && value) {
-        element.value = value;
-        console.log(`Filled ${fieldId} with:`, value);
+    // DOM이 완전히 렌더링된 후 값을 채우기 위해 setTimeout 사용
+    setTimeout(() => {
+      // 각 필드에 값 설정
+      const fields = {
+        'manual_outputDate': ocrData.outputDate,
+        'manual_deliveryNumber': ocrData.deliveryNumber,
+        'manual_receiverName': ocrData.receiverName,
+        'manual_ordererName': ocrData.ordererName,
+        'manual_receiverAddress': ocrData.receiverAddress,
+        'manual_receiverPhone': ocrData.receiverPhone,
+        'manual_deliveryMemo': ocrData.deliveryMemo,
+        'manual_orderNumber': ocrData.orderNumber,
+        'manual_productCode': ocrData.productCode,
+        'manual_productName': ocrData.productName
+      };
+      
+      // 각 필드에 값 채우기
+      for (const [fieldId, value] of Object.entries(fields)) {
+        const element = document.getElementById(fieldId);
+        if (element && value) {
+          element.value = value;
+          console.log(`Filled ${fieldId} with:`, value);
+        }
       }
-    }
+    }, 100); // 100ms 후 실행
   }
 }
 
