@@ -6,6 +6,7 @@ import { allPackages, getPackageById } from './packages'
 type Bindings = {
   AI: any;
   RESEND_API_KEY?: string;
+  REPORTS_KV?: KVNamespace;
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -560,6 +561,197 @@ app.post('/api/send-email', async (c) => {
   }
 })
 
+// API: 시공 확인서 저장
+app.post('/api/reports/save', async (c) => {
+  try {
+    const { env } = c
+    const body = await c.req.json()
+    
+    const {
+      reportId,
+      customerInfo,
+      packages,
+      installDate,
+      installTime,
+      installAddress,
+      notes,
+      installerName,
+      attachmentImage,
+      attachmentFileName
+    } = body
+    
+    // KV가 없으면 로컬스토리지만 사용 (프론트엔드)
+    if (!env.REPORTS_KV) {
+      return c.json({ 
+        success: false, 
+        message: 'KV 스토리지가 설정되지 않았습니다. 로컬 저장만 가능합니다.' 
+      }, 200)
+    }
+    
+    const report = {
+      id: reportId || `REPORT-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      customerInfo,
+      packages,
+      installDate,
+      installTime,
+      installAddress,
+      notes,
+      installerName,
+      attachmentImage,
+      attachmentFileName,
+      status: 'saved'
+    }
+    
+    // KV에 저장 (키: report.id, 값: JSON 문자열)
+    await env.REPORTS_KV.put(report.id, JSON.stringify(report))
+    
+    // 인덱스 목록 업데이트 (검색용)
+    const indexKey = 'report-index'
+    const indexData = await env.REPORTS_KV.get(indexKey)
+    const index = indexData ? JSON.parse(indexData) : []
+    
+    // 기존 항목 제거 후 새 항목 추가
+    const filteredIndex = index.filter((item: any) => item.id !== report.id)
+    filteredIndex.unshift({
+      id: report.id,
+      customerName: customerInfo?.receiverName || '',
+      createdAt: report.createdAt,
+      updatedAt: report.updatedAt,
+      installDate: installDate || ''
+    })
+    
+    await env.REPORTS_KV.put(indexKey, JSON.stringify(filteredIndex))
+    
+    console.log('Report saved successfully:', report.id)
+    return c.json({ 
+      success: true, 
+      message: '시공 확인서가 저장되었습니다!',
+      reportId: report.id
+    })
+    
+  } catch (error) {
+    console.error('Report save error:', error)
+    return c.json({ 
+      success: false, 
+      message: '저장 중 오류가 발생했습니다.',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500)
+  }
+})
+
+// API: 시공 확인서 목록 조회
+app.get('/api/reports/list', async (c) => {
+  try {
+    const { env } = c
+    
+    if (!env.REPORTS_KV) {
+      return c.json({ 
+        success: false, 
+        reports: [],
+        message: 'KV 스토리지가 설정되지 않았습니다.' 
+      }, 200)
+    }
+    
+    const indexKey = 'report-index'
+    const indexData = await env.REPORTS_KV.get(indexKey)
+    const reports = indexData ? JSON.parse(indexData) : []
+    
+    return c.json({ 
+      success: true, 
+      reports 
+    })
+    
+  } catch (error) {
+    console.error('Report list error:', error)
+    return c.json({ 
+      success: false, 
+      reports: [],
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500)
+  }
+})
+
+// API: 시공 확인서 불러오기
+app.get('/api/reports/:id', async (c) => {
+  try {
+    const { env } = c
+    const reportId = c.req.param('id')
+    
+    if (!env.REPORTS_KV) {
+      return c.json({ 
+        success: false, 
+        message: 'KV 스토리지가 설정되지 않았습니다.' 
+      }, 404)
+    }
+    
+    const reportData = await env.REPORTS_KV.get(reportId)
+    
+    if (!reportData) {
+      return c.json({ 
+        success: false, 
+        message: '시공 확인서를 찾을 수 없습니다.' 
+      }, 404)
+    }
+    
+    const report = JSON.parse(reportData)
+    
+    return c.json({ 
+      success: true, 
+      report 
+    })
+    
+  } catch (error) {
+    console.error('Report load error:', error)
+    return c.json({ 
+      success: false, 
+      message: '불러오기 중 오류가 발생했습니다.',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500)
+  }
+})
+
+// API: 시공 확인서 삭제
+app.delete('/api/reports/:id', async (c) => {
+  try {
+    const { env } = c
+    const reportId = c.req.param('id')
+    
+    if (!env.REPORTS_KV) {
+      return c.json({ 
+        success: false, 
+        message: 'KV 스토리지가 설정되지 않았습니다.' 
+      }, 404)
+    }
+    
+    // KV에서 삭제
+    await env.REPORTS_KV.delete(reportId)
+    
+    // 인덱스에서도 삭제
+    const indexKey = 'report-index'
+    const indexData = await env.REPORTS_KV.get(indexKey)
+    if (indexData) {
+      const index = JSON.parse(indexData)
+      const filteredIndex = index.filter((item: any) => item.id !== reportId)
+      await env.REPORTS_KV.put(indexKey, JSON.stringify(filteredIndex))
+    }
+    
+    return c.json({ 
+      success: true, 
+      message: '시공 확인서가 삭제되었습니다.' 
+    })
+    
+  } catch (error) {
+    console.error('Report delete error:', error)
+    return c.json({ 
+      success: false, 
+      message: '삭제 중 오류가 발생했습니다.',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500)
+  }
+})
+
 // 메인 페이지
 app.get('/', (c) => {
   return c.html(`
@@ -654,6 +846,10 @@ app.get('/', (c) => {
                     <div class="step" id="step4">
                         <i class="fas fa-check-circle text-2xl mb-2"></i>
                         <div>4. 확인 및 발송</div>
+                    </div>
+                    <div class="step" id="step5">
+                        <i class="fas fa-folder-open text-2xl mb-2"></i>
+                        <div>5. 저장 문서 관리</div>
                     </div>
                 </div>
 
@@ -776,6 +972,10 @@ app.get('/', (c) => {
                                 class="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50">
                             <i class="fas fa-arrow-left mr-2"></i>이전
                         </button>
+                        <button onclick="saveReport()" 
+                                class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700">
+                            <i class="fas fa-save mr-2"></i>저장하기
+                        </button>
                         <button onclick="downloadPDF()" 
                                 class="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700">
                             <i class="fas fa-file-pdf mr-2"></i>PDF 다운로드
@@ -783,6 +983,71 @@ app.get('/', (c) => {
                         <button onclick="sendEmail()" 
                                 class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700">
                             <i class="fas fa-envelope mr-2"></i>이메일 발송
+                        </button>
+                        <button onclick="nextStep(5)" 
+                                class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700">
+                            저장 문서 관리 <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 5: 저장 문서 관리 -->
+                <div id="manage-section" class="bg-white rounded-lg shadow-lg p-8 mb-8 hidden">
+                    <h2 class="text-2xl font-bold mb-6 text-gray-800">
+                        <i class="fas fa-folder-open text-purple-600 mr-2"></i>
+                        5단계: 저장 문서 관리
+                    </h2>
+                    
+                    <!-- 검색 및 필터 -->
+                    <div class="mb-6">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">
+                                    <i class="fas fa-calendar mr-2"></i>시작 날짜
+                                </label>
+                                <input type="date" id="searchStartDate" 
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">
+                                    <i class="fas fa-calendar mr-2"></i>종료 날짜
+                                </label>
+                                <input type="date" id="searchEndDate" 
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">
+                                    <i class="fas fa-search mr-2"></i>고객명 검색
+                                </label>
+                                <input type="text" id="searchCustomerName" 
+                                       placeholder="고객명 입력..."
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                            </div>
+                        </div>
+                        <div class="mt-4 flex justify-between items-center">
+                            <button onclick="searchReports()" 
+                                    class="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700">
+                                <i class="fas fa-search mr-2"></i>검색
+                            </button>
+                            <button onclick="resetSearch()" 
+                                    class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600">
+                                <i class="fas fa-redo mr-2"></i>초기화
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 문서 목록 -->
+                    <div id="reportsList" class="space-y-4">
+                        <div class="text-center py-12 text-gray-500">
+                            <i class="fas fa-folder-open text-6xl mb-4"></i>
+                            <p>저장된 문서가 없습니다.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 flex justify-start">
+                        <button onclick="prevStep(4)" 
+                                class="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50">
+                            <i class="fas fa-arrow-left mr-2"></i>이전
                         </button>
                     </div>
                 </div>

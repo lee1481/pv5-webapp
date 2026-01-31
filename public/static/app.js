@@ -5,6 +5,8 @@ let selectedPackages = []; // 단일 선택에서 다중 선택으로 변경
 let allPackages = [];
 let packagePositions = {}; // 패키지별 좌/우 선택 상태 저장
 let uploadedImageFile = null; // 업로드된 거래명세서 이미지 파일
+let currentReportId = null; // 현재 편집 중인 리포트 ID
+let allReports = []; // 저장된 모든 리포트 목록
 
 // 초기화
 document.addEventListener('DOMContentLoaded', async () => {
@@ -23,7 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // 단계 네비게이션 설정 (상단 메뉴 클릭)
 function setupStepNavigation() {
-  for (let i = 1; i <= 4; i++) {
+  for (let i = 1; i <= 5; i++) {
     const stepElement = document.getElementById(`step${i}`);
     if (stepElement) {
       stepElement.style.cursor = 'pointer';
@@ -823,6 +825,12 @@ function showCurrentSection() {
   document.getElementById('package-section').classList.toggle('hidden', currentStep !== 2);
   document.getElementById('install-section').classList.toggle('hidden', currentStep !== 3);
   document.getElementById('confirm-section').classList.toggle('hidden', currentStep !== 4);
+  document.getElementById('manage-section').classList.toggle('hidden', currentStep !== 5);
+  
+  // Step 5 진입 시 목록 로드
+  if (currentStep === 5) {
+    enterStep5();
+  }
 }
 
 // 최종 미리보기 표시
@@ -1103,3 +1111,307 @@ window.addEventListener('afterprint', () => {
   document.querySelector('.step-indicator').style.display = 'flex';
   document.querySelectorAll('button').forEach(btn => btn.style.display = 'inline-block');
 });
+
+// ==================== Step 5: 저장 문서 관리 ====================
+
+// 시공 확인서 저장
+async function saveReport() {
+  try {
+    const installerName = document.getElementById('installerName')?.value || '';
+    const installDate = document.getElementById('installDate')?.value || '';
+    const installTime = document.getElementById('installTime')?.value || '';
+    const installAddress = document.getElementById('installAddress')?.value || '';
+    const notes = document.getElementById('notes')?.value || '';
+    
+    // 이미지를 Base64로 변환
+    let imageBase64 = null;
+    let imageFileName = null;
+    
+    if (uploadedImageFile) {
+      const reader = new FileReader();
+      imageBase64 = await new Promise((resolve) => {
+        reader.onload = () => {
+          const base64 = reader.result.split(',')[1];
+          resolve(base64);
+        };
+        reader.readAsDataURL(uploadedImageFile);
+      });
+      imageFileName = uploadedImageFile.name;
+    }
+    
+    const reportData = {
+      reportId: currentReportId || `REPORT-${Date.now()}`,
+      customerInfo: ocrData,
+      packages: selectedPackages,
+      installDate,
+      installTime,
+      installAddress,
+      notes,
+      installerName,
+      attachmentImage: imageBase64,
+      attachmentFileName: imageFileName
+    };
+    
+    // 로컬스토리지에 저장
+    const savedReports = JSON.parse(localStorage.getItem('pv5_reports') || '[]');
+    const existingIndex = savedReports.findIndex(r => r.reportId === reportData.reportId);
+    
+    if (existingIndex >= 0) {
+      savedReports[existingIndex] = reportData;
+    } else {
+      savedReports.unshift(reportData);
+    }
+    
+    localStorage.setItem('pv5_reports', JSON.stringify(savedReports));
+    currentReportId = reportData.reportId;
+    
+    // 서버에도 저장 시도 (KV)
+    try {
+      const response = await axios.post('/api/reports/save', reportData, {
+        timeout: 30000
+      });
+      
+      if (response.data.success) {
+        alert(`✅ 시공 확인서가 저장되었습니다!\n\n문서 ID: ${reportData.reportId}\n\n"저장 문서 관리"에서 확인할 수 있습니다.`);
+      } else {
+        console.warn('Server save failed, using local storage only:', response.data.message);
+        alert(`✅ 시공 확인서가 로컬에 저장되었습니다!\n\n문서 ID: ${reportData.reportId}`);
+      }
+    } catch (error) {
+      console.warn('Server save failed, using local storage only:', error);
+      alert(`✅ 시공 확인서가 로컬에 저장되었습니다!\n\n문서 ID: ${reportData.reportId}`);
+    }
+    
+  } catch (error) {
+    console.error('Save error:', error);
+    alert('❌ 저장 중 오류가 발생했습니다.');
+  }
+}
+
+// 저장된 문서 목록 불러오기
+async function loadReportsList() {
+  try {
+    // 로컬스토리지에서 불러오기
+    const localReports = JSON.parse(localStorage.getItem('pv5_reports') || '[]');
+    
+    // 서버에서도 불러오기 시도
+    try {
+      const response = await axios.get('/api/reports/list', { timeout: 10000 });
+      if (response.data.success && response.data.reports.length > 0) {
+        // 서버 데이터 우선
+        allReports = response.data.reports;
+      } else {
+        allReports = localReports;
+      }
+    } catch (error) {
+      console.warn('Server load failed, using local storage:', error);
+      allReports = localReports;
+    }
+    
+    displayReportsList(allReports);
+    
+  } catch (error) {
+    console.error('Load reports error:', error);
+    alert('❌ 문서 목록을 불러오는 중 오류가 발생했습니다.');
+  }
+}
+
+// 문서 목록 표시
+function displayReportsList(reports) {
+  const listContainer = document.getElementById('reportsList');
+  
+  if (!reports || reports.length === 0) {
+    listContainer.innerHTML = `
+      <div class="text-center py-12 text-gray-500">
+        <i class="fas fa-folder-open text-6xl mb-4"></i>
+        <p>저장된 문서가 없습니다.</p>
+      </div>
+    `;
+    return;
+  }
+  
+  listContainer.innerHTML = reports.map((report, index) => {
+    const customerName = report.customerInfo?.receiverName || report.customerName || '-';
+    const installDate = report.installDate || '-';
+    const createdAt = report.createdAt ? new Date(report.createdAt).toLocaleString('ko-KR') : '-';
+    const reportId = report.reportId || report.id || `REPORT-${index}`;
+    
+    return `
+      <div class="border border-gray-300 rounded-lg p-4 hover:shadow-lg transition">
+        <div class="flex justify-between items-start">
+          <div class="flex-1">
+            <h3 class="text-lg font-bold text-gray-800 mb-2">
+              <i class="fas fa-file-alt text-blue-600 mr-2"></i>
+              ${customerName}
+            </h3>
+            <div class="grid grid-cols-2 gap-2 text-sm text-gray-600">
+              <div><i class="fas fa-calendar mr-2"></i>설치 날짜: ${installDate}</div>
+              <div><i class="fas fa-clock mr-2"></i>저장 시간: ${createdAt}</div>
+            </div>
+            <div class="text-xs text-gray-500 mt-2">
+              문서 ID: ${reportId}
+            </div>
+          </div>
+          <div class="flex space-x-2">
+            <button onclick="loadReport('${reportId}')" 
+                    class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm">
+              <i class="fas fa-edit mr-1"></i>불러오기
+            </button>
+            <button onclick="deleteReport('${reportId}')" 
+                    class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm">
+              <i class="fas fa-trash mr-1"></i>삭제
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// 문서 불러오기
+async function loadReport(reportId) {
+  try {
+    // 로컬스토리지에서 먼저 찾기
+    const localReports = JSON.parse(localStorage.getItem('pv5_reports') || '[]');
+    let report = localReports.find(r => r.reportId === reportId || r.id === reportId);
+    
+    // 서버에서도 시도
+    if (!report) {
+      try {
+        const response = await axios.get(`/api/reports/${reportId}`, { timeout: 10000 });
+        if (response.data.success) {
+          report = response.data.report;
+        }
+      } catch (error) {
+        console.warn('Server load failed, using local storage:', error);
+      }
+    }
+    
+    if (!report) {
+      alert('❌ 문서를 찾을 수 없습니다.');
+      return;
+    }
+    
+    // 데이터 복원
+    currentReportId = reportId;
+    ocrData = report.customerInfo || {};
+    selectedPackages = report.packages || [];
+    
+    // 입력 필드 복원
+    if (report.installDate) document.getElementById('installDate').value = report.installDate;
+    if (report.installTime) document.getElementById('installTime').value = report.installTime;
+    if (report.installAddress) document.getElementById('installAddress').value = report.installAddress;
+    if (report.notes) document.getElementById('notes').value = report.notes;
+    if (report.installerName) {
+      const installerInput = document.getElementById('installerName');
+      if (installerInput) installerInput.value = report.installerName;
+    }
+    
+    // 이미지 파일 복원 (Base64 -> File)
+    if (report.attachmentImage && report.attachmentFileName) {
+      try {
+        const base64 = report.attachmentImage;
+        const contentType = report.attachmentContentType || 'image/png';
+        const byteCharacters = atob(base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: contentType });
+        uploadedImageFile = new File([blob], report.attachmentFileName, { type: contentType });
+      } catch (error) {
+        console.warn('Failed to restore image file:', error);
+      }
+    }
+    
+    alert(`✅ 문서를 불러왔습니다!\n\n고객명: ${ocrData.receiverName || '-'}\n\n1단계부터 다시 확인하고 수정할 수 있습니다.`);
+    
+    // 1단계로 이동
+    currentStep = 1;
+    updateStepIndicator();
+    showCurrentSection();
+    
+  } catch (error) {
+    console.error('Load report error:', error);
+    alert('❌ 문서를 불러오는 중 오류가 발생했습니다.');
+  }
+}
+
+// 문서 삭제
+async function deleteReport(reportId) {
+  if (!confirm('정말 이 문서를 삭제하시겠습니까?')) {
+    return;
+  }
+  
+  try {
+    // 로컬스토리지에서 삭제
+    const localReports = JSON.parse(localStorage.getItem('pv5_reports') || '[]');
+    const filteredReports = localReports.filter(r => r.reportId !== reportId && r.id !== reportId);
+    localStorage.setItem('pv5_reports', JSON.stringify(filteredReports));
+    
+    // 서버에서도 삭제 시도
+    try {
+      await axios.delete(`/api/reports/${reportId}`, { timeout: 10000 });
+    } catch (error) {
+      console.warn('Server delete failed, local storage updated:', error);
+    }
+    
+    alert('✅ 문서가 삭제되었습니다.');
+    
+    // 목록 새로고침
+    loadReportsList();
+    
+  } catch (error) {
+    console.error('Delete report error:', error);
+    alert('❌ 문서 삭제 중 오류가 발생했습니다.');
+  }
+}
+
+// 문서 검색
+function searchReports() {
+  const startDate = document.getElementById('searchStartDate').value;
+  const endDate = document.getElementById('searchEndDate').value;
+  const customerName = document.getElementById('searchCustomerName').value.toLowerCase();
+  
+  let filtered = [...allReports];
+  
+  // 날짜 필터
+  if (startDate) {
+    filtered = filtered.filter(r => {
+      const installDate = r.installDate || '';
+      return installDate >= startDate;
+    });
+  }
+  
+  if (endDate) {
+    filtered = filtered.filter(r => {
+      const installDate = r.installDate || '';
+      return installDate <= endDate;
+    });
+  }
+  
+  // 고객명 필터
+  if (customerName) {
+    filtered = filtered.filter(r => {
+      const name = (r.customerInfo?.receiverName || r.customerName || '').toLowerCase();
+      return name.includes(customerName);
+    });
+  }
+  
+  displayReportsList(filtered);
+}
+
+// 검색 초기화
+function resetSearch() {
+  document.getElementById('searchStartDate').value = '';
+  document.getElementById('searchEndDate').value = '';
+  document.getElementById('searchCustomerName').value = '';
+  displayReportsList(allReports);
+}
+
+// Step 5 진입 시 목록 로드
+function enterStep5() {
+  loadReportsList();
+}
+
