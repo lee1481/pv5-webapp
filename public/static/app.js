@@ -4,6 +4,7 @@ let ocrData = null;
 let selectedPackages = []; // 단일 선택에서 다중 선택으로 변경
 let allPackages = [];
 let packagePositions = {}; // 패키지별 좌/우 선택 상태 저장
+let uploadedImageFile = null; // 업로드된 거래명세서 이미지 파일
 
 // 초기화
 document.addEventListener('DOMContentLoaded', async () => {
@@ -196,6 +197,10 @@ async function handleFileSelect(event) {
     console.log('No file selected');
     return;
   }
+  
+  // 업로드된 파일을 전역 변수에 저장 (이메일 첨부용)
+  uploadedImageFile = file;
+  console.log('Image file saved for email attachment:', file.name);
 
   // 파일 타입 확인
   if (!file.type.startsWith('image/')) {
@@ -1131,6 +1136,30 @@ async function sendEmail() {
       emailButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>발송 중...';
     }
     
+    // 업로드된 이미지를 Base64로 변환
+    let imageBase64 = null;
+    let imageFileName = null;
+    let imageContentType = null;
+    
+    if (uploadedImageFile) {
+      console.log('Converting uploaded image to base64 for attachment');
+      const reader = new FileReader();
+      
+      imageBase64 = await new Promise((resolve, reject) => {
+        reader.onload = () => {
+          // Data URL에서 base64 부분만 추출 (data:image/png;base64, 제거)
+          const base64 = reader.result.split(',')[1];
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(uploadedImageFile);
+      });
+      
+      imageFileName = uploadedImageFile.name;
+      imageContentType = uploadedImageFile.type;
+      console.log('Image converted to base64, filename:', imageFileName);
+    }
+    
     const emailData = {
       recipientEmail,
       customerInfo: ocrData,
@@ -1138,7 +1167,11 @@ async function sendEmail() {
       installDate,
       installTime,
       installAddress,
-      notes
+      notes,
+      // 첨부 이미지 데이터
+      attachmentImage: imageBase64,
+      attachmentFileName: imageFileName,
+      attachmentContentType: imageContentType
     };
     
     const response = await axios.post('/api/send-email', emailData, {

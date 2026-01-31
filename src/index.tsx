@@ -430,7 +430,10 @@ app.post('/api/send-email', async (c) => {
       installDate,
       installTime,
       installAddress,
-      notes
+      notes,
+      attachmentImage,
+      attachmentFileName,
+      attachmentContentType
     } = body
     
     // Resend API 키 확인
@@ -502,19 +505,31 @@ app.post('/api/send-email', async (c) => {
       </html>
     `
     
-    // Resend API 호출
+    // Resend API 호출 - 첨부파일 포함
+    const emailPayload: any = {
+      from: 'PV5 시공관리 <onboarding@resend.dev>',
+      to: [recipientEmail],
+      subject: `[PV5 시공(예약) 확인서] ${customerInfo?.receiverName || '고객'}님 시공(예약) 확인서`,
+      html: htmlContent
+    };
+    
+    // 첨부파일이 있으면 추가
+    if (attachmentImage && attachmentFileName) {
+      console.log('Adding attachment to email:', attachmentFileName);
+      emailPayload.attachments = [{
+        filename: attachmentFileName,
+        content: attachmentImage, // base64 문자열
+        content_type: attachmentContentType || 'image/png'
+      }];
+    }
+    
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${env.RESEND_API_KEY}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        from: 'PV5 시공관리 <onboarding@resend.dev>',
-        to: [recipientEmail],
-        subject: `[PV5 시공(예약) 확인서] ${customerInfo?.receiverName || '고객'}님 시공(예약) 확인서`,
-        html: htmlContent
-      })
+      body: JSON.stringify(emailPayload)
     })
     
     const resendData = await resendResponse.json()
