@@ -48,24 +48,31 @@ app.post('/api/ocr', async (c) => {
     
     // Cloudflare Workers AI를 사용한 OCR
     let ocrText = '';
+    let aiSuccess = false;
+    
     try {
-      // @cf/llava-hf/llava-1.5-7b-hf 모델 사용 (이미지 분석)
-      const aiResponse = await c.env.AI.run('@cf/llava-hf/llava-1.5-7b-hf', {
-        image: imageArray,
-        prompt: "이 이미지는 한국어 거래명세서입니다. 다음 정보를 추출해주세요: 고객명(수령인), 연락처, 주소, 제품명, 주문번호, 금액. JSON 형식으로 답변해주세요.",
-        max_tokens: 512
-      })
-      
-      ocrText = aiResponse.description || '';
-      console.log('AI OCR Result:', ocrText);
+      // AI 바인딩 확인
+      if (c.env && c.env.AI) {
+        // @cf/llava-hf/llava-1.5-7b-hf 모델 사용 (이미지 분석)
+        const aiResponse = await c.env.AI.run('@cf/llava-hf/llava-1.5-7b-hf', {
+          image: imageArray,
+          prompt: "이 이미지는 한국어 거래명세서입니다. 다음 정보를 정확히 추출해주세요:\n1. 고객명(또는 수령인 이름)\n2. 연락처(전화번호)\n3. 배송 주소\n4. 제품명(상품명)\n5. 주문번호\n\n각 항목을 다음 형식으로 답변해주세요:\n고객명: [이름]\n연락처: [전화번호]\n주소: [주소]\n제품명: [제품명]\n주문번호: [번호]",
+          max_tokens: 512
+        })
+        
+        ocrText = aiResponse.description || '';
+        aiSuccess = true;
+        console.log('AI OCR Success:', ocrText);
+      } else {
+        console.warn('AI binding not available in development mode');
+      }
     } catch (aiError) {
       console.error('AI OCR Error:', aiError);
-      // AI 실패시 폴백
+      aiSuccess = false;
     }
     
-    // OCR 결과 파싱 (간단한 파싱 로직)
+    // OCR 결과 파싱 (개선된 파싱 로직)
     const parseOCRResult = (text: string) => {
-      // 실제로는 더 정교한 파싱이 필요하지만, 기본 구조
       const data: any = {
         customerName: '',
         phone: '',
@@ -76,34 +83,45 @@ app.post('/api/ocr', async (c) => {
         orderDate: ''
       };
       
+      if (!text || text.length < 10) {
+        return data;
+      }
+      
       // JSON 응답 시도
       try {
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0]);
-          return { ...data, ...parsed };
+          if (parsed.customerName || parsed['고객명']) {
+            data.customerName = parsed.customerName || parsed['고객명'] || '';
+            data.phone = parsed.phone || parsed['연락처'] || '';
+            data.address = parsed.address || parsed['주소'] || '';
+            data.productName = parsed.productName || parsed['제품명'] || '';
+            data.productCode = parsed.productCode || parsed['주문번호'] || '';
+            return data;
+          }
         }
       } catch (e) {
         console.log('JSON parsing failed, using text extraction');
       }
       
-      // 텍스트에서 패턴 추출
-      const nameMatch = text.match(/(?:고객명|수령인|이름)[\s:：]*([가-힣]+)/);
-      if (nameMatch) data.customerName = nameMatch[1];
+      // 텍스트에서 패턴 추출 (개선된 정규식)
+      const nameMatch = text.match(/(?:고객명|수령인|이름|받는사람)[\s:：]*([가-힣]{2,10})/i);
+      if (nameMatch) data.customerName = nameMatch[1].trim();
       
-      const phoneMatch = text.match(/(?:연락처|전화|휴대폰)[\s:：]*([\d-]+)/);
-      if (phoneMatch) data.phone = phoneMatch[1];
+      const phoneMatch = text.match(/(?:연락처|전화|휴대폰|핸드폰|TEL)[\s:：]*(0[\d]{1,2}[-\s]?\d{3,4}[-\s]?\d{4})/i);
+      if (phoneMatch) data.phone = phoneMatch[1].replace(/\s/g, '');
       
-      const addressMatch = text.match(/(?:주소)[\s:：]*([^\n]+)/);
+      const addressMatch = text.match(/(?:주소|배송지)[\s:：]*([^\n]{10,100})/i);
       if (addressMatch) data.address = addressMatch[1].trim();
       
-      const productMatch = text.match(/(?:제품명|상품명|품명)[\s:：]*([^\n]+)/);
+      const productMatch = text.match(/(?:제품명|상품명|품명|상품)[\s:：]*([^\n]{5,50})/i);
       if (productMatch) data.productName = productMatch[1].trim();
       
-      const codeMatch = text.match(/(?:주문번호|코드)[\s:：]*([\d]+)/);
+      const codeMatch = text.match(/(?:주문번호|주문코드|오더번호|ORDER)[\s:：]*([\d-]+)/i);
       if (codeMatch) data.productCode = codeMatch[1];
       
-      const amountMatch = text.match(/(?:금액|가격)[\s:：]*([\d,]+)/);
+      const amountMatch = text.match(/(?:금액|가격|합계)[\s:：]*([\d,]+)/i);
       if (amountMatch) {
         data.amount = parseInt(amountMatch[1].replace(/,/g, ''));
       }
@@ -113,17 +131,33 @@ app.post('/api/ocr', async (c) => {
     
     const extractedData = ocrText ? parseOCRResult(ocrText) : {};
     
-    // 기본값 또는 추출된 데이터 반환
+    // 인식 성공 여부 판단
+    const hasValidData = extractedData.customerName && 
+                         extractedData.customerName !== '' && 
+                         extractedData.customerName.length > 1;
+    
+    // 결과 데이터
     const resultData = {
-      customerName: extractedData.customerName || '(인식 실패)',
-      phone: extractedData.phone || '(인식 실패)',
-      address: extractedData.address || '(인식 실패)',
-      productName: extractedData.productName || '(인식 실패)',
+      customerName: extractedData.customerName || '',
+      phone: extractedData.phone || '',
+      address: extractedData.address || '',
+      productName: extractedData.productName || '',
       productCode: extractedData.productCode || '',
       amount: extractedData.amount || 0,
       orderDate: extractedData.orderDate || new Date().toLocaleDateString('ko-KR'),
-      ocrRawText: ocrText // 디버깅용
+      ocrRawText: ocrText, // 디버깅용
+      aiSuccess: aiSuccess,
+      recognitionSuccess: hasValidData
     };
+    
+    // 인식 실패 시 명시적으로 실패 응답
+    if (!hasValidData && aiSuccess) {
+      return c.json({ 
+        success: false, 
+        data: resultData,
+        message: 'OCR 인식에 실패했습니다. 수동으로 입력해주세요.'
+      }, 200)
+    }
     
     return c.json({ success: true, data: resultData })
   } catch (error) {

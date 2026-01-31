@@ -229,6 +229,29 @@ async function handleFileSelect(event) {
 
     console.log('OCR response:', response.data);
 
+    // OCR 인식 성공 여부 확인
+    if (response.data.success === false || !response.data.data.recognitionSuccess) {
+      console.warn('OCR recognition failed');
+      
+      // 인식 실패 시 수동 입력 유도
+      dropZone.innerHTML = `
+        <div class="text-center">
+          <i class="fas fa-exclamation-triangle text-6xl text-yellow-500 mb-4"></i>
+          <p class="text-lg text-gray-800 mb-2 font-bold">자동 인식 실패</p>
+          <p class="text-sm text-gray-600 mb-4">이미지에서 정보를 추출할 수 없습니다.<br>수동으로 입력해주세요.</p>
+          <button onclick="showManualInputForm()" 
+                  class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+            <i class="fas fa-keyboard mr-2"></i>수동 입력하기
+          </button>
+          <button onclick="resetUpload()" 
+                  class="ml-2 px-6 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition">
+            <i class="fas fa-redo mr-2"></i>다시 업로드
+          </button>
+        </div>
+      `;
+      return;
+    }
+
     ocrData = response.data.data;
     displayOCRResult(ocrData);
     
