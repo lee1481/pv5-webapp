@@ -220,25 +220,42 @@ async function handleFileSelect(event) {
     const formData = new FormData();
     formData.append('file', file);
     
-    console.log('Sending OCR request...');
+    console.log('Sending OCR request to /api/ocr...');
+    console.log('File details:', { name: file.name, type: file.type, size: file.size });
 
     const response = await axios.post('/api/ocr', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 30000 // 30초 타임아웃
+      headers: { 
+        'Content-Type': 'multipart/form-data'
+      },
+      timeout: 60000, // 60초 타임아웃 (OCR 처리 시간 고려)
+      onUploadProgress: (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        console.log('Upload progress:', percentCompleted + '%');
+      }
     });
 
-    console.log('OCR response:', response.data);
+    console.log('OCR response received:', response.data);
+    console.log('Response status:', response.status);
+    console.log('Success flag:', response.data.success);
+    console.log('Recognition success:', response.data.data?.recognitionSuccess);
+
+    // 응답이 없거나 형식이 잘못된 경우
+    if (!response.data || !response.data.data) {
+      console.error('Invalid response format:', response.data);
+      throw new Error('OCR 서버 응답 형식이 올바르지 않습니다.');
+    }
 
     // OCR 인식 성공 여부 확인
     if (response.data.success === false || !response.data.data.recognitionSuccess) {
-      console.warn('OCR recognition failed');
+      console.warn('OCR recognition failed:', response.data.message || 'No message');
+      console.warn('Raw OCR text:', response.data.data.ocrRawText);
       
       // 인식 실패 시 수동 입력 유도
       dropZone.innerHTML = `
         <div class="text-center">
           <i class="fas fa-exclamation-triangle text-6xl text-yellow-500 mb-4"></i>
           <p class="text-lg text-gray-800 mb-2 font-bold">자동 인식 실패</p>
-          <p class="text-sm text-gray-600 mb-4">이미지에서 정보를 추출할 수 없습니다.<br>수동으로 입력해주세요.</p>
+          <p class="text-sm text-gray-600 mb-4">${response.data.message || '이미지에서 정보를 추출할 수 없습니다.'}<br>수동으로 입력해주세요.</p>
           <button onclick="showManualInputForm()" 
                   class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
             <i class="fas fa-keyboard mr-2"></i>수동 입력하기
@@ -252,24 +269,58 @@ async function handleFileSelect(event) {
       return;
     }
 
+    console.log('OCR success! Extracted data:', response.data.data);
     ocrData = response.data.data;
     displayOCRResult(ocrData);
     
+    console.log('Displaying results and moving to step 2...');
     // 자동으로 제품 선택 섹션으로 이동
     setTimeout(() => {
       nextStep(2);
     }, 1500);
     
   } catch (error) {
-    console.error('OCR Error:', error);
-    console.error('Error details:', error.response ? error.response.data : error.message);
+    console.error('OCR Error occurred:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    
+    if (error.response) {
+      // 서버가 응답했지만 오류 상태 코드
+      console.error('Error response status:', error.response.status);
+      console.error('Error response data:', error.response.data);
+      console.error('Error response headers:', error.response.headers);
+    } else if (error.request) {
+      // 요청이 전송되었지만 응답을 받지 못함
+      console.error('No response received. Request:', error.request);
+      console.error('This might be a network or CORS issue');
+    } else {
+      // 요청 설정 중 오류 발생
+      console.error('Error setting up request:', error.message);
+    }
+    
+    let errorMessage = '거래명세서 자동 인식에 실패했습니다.';
+    let errorDetail = '수동으로 입력해주세요.';
+    
+    if (error.code === 'ECONNABORTED') {
+      errorMessage = '요청 시간이 초과되었습니다.';
+      errorDetail = '이미지 크기가 너무 크거나 네트워크가 느립니다. 다시 시도하거나 수동으로 입력해주세요.';
+    } else if (error.response?.status === 500) {
+      errorMessage = '서버 오류가 발생했습니다.';
+      errorDetail = 'OCR 처리 중 문제가 발생했습니다. 잠시 후 다시 시도하거나 수동으로 입력해주세요.';
+    } else if (error.response?.status === 400) {
+      errorMessage = '잘못된 요청입니다.';
+      errorDetail = '올바른 이미지 파일을 선택해주세요.';
+    } else if (!error.response && error.request) {
+      errorMessage = '서버에 연결할 수 없습니다.';
+      errorDetail = '네트워크 연결을 확인하거나 수동으로 입력해주세요.';
+    }
     
     // OCR 실패 시 수동 입력 폼 표시
     dropZone.innerHTML = `
       <div class="text-center">
         <i class="fas fa-exclamation-triangle text-6xl text-yellow-500 mb-4"></i>
-        <p class="text-lg text-gray-800 mb-2 font-bold">자동 인식 실패</p>
-        <p class="text-sm text-gray-600 mb-4">거래명세서 정보를 수동으로 입력해주세요.</p>
+        <p class="text-lg text-gray-800 mb-2 font-bold">${errorMessage}</p>
+        <p class="text-sm text-gray-600 mb-4">${errorDetail}</p>
         <button onclick="showManualInputForm()" 
                 class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition mr-2">
             <i class="fas fa-keyboard mr-2"></i>수동 입력
