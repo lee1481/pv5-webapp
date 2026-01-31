@@ -132,131 +132,143 @@ app.post('/api/ocr', async (c) => {
       }, 200);
     }
     
-    // OCR 결과 파싱 (강화된 파싱 로직)
+    // OCR 결과 파싱 (우측 수령자 정보만 추출)
     const parseOCRResult = (text: string) => {
       const data: any = {
-        customerName: '',
-        phone: '',
-        address: '',
-        productName: '',
-        productCode: '',
-        orderNumber: '',
-        orderDate: ''
+        outputDate: '',        // 출력일자
+        deliveryNumber: '',    // 배송번호
+        receiverName: '',      // 수령자명
+        ordererName: '',       // 주문자명
+        receiverAddress: '',   // 수령자 주소
+        receiverPhone: '',     // 수령자 연락처
+        deliveryMemo: '',      // 배송메모
+        orderNumber: '',       // 주문번호
+        productCode: '',       // 상품번호
+        productName: ''        // 상품명
       };
       
       if (!text || text.length < 5) {
         return data;
       }
       
-      console.log('Parsing OCR text:', text);
+      console.log('Parsing OCR text (우측 수령자 정보만):', text);
       
-      // 1차 시도: JSON 응답 파싱
-      try {
-        // 전체 텍스트가 JSON인지 확인
-        const cleanText = text.trim();
-        if (cleanText.startsWith('{') && cleanText.includes('}')) {
-          const jsonMatch = cleanText.match(/\{[\s\S]*?\}/);
-          if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            console.log('Parsed JSON:', parsed);
-            
-            // 한글 키 매핑
-            data.customerName = parsed['수령자'] || parsed['받는사람'] || parsed['고객명'] || parsed['이름'] || 
-                              parsed.customerName || parsed.name || '';
-            data.phone = parsed['전화번호'] || parsed['연락처'] || parsed['핸드폰'] || 
-                        parsed.phone || parsed.tel || '';
-            data.address = parsed['주소'] || parsed['배송지'] || parsed['배송주소'] || 
-                          parsed.address || '';
-            data.productName = parsed['상품명'] || parsed['제품명'] || parsed['품명'] || 
-                             parsed.productName || parsed.product || '';
-            data.orderNumber = parsed['주문번호'] || parsed['오더번호'] || parsed['주문코드'] || 
-                             parsed.orderNumber || parsed.orderId || '';
-            data.productCode = parsed['상품번호'] || parsed['품번'] || parsed['제품번호'] || 
-                             parsed.productCode || parsed.itemCode || '';
-            
-            // 데이터가 하나라도 있으면 성공
-            if (data.customerName || data.phone || data.address) {
-              console.log('JSON parsing successful:', data);
-              return data;
-            }
+      // 우측 수령자 영역만 추출 (수령자, 주문자, 수령자 주소 이후 텍스트)
+      const receiverSection = text.match(/(?:수령자|받는사람|수령인)([\s\S]*?)(?:공급자|SEQ\.|이하여백|$)/i);
+      const targetText = receiverSection ? receiverSection[1] : text;
+      
+      console.log('Target text (수령자 영역):', targetText);
+      
+      // 1. 출력일자 추출
+      const outputDatePatterns = [
+        /(?:출력일자|출력일|발행일)[\s:：]*(\d{4})[\s년.-]*(\d{1,2})[\s월.-]*(\d{1,2})/i,
+        /(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일/,
+        /(\d{4})[.-](\d{1,2})[.-](\d{1,2})/
+      ];
+      for (const pattern of outputDatePatterns) {
+        const match = targetText.match(pattern);
+        if (match) {
+          data.outputDate = `${match[1]}년 ${match[2]}월 ${match[3]}일`;
+          console.log('Output date found:', data.outputDate);
+          break;
+        }
+      }
+      
+      // 2. 배송번호 추출
+      const deliveryNumberPatterns = [
+        /(?:배송번호|송장번호|운송장)[\s:：]*(\d{8,})/i,
+        /배송번호[\s:：]*([\dA-Z-]+)/i
+      ];
+      for (const pattern of deliveryNumberPatterns) {
+        const match = targetText.match(pattern);
+        if (match && match[1]) {
+          data.deliveryNumber = match[1].trim();
+          console.log('Delivery number found:', data.deliveryNumber);
+          break;
+        }
+      }
+      
+      // 3. 수령자명 추출 (한글 2-10자)
+      const receiverNamePatterns = [
+        /(?:수령자명|수령자|받는사람|받는분)[\s:：]*([가-힣]{2,10})/i,
+        /수령자[\s]*([가-힣]{2,10})/i
+      ];
+      for (const pattern of receiverNamePatterns) {
+        const match = targetText.match(pattern);
+        if (match && match[1]) {
+          data.receiverName = match[1].trim();
+          console.log('Receiver name found:', data.receiverName);
+          break;
+        }
+      }
+      
+      // 4. 주문자명 추출
+      const ordererNamePatterns = [
+        /(?:주문자명|주문자|구매자)[\s:：]*([가-힣]{2,10})/i,
+        /주문자[\s]*([가-힣]{2,10})/i
+      ];
+      for (const pattern of ordererNamePatterns) {
+        const match = targetText.match(pattern);
+        if (match && match[1]) {
+          data.ordererName = match[1].trim();
+          console.log('Orderer name found:', data.ordererName);
+          break;
+        }
+      }
+      
+      // 5. 수령자 주소 추출
+      const receiverAddressPatterns = [
+        /(?:수령자[\s]*주소|받는[\s]*주소|배송지[\s]*주소)[\s:：]*\(?(\d{5})\)?[\s]*([^\n]{10,200})/i,
+        /\((\d{5})\)[\s]*([가-힣]+[시도][\s\S]{10,200})/,
+        /(?:수령자[\s]*주소)[\s:：]*([^\n]{15,200})/i
+      ];
+      for (const pattern of receiverAddressPatterns) {
+        const match = targetText.match(pattern);
+        if (match) {
+          if (match[2]) {
+            data.receiverAddress = `(${match[1]}) ${match[2].trim()}`;
+          } else {
+            data.receiverAddress = match[1].trim();
           }
-        }
-      } catch (e) {
-        console.log('JSON parsing failed, trying text extraction:', e);
-      }
-      
-      // 2차 시도: 텍스트 패턴 추출 (개선된 정규식)
-      
-      // 1. 수령자 이름 (한글 2-10자)
-      const namePatterns = [
-        /(?:수령자|수령인|받는사람|받는분|고객명|이름|성명|받는이)[\s:：\-_=]*([가-힣]{2,10})/i,
-        /(?:name|receiver)[\s:：\-_=]*([가-힣]{2,10})/i,
-        /([가-힣]{2,4})\s*(?:님|고객|씨)/,
-      ];
-      
-      for (const pattern of namePatterns) {
-        const match = text.match(pattern);
-        if (match && match[1]) {
-          data.customerName = match[1].trim();
-          console.log('Name found:', data.customerName);
+          console.log('Receiver address found:', data.receiverAddress);
           break;
         }
       }
       
-      // 2. 전화번호 (다양한 형식)
-      const phonePatterns = [
-        /(?:전화번호|연락처|전화|휴대폰|핸드폰|TEL|PHONE|H\.?P\.?)[\s:：\-_=]*(0[\d]{1,2}[-\s]?\d{3,4}[-\s]?\d{4})/i,
-        /(01[016789][-\s]?\d{3,4}[-\s]?\d{4})/,
-        /(0\d{1,2}[-\s]?\d{3,4}[-\s]?\d{4})/,
+      // 6. 수령자 연락처 추출
+      const receiverPhonePatterns = [
+        /(?:수령자[\s]*연락처|받는[\s]*연락처|수령자[\s]*전화)[\s:：\d]*(01[016789][-\s]?\d{3,4}[-\s]?\d{4})/i,
+        /수령자[\s]*연락처[\s\d:：]*(0\d{1,2}[-\s]?\d{3,4}[-\s]?\d{4})/i,
+        /연락처[\s\d]*[:\s]*(01[016789][-\s]?\d{3,4}[-\s]?\d{4})/i
       ];
-      
-      for (const pattern of phonePatterns) {
-        const match = text.match(pattern);
+      for (const pattern of receiverPhonePatterns) {
+        const match = targetText.match(pattern);
         if (match && match[1]) {
-          data.phone = match[1].replace(/\s/g, '');
-          console.log('Phone found:', data.phone);
+          data.receiverPhone = match[1].replace(/\s/g, '');
+          console.log('Receiver phone found:', data.receiverPhone);
           break;
         }
       }
       
-      // 3. 주소 (시/구/동 포함)
-      const addressPatterns = [
-        /(?:주소|배송지|배송주소|수령주소|ADDRESS)[\s:：\-_=]*([^\n]{10,200})/i,
-        /([가-힣]+[시도]\s*[가-힣]+[시군구]\s*[^\n]{5,150})/,
-        /([가-힣]+시\s+[가-힣]+구\s+[^\n]{5,150})/,
+      // 7. 배송메모 추출
+      const deliveryMemoPatterns = [
+        /(?:배송메모|배송[\s]*메모|요청사항|메모)[\s:：]*([^\n]{2,100})/i
       ];
-      
-      for (const pattern of addressPatterns) {
-        const match = text.match(pattern);
+      for (const pattern of deliveryMemoPatterns) {
+        const match = targetText.match(pattern);
         if (match && match[1]) {
-          data.address = match[1].trim();
-          console.log('Address found:', data.address);
+          data.deliveryMemo = match[1].trim();
+          console.log('Delivery memo found:', data.deliveryMemo);
           break;
         }
       }
       
-      // 4. 상품명
-      const productPatterns = [
-        /(?:상품명|제품명|품명|상품|제품|PRODUCT|ITEM)[\s:：\-_=]*([^\n]{3,100})/i,
-        /(?:품목)[\s:：\-_=]*([^\n]{3,100})/i,
+      // 8. 주문번호 추출
+      const orderNumberPatterns = [
+        /(?:주문번호|주문코드|ORDER[\s]?NO)[\s:：]*([\dA-Z]+)/i,
+        /(\d{18,})/  // 18자리 이상 숫자
       ];
-      
-      for (const pattern of productPatterns) {
-        const match = text.match(pattern);
-        if (match && match[1]) {
-          data.productName = match[1].trim();
-          console.log('Product name found:', data.productName);
-          break;
-        }
-      }
-      
-      // 5. 주문번호
-      const orderPatterns = [
-        /(?:주문번호|주문코드|오더번호|ORDER[\s]?NO\.?|주문NO\.?|ORDER[\s]?ID)[\s:：\-_=]*([\dA-Z-]+)/i,
-        /(?:ORDER|주문)[\s:：\-_=]*([\dA-Z]{8,})/i,
-      ];
-      
-      for (const pattern of orderPatterns) {
+      for (const pattern of orderNumberPatterns) {
         const match = text.match(pattern);
         if (match && match[1]) {
           data.orderNumber = match[1].trim();
@@ -265,24 +277,32 @@ app.post('/api/ocr', async (c) => {
         }
       }
       
-      // 6. 상품번호
+      // 9. 상품번호 추출
       const productCodePatterns = [
-        /(?:상품번호|품번|제품번호|품목번호|ITEM[\s]?NO\.?|상품코드|ITEM[\s]?CODE)[\s:：\-_=]*([\dA-Z-]+)/i,
-        /(?:CODE|코드)[\s:：\-_=]*([\dA-Z]{6,})/i,
+        /(?:상품번호|품번|제품번호|ITEM[\s]?NO)[\s:：]*([\dA-Z]+)/i,
+        /(\d{9,12})/  // 9-12자리 숫자
       ];
-      
       for (const pattern of productCodePatterns) {
         const match = text.match(pattern);
-        if (match && match[1]) {
+        if (match && match[1] && match[1] !== data.orderNumber) {
           data.productCode = match[1].trim();
           console.log('Product code found:', data.productCode);
           break;
         }
       }
       
-      // 상품번호가 없으면 주문번호를 사용
-      if (!data.productCode && data.orderNumber) {
-        data.productCode = data.orderNumber;
+      // 10. 상품명 추출
+      const productNamePatterns = [
+        /(?:상품명|제품명|품명)[\s:：]*([^\n]{5,100})/i,
+        /PV5[\s가-힣\w]+(?:워크스테이션|스마트|선반|격벽|밀워키|카고)/i
+      ];
+      for (const pattern of productNamePatterns) {
+        const match = text.match(pattern);
+        if (match) {
+          data.productName = (match[1] || match[0]).trim();
+          console.log('Product name found:', data.productName);
+          break;
+        }
       }
       
       console.log('Final parsed data:', data);
@@ -291,29 +311,34 @@ app.post('/api/ocr', async (c) => {
     
     const extractedData = ocrText ? parseOCRResult(ocrText) : {};
     
-    // 인식 성공 여부 판단 (더 관대한 기준)
+    // 인식 성공 여부 판단
     const hasValidData = (
-      (extractedData.customerName && extractedData.customerName.length >= 2) ||
-      (extractedData.phone && extractedData.phone.length >= 10) ||
-      (extractedData.address && extractedData.address.length >= 10)
+      (extractedData.receiverName && extractedData.receiverName.length >= 2) ||
+      (extractedData.receiverPhone && extractedData.receiverPhone.length >= 10) ||
+      (extractedData.receiverAddress && extractedData.receiverAddress.length >= 10) ||
+      (extractedData.orderNumber && extractedData.orderNumber.length >= 8)
     );
     
     console.log('Validation result:', {
       hasValidData,
-      customerName: extractedData.customerName,
-      phone: extractedData.phone,
-      address: extractedData.address
+      receiverName: extractedData.receiverName,
+      receiverPhone: extractedData.receiverPhone,
+      receiverAddress: extractedData.receiverAddress,
+      orderNumber: extractedData.orderNumber
     });
     
     // 결과 데이터
     const resultData = {
-      customerName: extractedData.customerName || '',
-      phone: extractedData.phone || '',
-      address: extractedData.address || '',
-      productName: extractedData.productName || '',
-      productCode: extractedData.productCode || extractedData.orderNumber || '',
+      outputDate: extractedData.outputDate || '',
+      deliveryNumber: extractedData.deliveryNumber || '',
+      receiverName: extractedData.receiverName || '',
+      ordererName: extractedData.ordererName || '',
+      receiverAddress: extractedData.receiverAddress || '',
+      receiverPhone: extractedData.receiverPhone || '',
+      deliveryMemo: extractedData.deliveryMemo || '',
       orderNumber: extractedData.orderNumber || '',
-      orderDate: extractedData.orderDate || new Date().toLocaleDateString('ko-KR'),
+      productCode: extractedData.productCode || '',
+      productName: extractedData.productName || '',
       ocrRawText: ocrText, // 디버깅용
       aiSuccess: aiSuccess,
       recognitionSuccess: hasValidData

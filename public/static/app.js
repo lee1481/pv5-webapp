@@ -350,21 +350,27 @@ function displayOCRResult(data) {
   }
   
   // OCR 실패 체크
-  const hasFailure = data.customerName === '(인식 실패)' || 
-                     data.phone === '(인식 실패)' || 
-                     data.address === '(인식 실패)';
+  const hasFailure = !data.receiverName || !data.receiverPhone || !data.receiverAddress;
   
   ocrDataDiv.innerHTML = `
-    <div style="color: #1a202c; font-size: 0.875rem;"><strong>고객명:</strong> ${data.customerName || '-'}</div>
-    <div style="color: #1a202c; font-size: 0.875rem;"><strong>연락처:</strong> ${data.phone || '-'}</div>
-    <div style="color: #1a202c; font-size: 0.875rem;"><strong>주소:</strong> ${data.address || '-'}</div>
-    <div style="color: #1a202c; font-size: 0.875rem;"><strong>제품명:</strong> ${data.productName || '-'}</div>
-    <div style="color: #1a202c; font-size: 0.875rem;"><strong>주문번호:</strong> ${data.productCode || '-'}</div>
+    <div class="grid grid-cols-2 gap-2 text-sm">
+      <div><strong>출력일자:</strong> ${data.outputDate || '-'}</div>
+      <div><strong>배송번호:</strong> ${data.deliveryNumber || '-'}</div>
+      <div><strong>수령자명:</strong> ${data.receiverName || '-'}</div>
+      <div><strong>주문자명:</strong> ${data.ordererName || '-'}</div>
+      <div class="col-span-2"><strong>수령자 주소:</strong> ${data.receiverAddress || '-'}</div>
+      <div><strong>수령자 연락처:</strong> ${data.receiverPhone || '-'}</div>
+      <div><strong>배송메모:</strong> ${data.deliveryMemo || '-'}</div>
+      <div class="col-span-2 border-t pt-2 mt-2">
+        <div><strong>주문번호:</strong> ${data.orderNumber || '-'}</div>
+        <div><strong>상품번호:</strong> ${data.productCode || '-'}</div>
+        <div><strong>상품명:</strong> ${data.productName || '-'}</div>
+      </div>
+    </div>
     ${hasFailure ? `
-      <div class="col-span-2 mt-2">
+      <div class="mt-4">
         <button onclick="showManualInputForm()" 
-                class="w-full bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 transition"
-                style="width: 100%; background-color: #f97316; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer;">
+                class="w-full bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 transition">
           <i class="fas fa-edit mr-2"></i>정보 수정하기
         </button>
       </div>
@@ -407,50 +413,91 @@ function showManualInputForm() {
         <i class="fas fa-keyboard text-blue-600 mr-2"></i>
         거래명세서 정보 수동 입력
       </h3>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-bold text-gray-700 mb-2">고객명 *</label>
-          <input type="text" id="manual_customerName" 
-                 value="${ocrData?.customerName && ocrData.customerName !== '(인식 실패)' ? ocrData.customerName : ''}"
-                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                 placeholder="홍길동">
-        </div>
-        <div>
-          <label class="block text-sm font-bold text-gray-700 mb-2">연락처 *</label>
-          <input type="tel" id="manual_phone" 
-                 value="${ocrData?.phone && ocrData.phone !== '(인식 실패)' ? ocrData.phone : ''}"
-                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                 placeholder="010-1234-5678">
-        </div>
-        <div class="md:col-span-2">
-          <label class="block text-sm font-bold text-gray-700 mb-2">주소 *</label>
-          <input type="text" id="manual_address" 
-                 value="${ocrData?.address && ocrData.address !== '(인식 실패)' ? ocrData.address : ''}"
-                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                 placeholder="서울시 강남구...">
-        </div>
-        <div>
-          <label class="block text-sm font-bold text-gray-700 mb-2">제품명</label>
-          <input type="text" id="manual_productName" 
-                 value="${ocrData?.productName && ocrData.productName !== '(인식 실패)' ? ocrData.productName : ''}"
-                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                 placeholder="PV5 밀워키 워크스테이션">
-        </div>
-        <div>
-          <label class="block text-sm font-bold text-gray-700 mb-2">주문번호</label>
-          <input type="text" id="manual_productCode" 
-                 value="${ocrData?.productCode || ''}"
-                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                 placeholder="202601300939847917">
-        </div>
-        <div>
-          <label class="block text-sm font-bold text-gray-700 mb-2">주문일</label>
-          <input type="text" id="manual_orderDate" 
-                 value="${ocrData?.orderDate || new Date().toLocaleDateString('ko-KR')}"
-                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                 placeholder="2025년 01월 20일">
+      
+      <!-- 수령자 정보 섹션 -->
+      <div class="mb-6">
+        <h4 class="text-lg font-semibold mb-3 text-gray-700 border-b pb-2">수령자 정보</h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-2">출력일자</label>
+            <input type="text" id="manual_outputDate" 
+                   value="${ocrData?.outputDate || ''}"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                   placeholder="2026년 01월 30일">
+          </div>
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-2">배송번호</label>
+            <input type="text" id="manual_deliveryNumber" 
+                   value="${ocrData?.deliveryNumber || ''}"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                   placeholder="83100276">
+          </div>
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-2">수령자명 *</label>
+            <input type="text" id="manual_receiverName" 
+                   value="${ocrData?.receiverName || ''}"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                   placeholder="이승현">
+          </div>
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-2">주문자명</label>
+            <input type="text" id="manual_ordererName" 
+                   value="${ocrData?.ordererName || ''}"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                   placeholder="이승현">
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-sm font-bold text-gray-700 mb-2">수령자 주소 *</label>
+            <input type="text" id="manual_receiverAddress" 
+                   value="${ocrData?.receiverAddress || ''}"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                   placeholder="(18021) 경기도 평택시 고덕면 도시지원1길 52...">
+          </div>
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-2">수령자 연락처 *</label>
+            <input type="tel" id="manual_receiverPhone" 
+                   value="${ocrData?.receiverPhone || ''}"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                   placeholder="010-2966-7497">
+          </div>
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-2">배송메모</label>
+            <input type="text" id="manual_deliveryMemo" 
+                   value="${ocrData?.deliveryMemo || ''}"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                   placeholder="부재 시 문앞">
+          </div>
         </div>
       </div>
+      
+      <!-- 상품 정보 섹션 -->
+      <div class="mb-6">
+        <h4 class="text-lg font-semibold mb-3 text-gray-700 border-b pb-2">상품 정보</h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-2">주문번호</label>
+            <input type="text" id="manual_orderNumber" 
+                   value="${ocrData?.orderNumber || ''}"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                   placeholder="202601300939047917">
+          </div>
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-2">상품번호</label>
+            <input type="text" id="manual_productCode" 
+                   value="${ocrData?.productCode || ''}"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                   placeholder="131432322">
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-sm font-bold text-gray-700 mb-2">상품명</label>
+            <input type="text" id="manual_productName" 
+                   value="${ocrData?.productName || ''}"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                   placeholder="PV5 카고 밀워키 워크스테이션">
+          </div>
+        </div>
+      </div>
+      
       <div class="mt-6 flex justify-end space-x-3">
         <button onclick="cancelManualInput()" 
                 class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
@@ -475,27 +522,35 @@ function cancelManualInput() {
 
 // 수동 입력 제출
 function submitManualInput() {
-  const customerName = document.getElementById('manual_customerName').value.trim();
-  const phone = document.getElementById('manual_phone').value.trim();
-  const address = document.getElementById('manual_address').value.trim();
-  const productName = document.getElementById('manual_productName').value.trim();
+  const outputDate = document.getElementById('manual_outputDate').value.trim();
+  const deliveryNumber = document.getElementById('manual_deliveryNumber').value.trim();
+  const receiverName = document.getElementById('manual_receiverName').value.trim();
+  const ordererName = document.getElementById('manual_ordererName').value.trim();
+  const receiverAddress = document.getElementById('manual_receiverAddress').value.trim();
+  const receiverPhone = document.getElementById('manual_receiverPhone').value.trim();
+  const deliveryMemo = document.getElementById('manual_deliveryMemo').value.trim();
+  const orderNumber = document.getElementById('manual_orderNumber').value.trim();
   const productCode = document.getElementById('manual_productCode').value.trim();
-  const orderDate = document.getElementById('manual_orderDate').value.trim();
+  const productName = document.getElementById('manual_productName').value.trim();
   
   // 필수 입력 검증
-  if (!customerName || !phone || !address) {
-    alert('고객명, 연락처, 주소는 필수 입력 항목입니다.');
+  if (!receiverName || !receiverPhone || !receiverAddress) {
+    alert('수령자명, 수령자 연락처, 수령자 주소는 필수 입력 항목입니다.');
     return;
   }
   
   // ocrData 업데이트
   ocrData = {
-    customerName,
-    phone,
-    address,
-    productName,
+    outputDate,
+    deliveryNumber,
+    receiverName,
+    ordererName,
+    receiverAddress,
+    receiverPhone,
+    deliveryMemo,
+    orderNumber,
     productCode,
-    orderDate
+    productName
   };
   
   // OCR 결과 표시 업데이트
