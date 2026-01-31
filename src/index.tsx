@@ -605,11 +605,18 @@ app.get('/', (c) => {
             <!-- Header -->
             <header class="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-6 shadow-lg">
                 <div class="container mx-auto px-4">
-                    <h1 class="text-3xl font-bold flex items-center">
-                        <i class="fas fa-clipboard-check mr-3"></i>
-                        PV5 시공 확인 점검표 시스템
-                    </h1>
-                    <p class="text-blue-100 mt-2">거래명세서 자동 인식 → 제품 선택 → 설치 일정 확정 → PDF/메일 발송</p>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <img src="/static/kvan-logo.png" alt="K-VAN" class="h-12 w-auto bg-white px-3 py-1 rounded-lg">
+                            <div>
+                                <h1 class="text-3xl font-bold flex items-center">
+                                    <i class="fas fa-clipboard-check mr-3"></i>
+                                    PV5 시공 확인 점검표 시스템
+                                </h1>
+                                <p class="text-blue-100 mt-2">거래명세서 자동 인식 → 제품 선택 → 설치 일정 확정 → PDF/메일 발송</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </header>
 
@@ -768,8 +775,11 @@ app.get('/', (c) => {
 
             <!-- Footer -->
             <footer class="bg-gray-800 text-white py-6 mt-12">
-                <div class="container mx-auto px-4 text-center">
-                    <p>&copy; 2025 사인마스터 PV5 시공관리 시스템. All rights reserved.</p>
+                <div class="container mx-auto px-4">
+                    <div class="flex items-center justify-center gap-4">
+                        <img src="/static/kvan-logo.png" alt="K-VAN" class="h-8 w-auto bg-white px-2 py-1 rounded">
+                        <p>&copy; 2026 K-VAN PV5 시공관리 시스템. All rights reserved.</p>
+                    </div>
                 </div>
             </footer>
         </div>
