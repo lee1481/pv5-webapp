@@ -866,7 +866,7 @@ function displayFinalPreview() {
   preview.innerHTML = `
     <div class="border-2 border-gray-300 rounded-lg p-6">
       <h3 class="text-2xl font-bold mb-6 text-center text-blue-600">
-        PV5 시공 확인 점검표
+        PV5 시공(예약) 확인서
       </h3>
       
       <!-- 고객 정보 -->

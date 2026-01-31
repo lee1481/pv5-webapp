@@ -469,7 +469,7 @@ app.post('/api/send-email', async (c) => {
       <body>
         <div class="container">
           <div class="header">
-            <h1>🚗 PV5 시공 확인 점검표</h1>
+            <h1>🚗 PV5 시공(예약) 확인서</h1>
           </div>
           <div class="content">
             <div class="section">
@@ -512,7 +512,7 @@ app.post('/api/send-email', async (c) => {
       body: JSON.stringify({
         from: 'PV5 시공관리 <onboarding@resend.dev>',
         to: [recipientEmail],
-        subject: `[PV5 시공 확인서] ${customerInfo?.receiverName || '고객'}님 시공 확인서`,
+        subject: `[PV5 시공(예약) 확인서] ${customerInfo?.receiverName || '고객'}님 시공(예약) 확인서`,
         html: htmlContent
       })
     })
@@ -553,7 +553,7 @@ app.get('/', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>PV5 시공 확인 점검표 시스템</title>
+        <title>PV5 시공(예약) 확인서 시스템</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
@@ -611,7 +611,7 @@ app.get('/', (c) => {
                             <div>
                                 <h1 class="text-3xl font-bold flex items-center">
                                     <i class="fas fa-clipboard-check mr-3"></i>
-                                    PV5 시공 확인 점검표 시스템
+                                    PV5 시공(예약) 확인서 시스템
                                 </h1>
                                 <p class="text-blue-100 mt-2">거래명세서 자동 인식 → 제품 선택 → 설치 일정 확정 → PDF/메일 발송</p>
                             </div>
