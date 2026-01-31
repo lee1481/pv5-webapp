@@ -271,14 +271,21 @@ app.get('/', (c) => {
                         <i class="fas fa-file-upload text-blue-600 mr-2"></i>
                         1단계: 거래명세서 업로드
                     </h2>
-                    <div class="file-upload-area rounded-lg p-12 text-center" id="dropZone">
+                    <div class="file-upload-area rounded-lg p-12 text-center cursor-pointer" id="dropZone">
                         <i class="fas fa-cloud-upload-alt text-6xl text-gray-400 mb-4"></i>
                         <p class="text-lg text-gray-600 mb-4">거래명세서 이미지를 드래그하거나 클릭하여 업로드</p>
                         <input type="file" id="fileInput" accept="image/*" class="hidden">
-                        <button onclick="document.getElementById('fileInput').click()" 
-                                class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">
-                            <i class="fas fa-folder-open mr-2"></i>파일 선택
-                        </button>
+                        <div class="flex justify-center space-x-3">
+                            <button onclick="document.getElementById('fileInput').click(); event.stopPropagation();" 
+                                    class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">
+                                <i class="fas fa-folder-open mr-2"></i>파일 선택
+                            </button>
+                            <button onclick="showManualInputForm(); event.stopPropagation();" 
+                                    class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition">
+                                <i class="fas fa-keyboard mr-2"></i>수동 입력
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-4">지원 형식: JPG, PNG, GIF (최대 10MB)</p>
                     </div>
                     <div id="uploadResult" class="mt-6 hidden">
                         <div class="bg-green-50 border border-green-200 rounded-lg p-4">

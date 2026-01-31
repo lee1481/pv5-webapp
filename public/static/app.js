@@ -28,28 +28,56 @@ function setupFileUpload() {
   const fileInput = document.getElementById('fileInput');
   const dropZone = document.getElementById('dropZone');
 
+  if (!fileInput || !dropZone) {
+    console.error('File input or drop zone not found');
+    return;
+  }
+
+  // 기존 이벤트 리스너 제거 (중복 방지)
+  const newFileInput = fileInput.cloneNode(true);
+  fileInput.parentNode.replaceChild(newFileInput, fileInput);
+
   // 파일 선택 이벤트
-  fileInput.addEventListener('change', handleFileSelect);
+  newFileInput.addEventListener('change', function(e) {
+    console.log('File input changed', e.target.files);
+    handleFileSelect(e);
+  });
 
   // 드래그 앤 드롭 이벤트
   dropZone.addEventListener('dragover', (e) => {
     e.preventDefault();
+    e.stopPropagation();
     dropZone.classList.add('bg-blue-50');
   });
 
   dropZone.addEventListener('dragleave', (e) => {
     e.preventDefault();
+    e.stopPropagation();
     dropZone.classList.remove('bg-blue-50');
   });
 
   dropZone.addEventListener('drop', (e) => {
     e.preventDefault();
+    e.stopPropagation();
     dropZone.classList.remove('bg-blue-50');
     
     const files = e.dataTransfer.files;
+    console.log('Files dropped:', files.length);
     if (files.length > 0) {
-      fileInput.files = files;
-      handleFileSelect({ target: fileInput });
+      const fileInputElement = document.getElementById('fileInput');
+      // Create a new FileList-like object
+      const dt = new DataTransfer();
+      dt.items.add(files[0]);
+      fileInputElement.files = dt.files;
+      handleFileSelect({ target: fileInputElement });
+    }
+  });
+  
+  // 드롭존 클릭 시 파일 선택 대화상자 열기
+  dropZone.addEventListener('click', (e) => {
+    // 버튼 클릭은 제외
+    if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'I') {
+      document.getElementById('fileInput').click();
     }
   });
 }
@@ -57,7 +85,20 @@ function setupFileUpload() {
 // 파일 선택 처리
 async function handleFileSelect(event) {
   const file = event.target.files[0];
-  if (!file) return;
+  console.log('handleFileSelect called, file:', file);
+  
+  if (!file) {
+    console.log('No file selected');
+    return;
+  }
+
+  // 파일 타입 확인
+  if (!file.type.startsWith('image/')) {
+    alert('이미지 파일만 업로드 가능합니다.');
+    return;
+  }
+
+  console.log('Processing file:', file.name, file.type, file.size);
 
   // 로딩 표시
   const dropZone = document.getElementById('dropZone');
@@ -65,6 +106,7 @@ async function handleFileSelect(event) {
     <div class="text-center">
       <i class="fas fa-spinner fa-spin text-6xl text-blue-600 mb-4"></i>
       <p class="text-lg text-gray-600">거래명세서 분석 중...</p>
+      <p class="text-sm text-gray-500 mt-2">${file.name}</p>
     </div>
   `;
 
@@ -72,10 +114,15 @@ async function handleFileSelect(event) {
     // OCR 처리
     const formData = new FormData();
     formData.append('file', file);
+    
+    console.log('Sending OCR request...');
 
     const response = await axios.post('/api/ocr', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 30000 // 30초 타임아웃
     });
+
+    console.log('OCR response:', response.data);
 
     ocrData = response.data.data;
     displayOCRResult(ocrData);
@@ -87,6 +134,7 @@ async function handleFileSelect(event) {
     
   } catch (error) {
     console.error('OCR Error:', error);
+    console.error('Error details:', error.response ? error.response.data : error.message);
     
     // OCR 실패 시 수동 입력 폼 표시
     dropZone.innerHTML = `
@@ -98,13 +146,18 @@ async function handleFileSelect(event) {
                 class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition mr-2">
             <i class="fas fa-keyboard mr-2"></i>수동 입력
         </button>
-        <button onclick="location.reload()" 
+        <button onclick="resetUpload()" 
                 class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition">
             <i class="fas fa-redo mr-2"></i>다시 시도
         </button>
       </div>
     `;
   }
+}
+
+// 업로드 초기화
+function resetUpload() {
+  location.reload();
 }
 
 // OCR 결과 표시
