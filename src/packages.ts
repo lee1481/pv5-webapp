@@ -178,6 +178,45 @@ export const milwaukeePackages: ProductPackage[] = [
         ]
       }
     ]
+  },
+  {
+    id: 'milwaukee-2shelf-partition',
+    brand: 'milwaukee',
+    name: 'PV5 카고 밀워키 격벽 2단선반',
+    fullName: 'PV5 카고 밀워키 격벽 2단선반',
+    description: '밀워키 단품 - 격벽 2단선반',
+    price: 1500000,
+    image: '/static/images/milwaukee-2shelf-partition.jpg',
+    sections: [
+      {
+        title: '격벽 2단선반',
+        items: [
+          { name: 'M 2단 트레이', quantity: 1 },
+          { name: 'M 2단 트레이 로고', quantity: 1 },
+          { name: 'M 2단 프레임', quantity: 2 },
+          { name: 'M 트레이보강대', quantity: 4 }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'milwaukee-floor-board',
+    brand: 'milwaukee',
+    name: '적재함 평탄화 보드',
+    fullName: '적재함 평탄화 보드 (태고합판 + 알루미늄체크판 + 논슬립)',
+    description: '공통 단품 - 적재함 평탄화 보드',
+    price: 800000,
+    image: '/static/images/floor-board.jpg',
+    sections: [
+      {
+        title: '적재함 평탄화 보드',
+        items: [
+          { name: '태고합판', quantity: 1 },
+          { name: '알루미늄체크판', quantity: 1 },
+          { name: '논슬립', quantity: 1 }
+        ]
+      }
+    ]
   }
 ];
 
@@ -328,6 +367,45 @@ export const kiaPackages: ProductPackage[] = [
           { name: '도어브라켓 (좌)', quantity: 1 },
           { name: '도어브라켓 (우)', quantity: 1 },
           { name: '트렁크브라켓 (좌,우)', quantity: 1 }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'kia-2shelf-partition',
+    brand: 'kia',
+    name: 'PV5 카고 격벽 2단선반',
+    fullName: 'PV5 카고 격벽 2단선반',
+    description: '기아 단품 - 격벽 2단선반',
+    price: 1400000,
+    image: '/static/images/kia-2shelf-partition.jpg',
+    sections: [
+      {
+        title: '격벽 2단선반',
+        items: [
+          { name: '2단 트레이', quantity: 1 },
+          { name: '2단 트레이 로고', quantity: 1 },
+          { name: '2단 프레임', quantity: 2 },
+          { name: '트레이보강대', quantity: 4 }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'kia-floor-board',
+    brand: 'kia',
+    name: '적재함 평탄화 보드',
+    fullName: '적재함 평탄화 보드 (태고합판 + 알루미늄체크판 + 논슬립)',
+    description: '공통 단품 - 적재함 평탄화 보드',
+    price: 800000,
+    image: '/static/images/floor-board.jpg',
+    sections: [
+      {
+        title: '적재함 평탄화 보드',
+        items: [
+          { name: '태고합판', quantity: 1 },
+          { name: '알루미늄체크판', quantity: 1 },
+          { name: '논슬립', quantity: 1 }
         ]
       }
     ]

@@ -489,8 +489,8 @@ function displayPackages(packages) {
       <div style="margin-bottom: 1rem;">
         <img src="${pkg.image}" 
              alt="${pkg.name}" 
-             style="width: 100%; height: 12rem; object-fit: cover; border-radius: 0.5rem; background-color: #e2e8f0;"
-             onerror="this.src='https://via.placeholder.com/400x300?text=${encodeURIComponent(pkg.name)}'">
+             style="width: 100%; height: 20rem; object-fit: contain; border-radius: 0.5rem; background-color: #f7fafc;"
+             onerror="this.src='https://via.placeholder.com/400x400?text=${encodeURIComponent(pkg.name)}'">
       </div>
       <h3 style="color: #1a202c !important; font-size: 1.125rem !important; font-weight: 700 !important; margin-bottom: 0.5rem !important; display: block !important;">${pkg.name}</h3>
       <p style="color: #718096 !important; font-size: 0.875rem !important; margin-bottom: 1rem !important; display: block !important;">${pkg.description}</p>
