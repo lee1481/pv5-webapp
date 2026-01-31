@@ -17,6 +17,7 @@
     "git:log": "git log --oneline"
   },
   "dependencies": {
+    "@hono/node-server": "^1.19.9",
     "hono": "^4.11.7"
   },
   "devDependencies": {
