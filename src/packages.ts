@@ -182,9 +182,9 @@ export const milwaukeePackages: ProductPackage[] = [
   {
     id: 'milwaukee-2shelf-partition',
     brand: 'milwaukee',
-    name: 'PV5 밀워키 2단 선반 2번',
-    fullName: 'PV5 카고 밀워키 2단 선반 2번',
-    description: '밀워키 단품 - 2단 선반 2번',
+    name: 'PV5 밀워키 2단 선반',
+    fullName: 'PV5 카고 밀워키 2단 선반',
+    description: '밀워키 단품 - 2단 선반',
     price: 1500000,
     image: '/static/images/milwaukee-2shelf-partition.jpg',
     sections: [
