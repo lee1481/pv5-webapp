@@ -53,25 +53,50 @@ app.post('/api/ocr', async (c) => {
     try {
       // AI 바인딩 확인
       if (c.env && c.env.AI) {
+        console.log('Starting AI OCR with llava-1.5-7b-hf model...');
+        
         // @cf/llava-hf/llava-1.5-7b-hf 모델 사용 (이미지 분석)
         const aiResponse = await c.env.AI.run('@cf/llava-hf/llava-1.5-7b-hf', {
           image: imageArray,
-          prompt: "이 이미지는 한국어 거래명세서/택배 송장입니다. 다음 정보를 정확히 추출해주세요:\n\n1. 수령자 이름 (받는사람, 수령인)\n2. 전화번호 (연락처, 핸드폰번호)\n3. 배송 주소 (주소)\n4. 상품명 (제품명, 품명)\n5. 주문번호 (오더번호)\n6. 상품번호 (품번, 제품번호)\n\n각 항목을 다음 형식으로 답변해주세요:\n수령자: [이름]\n전화번호: [번호]\n주소: [주소]\n상품명: [제품명]\n주문번호: [번호]\n상품번호: [번호]",
-          max_tokens: 512
+          prompt: `이 이미지는 한국어 거래명세서 또는 택배 송장입니다.
+
+다음 정보를 이미지에서 찾아서 정확히 추출해주세요:
+
+1. **수령자 이름**: 받는사람, 수령인, 고객명, 성명 항목의 값
+2. **전화번호**: 연락처, 휴대폰, 핸드폰, TEL 항목의 값 (010-XXXX-XXXX 형식)
+3. **배송 주소**: 주소, 배송지 항목의 전체 주소 (시/구/동/번지 포함)
+4. **상품명**: 제품명, 품명, 상품명 항목의 값
+5. **주문번호**: 주문번호, 오더번호, ORDER NO 항목의 값
+6. **상품번호**: 상품번호, 품번, 제품번호 항목의 값
+
+**중요**: 각 항목의 **값만** 추출하고, 라벨이나 설명은 제외하세요.
+
+다음 JSON 형식으로 **정확히** 답변해주세요:
+{
+  "수령자": "홍길동",
+  "전화번호": "010-1234-5678",
+  "주소": "서울시 강남구 테헤란로 123",
+  "상품명": "PV5 워크스테이션",
+  "주문번호": "ORD20260131",
+  "상품번호": "PRD12345"
+}
+
+값이 없으면 빈 문자열 ""로 표시하세요.`,
+          max_tokens: 1024
         })
         
         ocrText = aiResponse.description || '';
         aiSuccess = true;
-        console.log('AI OCR Success:', ocrText);
+        console.log('AI OCR Raw Response:', ocrText);
       } else {
-        console.warn('AI binding not available in development mode');
+        console.warn('AI binding not available - running in local development mode');
       }
     } catch (aiError) {
       console.error('AI OCR Error:', aiError);
       aiSuccess = false;
     }
     
-    // OCR 결과 파싱 (개선된 파싱 로직)
+    // OCR 결과 파싱 (강화된 파싱 로직)
     const parseOCRResult = (text: string) => {
       const data: any = {
         customerName: '',
@@ -83,80 +108,166 @@ app.post('/api/ocr', async (c) => {
         orderDate: ''
       };
       
-      if (!text || text.length < 10) {
+      if (!text || text.length < 5) {
         return data;
       }
       
-      // JSON 응답 시도
+      console.log('Parsing OCR text:', text);
+      
+      // 1차 시도: JSON 응답 파싱
       try {
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          if (parsed.customerName || parsed['수령자'] || parsed['고객명']) {
-            data.customerName = parsed.customerName || parsed['수령자'] || parsed['고객명'] || parsed['받는사람'] || '';
-            data.phone = parsed.phone || parsed['전화번호'] || parsed['연락처'] || '';
-            data.address = parsed.address || parsed['주소'] || parsed['배송지'] || '';
-            data.productName = parsed.productName || parsed['상품명'] || parsed['제품명'] || '';
-            data.productCode = parsed.productCode || parsed['상품번호'] || parsed['품번'] || '';
-            data.orderNumber = parsed.orderNumber || parsed['주문번호'] || parsed['오더번호'] || '';
-            return data;
+        // 전체 텍스트가 JSON인지 확인
+        const cleanText = text.trim();
+        if (cleanText.startsWith('{') && cleanText.includes('}')) {
+          const jsonMatch = cleanText.match(/\{[\s\S]*?\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            console.log('Parsed JSON:', parsed);
+            
+            // 한글 키 매핑
+            data.customerName = parsed['수령자'] || parsed['받는사람'] || parsed['고객명'] || parsed['이름'] || 
+                              parsed.customerName || parsed.name || '';
+            data.phone = parsed['전화번호'] || parsed['연락처'] || parsed['핸드폰'] || 
+                        parsed.phone || parsed.tel || '';
+            data.address = parsed['주소'] || parsed['배송지'] || parsed['배송주소'] || 
+                          parsed.address || '';
+            data.productName = parsed['상품명'] || parsed['제품명'] || parsed['품명'] || 
+                             parsed.productName || parsed.product || '';
+            data.orderNumber = parsed['주문번호'] || parsed['오더번호'] || parsed['주문코드'] || 
+                             parsed.orderNumber || parsed.orderId || '';
+            data.productCode = parsed['상품번호'] || parsed['품번'] || parsed['제품번호'] || 
+                             parsed.productCode || parsed.itemCode || '';
+            
+            // 데이터가 하나라도 있으면 성공
+            if (data.customerName || data.phone || data.address) {
+              console.log('JSON parsing successful:', data);
+              return data;
+            }
           }
         }
       } catch (e) {
-        console.log('JSON parsing failed, using text extraction');
+        console.log('JSON parsing failed, trying text extraction:', e);
       }
       
-      // 텍스트에서 패턴 추출 (개선된 정규식)
-      // 1. 수령자 이름
-      const nameMatch = text.match(/(?:수령자|수령인|받는사람|받는분|고객명|이름|성명)[\s:：\-]*([가-힣]{2,10})/i);
-      if (nameMatch) data.customerName = nameMatch[1].trim();
+      // 2차 시도: 텍스트 패턴 추출 (개선된 정규식)
       
-      // 2. 전화번호 (다양한 형식 지원)
-      const phoneMatch = text.match(/(?:전화번호|연락처|전화|휴대폰|핸드폰|TEL|PHONE)[\s:：\-]*(0[\d]{1,2}[-\s]?\d{3,4}[-\s]?\d{4})/i);
-      if (phoneMatch) data.phone = phoneMatch[1].replace(/\s/g, '');
+      // 1. 수령자 이름 (한글 2-10자)
+      const namePatterns = [
+        /(?:수령자|수령인|받는사람|받는분|고객명|이름|성명|받는이)[\s:：\-_=]*([가-힣]{2,10})/i,
+        /(?:name|receiver)[\s:：\-_=]*([가-힣]{2,10})/i,
+        /([가-힣]{2,4})\s*(?:님|고객|씨)/,
+      ];
       
-      // 전화번호가 없으면 숫자 패턴으로 재시도
-      if (!data.phone) {
-        const phonePattern = text.match(/(0[\d]{1,2}[-\s]?\d{3,4}[-\s]?\d{4})/);
-        if (phonePattern) data.phone = phonePattern[1].replace(/\s/g, '');
+      for (const pattern of namePatterns) {
+        const match = text.match(pattern);
+        if (match && match[1]) {
+          data.customerName = match[1].trim();
+          console.log('Name found:', data.customerName);
+          break;
+        }
       }
       
-      // 3. 주소 (긴 텍스트)
-      const addressMatch = text.match(/(?:주소|배송지|배송주소|수령주소)[\s:：\-]*([^\n]{10,150})/i);
-      if (addressMatch) data.address = addressMatch[1].trim();
+      // 2. 전화번호 (다양한 형식)
+      const phonePatterns = [
+        /(?:전화번호|연락처|전화|휴대폰|핸드폰|TEL|PHONE|H\.?P\.?)[\s:：\-_=]*(0[\d]{1,2}[-\s]?\d{3,4}[-\s]?\d{4})/i,
+        /(01[016789][-\s]?\d{3,4}[-\s]?\d{4})/,
+        /(0\d{1,2}[-\s]?\d{3,4}[-\s]?\d{4})/,
+      ];
       
-      // 주소가 없으면 '시', '구', '동' 패턴으로 재시도
-      if (!data.address) {
-        const addressPattern = text.match(/([가-힣]+시\s+[가-힣]+구\s+[^\n]{5,100})/);
-        if (addressPattern) data.address = addressPattern[1].trim();
+      for (const pattern of phonePatterns) {
+        const match = text.match(pattern);
+        if (match && match[1]) {
+          data.phone = match[1].replace(/\s/g, '');
+          console.log('Phone found:', data.phone);
+          break;
+        }
+      }
+      
+      // 3. 주소 (시/구/동 포함)
+      const addressPatterns = [
+        /(?:주소|배송지|배송주소|수령주소|ADDRESS)[\s:：\-_=]*([^\n]{10,200})/i,
+        /([가-힣]+[시도]\s*[가-힣]+[시군구]\s*[^\n]{5,150})/,
+        /([가-힣]+시\s+[가-힣]+구\s+[^\n]{5,150})/,
+      ];
+      
+      for (const pattern of addressPatterns) {
+        const match = text.match(pattern);
+        if (match && match[1]) {
+          data.address = match[1].trim();
+          console.log('Address found:', data.address);
+          break;
+        }
       }
       
       // 4. 상품명
-      const productMatch = text.match(/(?:상품명|제품명|품명|상품|제품|PRODUCT)[\s:：\-]*([^\n]{3,80})/i);
-      if (productMatch) data.productName = productMatch[1].trim();
+      const productPatterns = [
+        /(?:상품명|제품명|품명|상품|제품|PRODUCT|ITEM)[\s:：\-_=]*([^\n]{3,100})/i,
+        /(?:품목)[\s:：\-_=]*([^\n]{3,100})/i,
+      ];
+      
+      for (const pattern of productPatterns) {
+        const match = text.match(pattern);
+        if (match && match[1]) {
+          data.productName = match[1].trim();
+          console.log('Product name found:', data.productName);
+          break;
+        }
+      }
       
       // 5. 주문번호
-      const orderMatch = text.match(/(?:주문번호|주문코드|오더번호|ORDER[\s]?NO|주문NO)[\s:：\-]*([\dA-Z-]+)/i);
-      if (orderMatch) data.orderNumber = orderMatch[1].trim();
+      const orderPatterns = [
+        /(?:주문번호|주문코드|오더번호|ORDER[\s]?NO\.?|주문NO\.?|ORDER[\s]?ID)[\s:：\-_=]*([\dA-Z-]+)/i,
+        /(?:ORDER|주문)[\s:：\-_=]*([\dA-Z]{8,})/i,
+      ];
+      
+      for (const pattern of orderPatterns) {
+        const match = text.match(pattern);
+        if (match && match[1]) {
+          data.orderNumber = match[1].trim();
+          console.log('Order number found:', data.orderNumber);
+          break;
+        }
+      }
       
       // 6. 상품번호
-      const productCodeMatch = text.match(/(?:상품번호|품번|제품번호|품목번호|ITEM[\s]?NO|상품코드)[\s:：\-]*([\dA-Z-]+)/i);
-      if (productCodeMatch) data.productCode = productCodeMatch[1].trim();
+      const productCodePatterns = [
+        /(?:상품번호|품번|제품번호|품목번호|ITEM[\s]?NO\.?|상품코드|ITEM[\s]?CODE)[\s:：\-_=]*([\dA-Z-]+)/i,
+        /(?:CODE|코드)[\s:：\-_=]*([\dA-Z]{6,})/i,
+      ];
+      
+      for (const pattern of productCodePatterns) {
+        const match = text.match(pattern);
+        if (match && match[1]) {
+          data.productCode = match[1].trim();
+          console.log('Product code found:', data.productCode);
+          break;
+        }
+      }
       
       // 상품번호가 없으면 주문번호를 사용
       if (!data.productCode && data.orderNumber) {
         data.productCode = data.orderNumber;
       }
       
+      console.log('Final parsed data:', data);
       return data;
     };
     
     const extractedData = ocrText ? parseOCRResult(ocrText) : {};
     
-    // 인식 성공 여부 판단 (수령자 이름이 있으면 성공으로 판단)
-    const hasValidData = extractedData.customerName && 
-                         extractedData.customerName !== '' && 
-                         extractedData.customerName.length > 1;
+    // 인식 성공 여부 판단 (더 관대한 기준)
+    const hasValidData = (
+      (extractedData.customerName && extractedData.customerName.length >= 2) ||
+      (extractedData.phone && extractedData.phone.length >= 10) ||
+      (extractedData.address && extractedData.address.length >= 10)
+    );
+    
+    console.log('Validation result:', {
+      hasValidData,
+      customerName: extractedData.customerName,
+      phone: extractedData.phone,
+      address: extractedData.address
+    });
     
     // 결과 데이터
     const resultData = {
@@ -172,12 +283,24 @@ app.post('/api/ocr', async (c) => {
       recognitionSuccess: hasValidData
     };
     
+    console.log('Final OCR result:', resultData);
+    
     // 인식 실패 시 명시적으로 실패 응답
     if (!hasValidData && aiSuccess) {
+      console.warn('OCR recognition failed - no valid data extracted');
       return c.json({ 
         success: false, 
         data: resultData,
-        message: 'OCR 인식에 실패했습니다. 수동으로 입력해주세요.'
+        message: 'OCR 인식에 실패했습니다. 이미지 품질을 확인하거나 수동으로 입력해주세요.'
+      }, 200)
+    }
+    
+    if (!aiSuccess) {
+      console.warn('AI binding not available or failed');
+      return c.json({
+        success: false,
+        data: resultData,
+        message: 'OCR 서비스를 사용할 수 없습니다. Cloudflare Pages에 배포 후 사용 가능합니다.'
       }, 200)
     }
     
