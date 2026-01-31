@@ -813,6 +813,27 @@ function displayFinalPreview() {
           </div>
         </div>
       </div>
+      
+      <!-- 이메일 발송 정보 -->
+      <div class="mt-8 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+        <h4 class="font-bold text-lg mb-3 text-gray-800">
+          <i class="fas fa-envelope mr-2 text-green-600"></i>이메일 발송
+        </h4>
+        <div class="flex items-center gap-4">
+          <label for="recipientEmail" class="text-sm font-medium text-gray-700 whitespace-nowrap">
+            받는 사람:
+          </label>
+          <input type="email" 
+                 id="recipientEmail" 
+                 placeholder="example@email.com"
+                 class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                 required />
+        </div>
+        <p class="text-xs text-gray-500 mt-2">
+          <i class="fas fa-info-circle mr-1"></i>
+          시공 확인서가 입력하신 이메일 주소로 발송됩니다.
+        </p>
+      </div>
     </div>
   `;
   
@@ -927,6 +948,24 @@ function clearSignature(canvasId) {
 // 이메일 발송
 async function sendEmail() {
   try {
+    // 이메일 주소 가져오기
+    const recipientEmail = document.getElementById('recipientEmail').value;
+    
+    // 이메일 주소 유효성 검사
+    if (!recipientEmail) {
+      alert('이메일 주소를 입력해주세요.');
+      document.getElementById('recipientEmail').focus();
+      return;
+    }
+    
+    // 이메일 형식 검증
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(recipientEmail)) {
+      alert('올바른 이메일 주소 형식을 입력해주세요.');
+      document.getElementById('recipientEmail').focus();
+      return;
+    }
+    
     const installDate = document.getElementById('installDate').value;
     const installTime = document.getElementById('installTime').value;
     const installAddress = document.getElementById('installAddress').value;
@@ -934,7 +973,9 @@ async function sendEmail() {
     
     const reportData = {
       customerInfo: ocrData,
-      packageId: selectedPackage.id,
+      packageId: selectedPackages.map(pkg => pkg.id),
+      packages: selectedPackages,
+      recipientEmail,
       installDate,
       installTime,
       installAddress,
@@ -944,8 +985,9 @@ async function sendEmail() {
     const response = await axios.post('/api/generate-report', reportData);
     
     if (response.data.success) {
-      alert('시공 확인서가 성공적으로 생성되었습니다!\n\n이메일 발송 기능은 추가 개발 예정입니다.');
+      alert(`시공 확인서가 성공적으로 생성되었습니다!\n\n이메일 발송 주소: ${recipientEmail}\n\n이메일 발송 기능은 추가 개발 예정입니다.`);
       console.log('Report:', response.data.report);
+      console.log('Email:', recipientEmail);
     }
   } catch (error) {
     console.error('Email sending failed:', error);
