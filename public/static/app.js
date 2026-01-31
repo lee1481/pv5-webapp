@@ -260,7 +260,6 @@ function displayOCRResult(data) {
     <div style="color: #1a202c; font-size: 0.875rem;"><strong>주소:</strong> ${data.address || '-'}</div>
     <div style="color: #1a202c; font-size: 0.875rem;"><strong>제품명:</strong> ${data.productName || '-'}</div>
     <div style="color: #1a202c; font-size: 0.875rem;"><strong>주문번호:</strong> ${data.productCode || '-'}</div>
-    <div style="color: #1a202c; font-size: 0.875rem;"><strong>금액:</strong> ${data.amount ? data.amount.toLocaleString() + '원' : '-'}</div>
     ${hasFailure ? `
       <div class="col-span-2 mt-2">
         <button onclick="showManualInputForm()" 
@@ -345,13 +344,6 @@ function showManualInputForm() {
                  placeholder="202601300939847917">
         </div>
         <div>
-          <label class="block text-sm font-bold text-gray-700 mb-2">금액</label>
-          <input type="number" id="manual_amount" 
-                 value="${ocrData?.amount || ''}"
-                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                 placeholder="4850000">
-        </div>
-        <div>
           <label class="block text-sm font-bold text-gray-700 mb-2">주문일</label>
           <input type="text" id="manual_orderDate" 
                  value="${ocrData?.orderDate || new Date().toLocaleDateString('ko-KR')}"
@@ -388,7 +380,6 @@ function submitManualInput() {
   const address = document.getElementById('manual_address').value.trim();
   const productName = document.getElementById('manual_productName').value.trim();
   const productCode = document.getElementById('manual_productCode').value.trim();
-  const amount = parseInt(document.getElementById('manual_amount').value) || 0;
   const orderDate = document.getElementById('manual_orderDate').value.trim();
   
   // 필수 입력 검증
@@ -404,7 +395,6 @@ function submitManualInput() {
     address,
     productName,
     productCode,
-    amount,
     orderDate
   };
   
@@ -468,10 +458,7 @@ function displayPackages(packages) {
              onerror="this.src='https://via.placeholder.com/400x300?text=${encodeURIComponent(pkg.name)}'">
       </div>
       <h3 class="font-bold text-lg mb-2" style="color: #1a202c; font-size: 1.125rem;">${pkg.name}</h3>
-      <p class="text-sm text-gray-600 mb-3" style="color: #718096; font-size: 0.875rem;">${pkg.description}</p>
-      <div class="text-blue-600 font-bold text-xl mb-4" style="color: #2563eb; font-size: 1.25rem; font-weight: 700;">
-        ${pkg.price.toLocaleString()}원
-      </div>
+      <p class="text-sm text-gray-600 mb-4" style="color: #718096; font-size: 0.875rem;">${pkg.description}</p>
       <button class="w-full py-2 px-4 rounded-lg transition ${
         selectedPackage?.id === pkg.id 
           ? 'bg-blue-600 text-white' 
@@ -643,9 +630,6 @@ function displayFinalPreview() {
           <div class="flex-1">
             <div class="font-bold text-lg">${selectedPackage?.fullName || '-'}</div>
             <div class="text-sm text-gray-600 mt-1">${selectedPackage?.description || '-'}</div>
-            <div class="text-blue-600 font-bold text-xl mt-2">
-              ${selectedPackage?.price?.toLocaleString() || '0'}원
-            </div>
           </div>
         </div>
       </div>
