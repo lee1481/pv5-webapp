@@ -937,24 +937,14 @@ function displayFinalPreview() {
       </div>
       
       <!-- 접수/작성자 정보 -->
-      <div class="grid grid-cols-2 gap-6 mt-8">
-        <div class="border-2 border-gray-300 rounded-lg p-4">
-          <label for="installerName" class="font-bold mb-2 block">시공 담당자 확인</label>
+      <div class="mt-8">
+        <div class="border-2 border-gray-300 rounded-lg p-4 max-w-md">
+          <label for="installerName" class="font-black text-xl mb-3 block">접수 / 작성자:</label>
           <input type="text" 
                  id="installerName" 
-                 placeholder="접수/작성자: 홍길동"
-                 class="w-full px-4 py-3 border-b-2 border-gray-300 focus:border-blue-500 focus:outline-none"
+                 placeholder="홍길동"
+                 class="w-full px-4 py-3 border-b-2 border-gray-300 focus:border-blue-500 focus:outline-none text-lg"
                  style="border-top: none; border-left: none; border-right: none;">
-          <div class="text-sm text-gray-600 mt-2">접수 / 작성자</div>
-        </div>
-        <div class="border-2 border-gray-300 rounded-lg p-4">
-          <label for="customerName" class="font-bold mb-2 block">고객 확인</label>
-          <input type="text" 
-                 id="customerName" 
-                 placeholder="접수/작성자: 홍길동"
-                 class="w-full px-4 py-3 border-b-2 border-gray-300 focus:border-blue-500 focus:outline-none"
-                 style="border-top: none; border-left: none; border-right: none;">
-          <div class="text-sm text-gray-600 mt-2">접수 / 작성자</div>
         </div>
       </div>
       
