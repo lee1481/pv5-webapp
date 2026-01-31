@@ -1098,6 +1098,9 @@ function clearSignature(canvasId) {
 
 // 이메일 발송
 async function sendEmail() {
+  // 이메일 버튼 찾기
+  const emailButton = document.querySelector('button[onclick="sendEmail()"]');
+  
   try {
     // 이메일 주소 가져오기
     const recipientEmail = document.getElementById('recipientEmail').value;
@@ -1123,9 +1126,10 @@ async function sendEmail() {
     const notes = document.getElementById('notes').value;
     
     // 로딩 표시
-    const originalText = event.target.innerHTML;
-    event.target.disabled = true;
-    event.target.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>발송 중...';
+    if (emailButton) {
+      emailButton.disabled = true;
+      emailButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>발송 중...';
+    }
     
     const emailData = {
       recipientEmail,
@@ -1142,8 +1146,10 @@ async function sendEmail() {
     });
     
     // 버튼 복원
-    event.target.disabled = false;
-    event.target.innerHTML = originalText;
+    if (emailButton) {
+      emailButton.disabled = false;
+      emailButton.innerHTML = '<i class="fas fa-envelope mr-2"></i>이메일 발송';
+    }
     
     if (response.data.success) {
       alert(`✅ 이메일이 성공적으로 발송되었습니다!\n\n받는 사람: ${recipientEmail}\n\n확인해주세요.`);
@@ -1154,9 +1160,9 @@ async function sendEmail() {
     }
   } catch (error) {
     // 버튼 복원
-    if (event && event.target) {
-      event.target.disabled = false;
-      event.target.innerHTML = '<i class="fas fa-envelope mr-2"></i>이메일 발송';
+    if (emailButton) {
+      emailButton.disabled = false;
+      emailButton.innerHTML = '<i class="fas fa-envelope mr-2"></i>이메일 발송';
     }
     
     console.error('Email sending error:', error);
