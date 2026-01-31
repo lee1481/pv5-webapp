@@ -1006,6 +1006,7 @@ app.get('/', (c) => {
                                     <i class="fas fa-calendar mr-2"></i>시작 날짜
                                 </label>
                                 <input type="date" id="searchStartDate" 
+                                       onchange="searchReports()"
                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
                             </div>
                             <div>
@@ -1013,6 +1014,7 @@ app.get('/', (c) => {
                                     <i class="fas fa-calendar mr-2"></i>종료 날짜
                                 </label>
                                 <input type="date" id="searchEndDate" 
+                                       onchange="searchReports()"
                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
                             </div>
                             <div>
@@ -1021,6 +1023,7 @@ app.get('/', (c) => {
                                 </label>
                                 <input type="text" id="searchCustomerName" 
                                        placeholder="고객명 입력..."
+                                       oninput="searchReports()"
                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
                             </div>
                         </div>
