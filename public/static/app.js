@@ -10,6 +10,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupFileUpload();
   setupStepNavigation();
   updateStepIndicator();
+  
+  // 페이지 로드 시 밀워키 패키지 미리 준비 (Step 2 진입 시 즉시 표시)
+  setTimeout(() => {
+    if (allPackages.length > 0) {
+      console.log('Preloading milwaukee packages for faster display');
+    }
+  }, 1000);
 });
 
 // 단계 네비게이션 설정 (상단 메뉴 클릭)
@@ -34,8 +41,15 @@ function goToStep(step) {
     // 섹션별 초기화
     if (step === 2) {
       setTimeout(() => {
-        showBrand('milwaukee');
-      }, 100);
+        if (allPackages.length === 0) {
+          console.error('No packages loaded, retrying...');
+          loadPackages().then(() => {
+            showBrand('milwaukee');
+          });
+        } else {
+          showBrand('milwaukee');
+        }
+      }, 200);
     }
     return;
   }
@@ -55,8 +69,15 @@ function goToStep(step) {
     updateStepIndicator();
     showCurrentSection();
     setTimeout(() => {
-      showBrand('milwaukee');
-    }, 100);
+      if (allPackages.length === 0) {
+        console.error('No packages loaded, retrying...');
+        loadPackages().then(() => {
+          showBrand('milwaukee');
+        });
+      } else {
+        showBrand('milwaukee');
+      }
+    }, 200);
   } else if (step === 3) {
     if (!ocrData) {
       alert('먼저 거래명세서를 업로드하거나 수동으로 입력해주세요.');
@@ -533,8 +554,15 @@ function nextStep(step) {
     console.log('Moving to step 2, showing milwaukee packages');
     // 밀워키를 기본으로 표시
     setTimeout(() => {
-      showBrand('milwaukee');
-    }, 100);
+      if (allPackages.length === 0) {
+        console.error('No packages loaded, retrying...');
+        loadPackages().then(() => {
+          showBrand('milwaukee');
+        });
+      } else {
+        showBrand('milwaukee');
+      }
+    }, 200);
   }
   
   if (step === 3) {
