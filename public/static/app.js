@@ -878,8 +878,8 @@ function displayFinalPreview() {
           <div><strong>고객명:</strong> ${ocrData?.receiverName || '-'}</div>
           <div><strong>연락처:</strong> ${ocrData?.receiverPhone || '-'}</div>
           <div class="col-span-2"><strong>주소:</strong> ${ocrData?.receiverAddress || '-'}</div>
-          <div><strong>주문번호:</strong> ${ocrData?.productCode || '-'}</div>
-          <div><strong>주문일:</strong> ${ocrData?.outputDate || '-'}</div>
+          <div><strong>주문번호:</strong> ${ocrData?.orderNumber || '-'}</div>
+          <div><strong>주문일:</strong> ${new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
         </div>
       </div>
       
