@@ -1,7 +1,7 @@
 // 전역 상태 관리
 let currentStep = 1;
 let ocrData = null;
-let selectedPackage = null;
+let selectedPackages = []; // 단일 선택에서 다중 선택으로 변경
 let allPackages = [];
 let packagePositions = {}; // 패키지별 좌/우 선택 상태 저장
 
@@ -84,7 +84,7 @@ function goToStep(step) {
       alert('먼저 거래명세서를 업로드하거나 수동으로 입력해주세요.');
       return;
     }
-    if (!selectedPackage) {
+    if (selectedPackages.length === 0) {
       alert('제품을 선택해주세요.');
       return;
     }
@@ -100,7 +100,7 @@ function goToStep(step) {
       alert('먼저 거래명세서를 업로드하거나 수동으로 입력해주세요.');
       return;
     }
-    if (!selectedPackage) {
+    if (selectedPackages.length === 0) {
       alert('제품을 선택해주세요.');
       return;
     }
@@ -484,8 +484,10 @@ function displayPackages(packages) {
     return;
   }
   
-  grid.innerHTML = packages.map(pkg => `
-    <div style="border: 2px solid #e2e8f0; border-radius: 0.5rem; padding: 1.5rem; background-color: white; cursor: pointer; transition: all 0.3s; ${selectedPackage?.id === pkg.id ? 'border-color: #4299e1; background-color: #ebf8ff;' : ''}" 
+  grid.innerHTML = packages.map(pkg => {
+    const isSelected = selectedPackages.some(p => p.id === pkg.id);
+    return `
+    <div style="border: 2px solid #e2e8f0; border-radius: 0.5rem; padding: 1.5rem; background-color: white; cursor: pointer; transition: all 0.3s; ${isSelected ? 'border-color: #4299e1; background-color: #ebf8ff;' : ''}" 
          onclick="selectPackage('${pkg.id}')">
       <div style="margin-bottom: 1rem;">
         <img src="${pkg.image}" 
@@ -516,15 +518,16 @@ function displayPackages(packages) {
       ` : ''}
       <button onclick="event.stopPropagation(); selectPackage('${pkg.id}')" 
               style="width: 100%; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; cursor: pointer; transition: all 0.3s; ${
-        selectedPackage?.id === pkg.id 
+        isSelected 
           ? 'background-color: #2563eb; color: white;' 
           : 'background-color: #f3f4f6; color: #374151;'
       }">
-        <i class="fas ${selectedPackage?.id === pkg.id ? 'fa-check-circle' : 'fa-circle'}"></i>
-        ${selectedPackage?.id === pkg.id ? ' 선택됨' : ' 선택하기'}
+        <i class="fas ${isSelected ? 'fa-check-circle' : 'fa-circle'}"></i>
+        ${isSelected ? ' 선택됨' : ' 선택하기'}
       </button>
     </div>
-  `).join('');
+  `;
+  }).join('');
   
   console.log('Displayed', packages.length, 'packages');
 }
@@ -539,14 +542,26 @@ function updatePackagePosition(packageId, position, isChecked) {
   console.log('Package positions updated:', packagePositions);
 }
 
-// 제품 선택
+// 제품 선택 (토글 방식 - 다중 선택)
 function selectPackage(packageId) {
-  selectedPackage = allPackages.find(pkg => pkg.id === packageId);
-  console.log('Selected package:', selectedPackage);
+  const pkg = allPackages.find(p => p.id === packageId);
+  const index = selectedPackages.findIndex(p => p.id === packageId);
   
-  // 선택된 브랜드의 제품들만 다시 렌더링
-  const brand = selectedPackage.brand;
-  const packages = allPackages.filter(pkg => pkg.brand === brand);
+  if (index > -1) {
+    // 이미 선택된 경우 -> 선택 해제
+    selectedPackages.splice(index, 1);
+    console.log('Package deselected:', packageId);
+  } else {
+    // 선택되지 않은 경우 -> 선택 추가
+    selectedPackages.push(pkg);
+    console.log('Package selected:', packageId);
+  }
+  
+  console.log('Currently selected packages:', selectedPackages);
+  
+  // 현재 브랜드의 제품들만 다시 렌더링
+  const brand = pkg.brand;
+  const packages = allPackages.filter(p => p.brand === brand);
   displayPackages(packages);
 }
 
@@ -558,7 +573,7 @@ function nextStep(step) {
     return;
   }
   
-  if (step === 3 && !selectedPackage) {
+  if (step === 3 && selectedPackages.length === 0) {
     alert('제품을 선택해주세요.');
     return;
   }
@@ -641,32 +656,37 @@ function displayFinalPreview() {
   const notes = document.getElementById('notes').value;
   
   let materialsHTML = '';
-  if (selectedPackage && selectedPackage.sections) {
-    materialsHTML = selectedPackage.sections.map(section => `
-      <div class="mb-4">
-        <h4 class="font-bold text-gray-800 mb-2 bg-gray-100 px-3 py-2 rounded">${section.title}</h4>
-        <table class="w-full text-sm">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="px-3 py-2 text-left">자재명</th>
-              <th class="px-3 py-2 text-center">수량</th>
-              <th class="px-3 py-2 text-center">확인</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${section.items.map(item => `
-              <tr class="border-b">
-                <td class="px-3 py-2">${item.name}</td>
-                <td class="px-3 py-2 text-center">${item.quantity}</td>
-                <td class="px-3 py-2 text-center">
-                  <input type="checkbox" class="w-4 h-4">
-                </td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>
-    `).join('');
+  if (selectedPackages.length > 0) {
+    // 모든 선택된 패키지의 자재 합치기
+    selectedPackages.forEach(pkg => {
+      if (pkg.sections) {
+        materialsHTML += pkg.sections.map(section => `
+          <div class="mb-4">
+            <h4 class="font-bold text-gray-800 mb-2 bg-gray-100 px-3 py-2 rounded">${pkg.name} - ${section.title}</h4>
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-3 py-2 text-left">자재명</th>
+                  <th class="px-3 py-2 text-center">수량</th>
+                  <th class="px-3 py-2 text-center">확인</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${section.items.map(item => `
+                  <tr class="border-b">
+                    <td class="px-3 py-2">${item.name}</td>
+                    <td class="px-3 py-2 text-center">${item.quantity}</td>
+                    <td class="px-3 py-2 text-center">
+                      <input type="checkbox" class="w-4 h-4">
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `).join('');
+      }
+    });
   }
   
   preview.innerHTML = `
@@ -692,26 +712,28 @@ function displayFinalPreview() {
       <!-- 제품 정보 -->
       <div class="mb-6 pb-6 border-b">
         <h4 class="font-bold text-lg mb-3 text-gray-800">
-          <i class="fas fa-box mr-2 text-blue-600"></i>선택 제품
+          <i class="fas fa-box mr-2 text-blue-600"></i>선택 제품 (${selectedPackages.length}개)
         </h4>
-        <div class="flex items-start space-x-4">
-          <img src="${selectedPackage?.image || ''}" 
-               alt="${selectedPackage?.name || ''}" 
-               class="w-32 h-24 object-cover rounded-lg"
-               onerror="this.style.display='none'">
-          <div class="flex-1">
-            <div class="font-bold text-lg">${selectedPackage?.fullName || '-'}</div>
-            <div class="text-sm text-gray-600 mt-1">${selectedPackage?.description || '-'}</div>
-            ${selectedPackage?.hasPositionOption && packagePositions[selectedPackage.id] ? `
-              <div class="mt-2 text-sm">
-                <strong>설치 위치:</strong> 
-                ${packagePositions[selectedPackage.id].left ? '<span class="inline-block px-2 py-1 bg-blue-100 text-blue-700 rounded mr-2">좌측</span>' : ''}
-                ${packagePositions[selectedPackage.id].right ? '<span class="inline-block px-2 py-1 bg-blue-100 text-blue-700 rounded">우측</span>' : ''}
-                ${!packagePositions[selectedPackage.id].left && !packagePositions[selectedPackage.id].right ? '<span class="text-red-600">미선택</span>' : ''}
-              </div>
-            ` : ''}
+        ${selectedPackages.map(pkg => `
+          <div class="flex items-start space-x-4 mb-4 pb-4 ${selectedPackages.length > 1 ? 'border-b border-gray-200' : ''}">
+            <img src="${pkg.image || ''}" 
+                 alt="${pkg.name || ''}" 
+                 class="w-32 h-24 object-cover rounded-lg"
+                 onerror="this.style.display='none'">
+            <div class="flex-1">
+              <div class="font-bold text-lg">${pkg.fullName || '-'}</div>
+              <div class="text-sm text-gray-600 mt-1">${pkg.description || '-'}</div>
+              ${pkg.hasPositionOption && packagePositions[pkg.id] ? `
+                <div class="mt-2 text-sm">
+                  <strong>설치 위치:</strong> 
+                  ${packagePositions[pkg.id].left ? '<span class="inline-block px-2 py-1 bg-blue-100 text-blue-700 rounded mr-2">좌측</span>' : ''}
+                  ${packagePositions[pkg.id].right ? '<span class="inline-block px-2 py-1 bg-blue-100 text-blue-700 rounded">우측</span>' : ''}
+                  ${!packagePositions[pkg.id].left && !packagePositions[pkg.id].right ? '<span class="text-red-600">미선택</span>' : ''}
+                </div>
+              ` : ''}
+            </div>
           </div>
-        </div>
+        `).join('')}
       </div>
       
       <!-- 설치 정보 -->
