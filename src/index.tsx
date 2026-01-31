@@ -161,14 +161,13 @@ app.post('/api/ocr', async (c) => {
       
       // 1. 출력일자 추출
       const outputDatePatterns = [
-        /(?:출력일자|출력일|발행일)[\s:：]*(\d{4})[\s년.-]*(\d{1,2})[\s월.-]*(\d{1,2})/i,
-        /(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일/,
-        /(\d{4})[.-](\d{1,2})[.-](\d{1,2})/
+        /출력일자[\s\n]+(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일/i,
+        /출력일[\s\n]+(\d{4})[.-](\d{1,2})[.-](\d{1,2})/i
       ];
       for (const pattern of outputDatePatterns) {
-        const match = targetText.match(pattern);
+        const match = text.match(pattern);
         if (match) {
-          data.outputDate = `${match[1]}년 ${match[2]}월 ${match[3]}일`;
+          data.outputDate = `${match[1]}년 ${match[2].padStart(2, '0')}월 ${match[3].padStart(2, '0')}일`;
           console.log('Output date found:', data.outputDate);
           break;
         }
@@ -176,11 +175,10 @@ app.post('/api/ocr', async (c) => {
       
       // 2. 배송번호 추출
       const deliveryNumberPatterns = [
-        /(?:배송번호|송장번호|운송장)[\s:：]*(\d{8,})/i,
-        /배송번호[\s:：]*([\dA-Z-]+)/i
+        /배송번호[\s\n]+(\d{8})/i
       ];
       for (const pattern of deliveryNumberPatterns) {
-        const match = targetText.match(pattern);
+        const match = text.match(pattern);
         if (match && match[1]) {
           data.deliveryNumber = match[1].trim();
           console.log('Delivery number found:', data.deliveryNumber);
@@ -188,13 +186,12 @@ app.post('/api/ocr', async (c) => {
         }
       }
       
-      // 3. 수령자명 추출 (한글 2-10자)
+      // 3. 수령자명 추출 (라벨 바로 다음 줄)
       const receiverNamePatterns = [
-        /(?:수령자명|수령자|받는사람|받는분)[\s:：]*([가-힣]{2,10})/i,
-        /수령자[\s]*([가-힣]{2,10})/i
+        /수령자명[\s\n]+([가-힣]{2,10})(?:\s|\n|$)/i
       ];
       for (const pattern of receiverNamePatterns) {
-        const match = targetText.match(pattern);
+        const match = text.match(pattern);
         if (match && match[1]) {
           data.receiverName = match[1].trim();
           console.log('Receiver name found:', data.receiverName);
@@ -202,13 +199,12 @@ app.post('/api/ocr', async (c) => {
         }
       }
       
-      // 4. 주문자명 추출
+      // 4. 주문자명 추출 (수령자명과 동일하게 처리)
       const ordererNamePatterns = [
-        /(?:주문자명|주문자|구매자)[\s:：]*([가-힣]{2,10})/i,
-        /주문자[\s]*([가-힣]{2,10})/i
+        /주문자명[\s\n]+([가-힣]{2,10})(?:\s|\n|\(|수|$)/i
       ];
       for (const pattern of ordererNamePatterns) {
-        const match = targetText.match(pattern);
+        const match = text.match(pattern);
         if (match && match[1]) {
           data.ordererName = match[1].trim();
           console.log('Orderer name found:', data.ordererName);
@@ -216,57 +212,62 @@ app.post('/api/ocr', async (c) => {
         }
       }
       
-      // 5. 수령자 주소 추출
+      // 주문자명이 비어있으면 수령자명과 같다고 가정
+      if (!data.ordererName && data.receiverName) {
+        data.ordererName = data.receiverName;
+      }
+      
+      // 5. 수령자 주소 추출 (2줄 결합, 괄호 포함)
       const receiverAddressPatterns = [
-        /(?:수령자[\s]*주소|받는[\s]*주소|배송지[\s]*주소)[\s:：]*\(?(\d{5})\)?[\s]*([^\n]{10,200})/i,
-        /\((\d{5})\)[\s]*([가-힣]+[시도][\s\S]{10,200})/,
-        /(?:수령자[\s]*주소)[\s:：]*([^\n]{15,200})/i
+        /수령자\s*주소[\s\n]+(\(\d{5}\)\s*[^\n]+)[\s\n]+([^\n]+?)(?=\n0|\n수령자|$)/i
       ];
       for (const pattern of receiverAddressPatterns) {
-        const match = targetText.match(pattern);
+        const match = text.match(pattern);
         if (match) {
-          if (match[2]) {
-            data.receiverAddress = `(${match[1]}) ${match[2].trim()}`;
-          } else {
-            data.receiverAddress = match[1].trim();
-          }
+          const line1 = match[1].trim();
+          const line2 = match[2].trim();
+          data.receiverAddress = `${line1} ${line2}`;
           console.log('Receiver address found:', data.receiverAddress);
           break;
         }
       }
       
-      // 6. 수령자 연락처 추출
+      // 6. 수령자 연락처 추출 (분리된 번호 결합)
       const receiverPhonePatterns = [
-        /(?:수령자[\s]*연락처|받는[\s]*연락처|수령자[\s]*전화)[\s:：\d]*(01[016789][-\s]?\d{3,4}[-\s]?\d{4})/i,
-        /수령자[\s]*연락처[\s\d:：]*(0\d{1,2}[-\s]?\d{3,4}[-\s]?\d{4})/i,
-        /연락처[\s\d]*[:\s]*(01[016789][-\s]?\d{3,4}[-\s]?\d{4})/i
+        /(010)[-\s]*(\d{4})[-\s]*\n수령자\s*연락처1[\s\n]+수령자\s*연락처2[\s\n]+(\d{4})/i,
+        /수령자\s*연락처1[\s\n]+(010[-\s]?\d{3,4}[-\s]?\d{4})/i
       ];
       for (const pattern of receiverPhonePatterns) {
-        const match = targetText.match(pattern);
-        if (match && match[1]) {
-          data.receiverPhone = match[1].replace(/\s/g, '');
+        const match = text.match(pattern);
+        if (match) {
+          if (match[3]) {
+            // 분리된 경우: 010-2966- + 7497
+            data.receiverPhone = `${match[1]}-${match[2]}-${match[3]}`;
+          } else if (match[1]) {
+            data.receiverPhone = match[1].replace(/\s/g, '');
+          }
           console.log('Receiver phone found:', data.receiverPhone);
           break;
         }
       }
       
-      // 7. 배송메모 추출
+      // 7. 배송메모 추출 (라벨만 있고 내용 없으면 비워두기)
       const deliveryMemoPatterns = [
-        /(?:배송메모|배송[\s]*메모|요청사항|메모)[\s:：]*([^\n]{2,100})/i
+        /배송메모[\s\n]+([가-힣\w\s]{3,50})(?=\n상품명|\n주문번호|$)/i
       ];
       for (const pattern of deliveryMemoPatterns) {
-        const match = targetText.match(pattern);
-        if (match && match[1]) {
+        const match = text.match(pattern);
+        if (match && match[1] && !match[1].includes('상품명') && !match[1].includes('주문')) {
           data.deliveryMemo = match[1].trim();
           console.log('Delivery memo found:', data.deliveryMemo);
           break;
         }
       }
       
-      // 8. 주문번호 추출
+      // 8. 주문번호 추출 (18-20자리)
       const orderNumberPatterns = [
-        /(?:주문번호|주문코드|ORDER[\s]?NO)[\s:：]*([\dA-Z]+)/i,
-        /(\d{18,})/  // 18자리 이상 숫자
+        /주문번호[\s\n]+(\d{18,20})/i,
+        /(\d{18,20})/
       ];
       for (const pattern of orderNumberPatterns) {
         const match = text.match(pattern);
@@ -277,18 +278,18 @@ app.post('/api/ocr', async (c) => {
         }
       }
       
-      // 9. 상품번호 추출
-      const productCodePatterns = [
-        /(?:상품번호|품번|제품번호|ITEM[\s]?NO)[\s:：]*([\dA-Z]+)/i,
-        /(\d{9,12})/  // 9-12자리 숫자
-      ];
-      for (const pattern of productCodePatterns) {
-        const match = text.match(pattern);
-        if (match && match[1] && match[1] !== data.orderNumber) {
-          data.productCode = match[1].trim();
-          console.log('Product code found:', data.productCode);
-          break;
-        }
+      // 9. 상품번호 추출 (정확히 9자리)
+      // 먼저 사업자등록번호 찾기 (10자리)
+      const businessNumberMatch = text.match(/사업자등록번호[\s\n]+(\d{10})/i);
+      const businessNumber = businessNumberMatch ? businessNumberMatch[1] : null;
+      
+      // 1/1 다음의 9자리 숫자를 찾기
+      const productCodePattern = /1\/1[\s\n]+(\d{9})(?!\d)/i;
+      const productMatch = text.match(productCodePattern);
+      
+      if (productMatch && productMatch[1] && productMatch[1] !== businessNumber) {
+        data.productCode = productMatch[1];
+        console.log('Product code found:', data.productCode);
       }
       
       // 10. 상품명 추출
