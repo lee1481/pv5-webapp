@@ -136,9 +136,9 @@ export const milwaukeePackages: ProductPackage[] = [
   {
     id: 'milwaukee-3shelf-parts',
     brand: 'milwaukee',
-    name: 'PV5 밀워키 3단 부품선반',
-    fullName: 'PV5 기아 밀워키 3단 부품선반 (좌/우측)',
-    description: '밀워키 단품 - 3단 부품선반',
+    name: 'PV5 밀워키 3단 선반 1번',
+    fullName: 'PV5 기아 밀워키 3단 선반 1번 (좌/우측)',
+    description: '밀워키 단품 - 3단 선반 1번',
     price: 1800000,
     image: '/static/images/milwaukee-3shelf-parts.jpg',
     sections: [
@@ -182,9 +182,9 @@ export const milwaukeePackages: ProductPackage[] = [
   {
     id: 'milwaukee-2shelf-partition',
     brand: 'milwaukee',
-    name: 'PV5 카고 밀워키 격벽 2단선반',
-    fullName: 'PV5 카고 밀워키 격벽 2단선반',
-    description: '밀워키 단품 - 격벽 2단선반',
+    name: 'PV5 밀워키 2단 선반 2번',
+    fullName: 'PV5 카고 밀워키 2단 선반 2번',
+    description: '밀워키 단품 - 2단 선반 2번',
     price: 1500000,
     image: '/static/images/milwaukee-2shelf-partition.jpg',
     sections: [
