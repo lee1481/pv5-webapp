@@ -271,6 +271,26 @@ async function handleFileSelect(event) {
 
     console.log('OCR success! Extracted data:', response.data.data);
     ocrData = response.data.data;
+    
+    // 로딩 화면 제거 및 원래 업로드 영역 복원
+    dropZone.innerHTML = `
+      <i class="fas fa-cloud-upload-alt text-6xl text-gray-400 mb-4"></i>
+      <p class="text-lg text-gray-600 mb-4">거래명세서 이미지를 드래그하거나 클릭하여 업로드</p>
+      <input type="file" id="fileInput" accept="image/*" class="hidden">
+      <div class="flex justify-center space-x-3">
+        <button onclick="document.getElementById('fileInput').click(); event.stopPropagation();" 
+                class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">
+          <i class="fas fa-folder-open mr-2"></i>파일 선택
+        </button>
+        <button onclick="showManualInputForm(); event.stopPropagation();" 
+                class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition">
+          <i class="fas fa-keyboard mr-2"></i>수동 입력
+        </button>
+      </div>
+      <p class="text-xs text-gray-500 mt-4">지원 형식: JPG, PNG, GIF (최대 10MB)</p>
+    `;
+    
+    // OCR 결과 표시
     displayOCRResult(ocrData);
     
     console.log('Displaying results and moving to step 2...');
