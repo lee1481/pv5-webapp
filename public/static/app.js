@@ -305,11 +305,8 @@ async function handleFileSelect(event) {
     // OCR 결과 표시
     displayOCRResult(ocrData);
     
-    console.log('Displaying results and moving to step 2...');
-    // 자동으로 제품 선택 섹션으로 이동
-    setTimeout(() => {
-      nextStep(2);
-    }, 1500);
+    console.log('OCR results displayed. User can manually proceed to step 2.');
+    // 사용자가 직접 Step 2를 클릭하여 이동하도록 자동 이동 제거
     
   } catch (error) {
     console.error('OCR Error occurred:', error);
