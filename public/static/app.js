@@ -539,6 +539,8 @@ function showManualInputForm() {
   // OCR 데이터가 있으면 폼 필드에 자동으로 채우기
   if (ocrData) {
     console.log('Filling form with OCR data:', ocrData);
+    console.log('outputDate:', ocrData.outputDate);
+    console.log('productCode:', ocrData.productCode);
     
     // DOM이 완전히 렌더링된 후 값을 채우기 위해 setTimeout 사용
     setTimeout(() => {
@@ -559,9 +561,16 @@ function showManualInputForm() {
       // 각 필드에 값 채우기
       for (const [fieldId, value] of Object.entries(fields)) {
         const element = document.getElementById(fieldId);
-        if (element && value) {
-          element.value = value;
-          console.log(`Filled ${fieldId} with:`, value);
+        if (element) {
+          // 값이 있으면 설정, 없으면 빈 문자열로 설정 (placeholder 제거)
+          element.value = value || '';
+          if (value) {
+            console.log(`✅ Filled ${fieldId} with:`, value);
+          } else {
+            console.warn(`⚠️ No value for ${fieldId}, setting empty string`);
+          }
+        } else {
+          console.error(`❌ Element not found: ${fieldId}`);
         }
       }
     }, 100); // 100ms 후 실행

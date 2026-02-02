@@ -163,8 +163,9 @@ app.post('/api/ocr', async (c) => {
       
       // 1. 출력일자 추출
       const outputDatePatterns = [
-        /출력일자[\s\n]+(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일/i,
-        /출력일[\s\n]+(\d{4})[.-](\d{1,2})[.-](\d{1,2})/i
+        /출력일자[\s\n:：]*(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일/i,
+        /출력일[\s\n:：]*(\d{4})[.-](\d{1,2})[.-](\d{1,2})/i,
+        /(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일/i  // 라벨 없이 날짜만
       ];
       for (const pattern of outputDatePatterns) {
         const match = text.match(pattern);
@@ -280,18 +281,37 @@ app.post('/api/ocr', async (c) => {
         }
       }
       
-      // 9. 상품번호 추출 (정확히 9자리)
+      // 9. 상품번호 추출 (개선된 패턴)
       // 먼저 사업자등록번호 찾기 (10자리)
-      const businessNumberMatch = text.match(/사업자등록번호[\s\n]+(\d{10})/i);
+      const businessNumberMatch = text.match(/사업자등록번호[\s\n:：]+(\d{10})/i);
       const businessNumber = businessNumberMatch ? businessNumberMatch[1] : null;
       
-      // 1/1 다음의 9자리 숫자를 찾기
-      const productCodePattern = /1\/1[\s\n]+(\d{9})(?!\d)/i;
-      const productMatch = text.match(productCodePattern);
+      // 패턴 1: 1/1 다음의 9자리 숫자
+      const productCodePattern1 = /1\/1[\s\n]+(\d{9})(?!\d)/i;
+      // 패턴 2: 상품번호 라벨 뒤의 숫자
+      const productCodePattern2 = /상품번호[\s\n:：]+(\d{8,10})/i;
+      // 패턴 3: 단독 9자리 숫자 찾기
+      const productCodePattern3 = /(?:^|\n)(\d{9})(?!\d)/gm;
       
-      if (productMatch && productMatch[1] && productMatch[1] !== businessNumber) {
-        data.productCode = productMatch[1];
-        console.log('Product code found:', data.productCode);
+      const productMatch1 = text.match(productCodePattern1);
+      const productMatch2 = text.match(productCodePattern2);
+      
+      if (productMatch1 && productMatch1[1] && productMatch1[1] !== businessNumber) {
+        data.productCode = productMatch1[1];
+        console.log('Product code found (pattern 1):', data.productCode);
+      } else if (productMatch2 && productMatch2[1] && productMatch2[1] !== businessNumber) {
+        data.productCode = productMatch2[1];
+        console.log('Product code found (pattern 2):', data.productCode);
+      } else {
+        // 패턴 3: 모든 9자리 숫자 찾기
+        let match;
+        while ((match = productCodePattern3.exec(text)) !== null) {
+          if (match[1] !== businessNumber && !data.deliveryNumber?.includes(match[1])) {
+            data.productCode = match[1];
+            console.log('Product code found (pattern 3):', data.productCode);
+            break;
+          }
+        }
       }
       
       // 10. 상품명 추출
