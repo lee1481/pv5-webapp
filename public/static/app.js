@@ -1186,14 +1186,17 @@ async function saveReport() {
       });
       
       if (response.data.success) {
-        alert(`✅ 시공 확인서가 저장되었습니다!\n\n문서 ID: ${reportData.reportId}\n\n"저장 문서 관리"에서 확인할 수 있습니다.`);
+        alert(`✅ 시공 확인서가 저장되었습니다!\n\n문서 ID: ${reportData.reportId}\n\n신규 접수를 시작합니다.`);
+        resetForNewReport();
       } else {
         console.warn('Server save failed, using local storage only:', response.data.message);
-        alert(`✅ 시공 확인서가 로컬에 저장되었습니다!\n\n문서 ID: ${reportData.reportId}`);
+        alert(`✅ 시공 확인서가 로컬에 저장되었습니다!\n\n문서 ID: ${reportData.reportId}\n\n신규 접수를 시작합니다.`);
+        resetForNewReport();
       }
     } catch (error) {
       console.warn('Server save failed, using local storage only:', error);
-      alert(`✅ 시공 확인서가 로컬에 저장되었습니다!\n\n문서 ID: ${reportData.reportId}`);
+      alert(`✅ 시공 확인서가 로컬에 저장되었습니다!\n\n문서 ID: ${reportData.reportId}\n\n신규 접수를 시작합니다.`);
+      resetForNewReport();
     }
     
   } catch (error) {
@@ -1582,6 +1585,80 @@ function closePreviewModal(event) {
       document.body.style.overflow = 'auto';
     }
   }
+}
+
+// 신규 접수를 위한 초기화
+function resetForNewReport() {
+  console.log('Resetting for new report...');
+  
+  // 1. 전역 변수 초기화
+  ocrData = null;
+  selectedPackages = [];
+  uploadedImageFile = null;
+  currentReportId = null;
+  packagePositions = {};
+  
+  // 2. Step 3 입력 필드 초기화
+  const installDate = document.getElementById('installDate');
+  const installTime = document.getElementById('installTime');
+  const installAddress = document.getElementById('installAddress');
+  const notes = document.getElementById('notes');
+  
+  if (installDate) installDate.value = '';
+  if (installTime) installTime.value = '';
+  if (installAddress) installAddress.value = '';
+  if (notes) notes.value = '';
+  
+  // 3. Step 4 입력 필드 초기화
+  const installerName = document.getElementById('installerName');
+  const recipientEmail = document.getElementById('recipientEmail');
+  
+  if (installerName) installerName.value = '';
+  if (recipientEmail) recipientEmail.value = '';
+  
+  // 4. OCR 결과 숨기기
+  const uploadResult = document.getElementById('uploadResult');
+  if (uploadResult) {
+    uploadResult.classList.add('hidden');
+    uploadResult.style.display = 'none';
+  }
+  
+  // 5. 업로드 영역 초기화
+  const dropZone = document.getElementById('dropZone');
+  if (dropZone) {
+    dropZone.innerHTML = `
+      <i class="fas fa-cloud-upload-alt text-6xl text-gray-400 mb-4"></i>
+      <p class="text-lg text-gray-600 mb-4">거래명세서 이미지를 드래그하거나 클릭하여 업로드</p>
+      <input type="file" id="fileInput" accept="image/*" class="hidden">
+      <div class="flex justify-center space-x-3">
+        <button onclick="document.getElementById('fileInput').click(); event.stopPropagation();" 
+                class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">
+          <i class="fas fa-folder-open mr-2"></i>파일 선택
+        </button>
+        <button onclick="showManualInputForm(); event.stopPropagation();" 
+                class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition">
+          <i class="fas fa-keyboard mr-2"></i>수동 입력
+        </button>
+      </div>
+      <p class="text-xs text-gray-500 mt-4">지원 형식: JPG, PNG, GIF (최대 10MB)</p>
+    `;
+    
+    // 파일 입력 이벤트 재설정
+    setupFileUpload();
+  }
+  
+  // 6. 수동 입력 폼 제거 (있다면)
+  const manualInputForm = document.getElementById('manualInputForm');
+  if (manualInputForm) {
+    manualInputForm.remove();
+  }
+  
+  // 7. Step 1로 이동
+  currentStep = 1;
+  updateStepIndicator();
+  showCurrentSection();
+  
+  console.log('Reset complete. Ready for new report.');
 }
 
 
