@@ -1492,17 +1492,17 @@ async function showReportPreview(reportId) {
               </h3>
               
               <!-- 고객 정보 -->
-              <div class="mb-6 pb-6 border-b">
-                <h4 class="font-bold text-lg mb-3 text-gray-800">
-                  <i class="fas fa-user mr-2 text-blue-600"></i>고객 정보
+              <div class="mb-6 pb-6 border-b-2 border-blue-200 bg-blue-50 p-5 rounded-lg">
+                <h4 class="font-black text-xl mb-4 text-blue-800 border-b-2 border-blue-300 pb-2">
+                  <i class="fas fa-user-circle mr-2 text-blue-600"></i>👤 고객 정보
                 </h4>
-                <div class="grid grid-cols-2 gap-4 text-sm">
-                  <div><strong>출력일자:</strong> ${customerInfo.outputDate || '-'}</div>
-                  <div><strong>상품번호:</strong> ${customerInfo.productCode || '-'}</div>
-                  <div><strong>고객명:</strong> ${customerInfo.receiverName || '-'}</div>
-                  <div><strong>연락처:</strong> ${customerInfo.receiverPhone || '-'}</div>
-                  <div class="col-span-2"><strong>주소:</strong> ${customerInfo.receiverAddress || '-'}</div>
-                  <div><strong>주문번호:</strong> ${customerInfo.orderNumber || '-'}</div>
+                <div class="grid grid-cols-2 gap-4 text-base">
+                  <div class="bg-white p-3 rounded shadow-sm"><strong class="text-gray-700">출력일자:</strong> <span class="text-gray-900 font-semibold">${customerInfo.outputDate || '-'}</span></div>
+                  <div class="bg-white p-3 rounded shadow-sm"><strong class="text-gray-700">상품번호:</strong> <span class="text-gray-900 font-semibold">${customerInfo.productCode || '-'}</span></div>
+                  <div class="bg-white p-3 rounded shadow-sm"><strong class="text-gray-700">고객명:</strong> <span class="text-blue-700 font-bold text-lg">${customerInfo.receiverName || '-'}</span></div>
+                  <div class="bg-white p-3 rounded shadow-sm"><strong class="text-gray-700">연락처:</strong> <span class="text-blue-700 font-bold text-lg">${customerInfo.receiverPhone || '-'}</span></div>
+                  <div class="col-span-2 bg-white p-3 rounded shadow-sm"><strong class="text-gray-700">주소:</strong> <span class="text-gray-900 font-semibold">${customerInfo.receiverAddress || '-'}</span></div>
+                  <div class="col-span-2 bg-white p-3 rounded shadow-sm"><strong class="text-gray-700">주문번호:</strong> <span class="text-gray-900 font-semibold">${customerInfo.orderNumber || '-'}</span></div>
                 </div>
               </div>
               
@@ -1526,15 +1526,15 @@ async function showReportPreview(reportId) {
               </div>
               
               <!-- 설치 정보 -->
-              <div class="mb-6 pb-6 border-b">
-                <h4 class="font-bold text-lg mb-3 text-gray-800">
-                  <i class="fas fa-calendar-check mr-2 text-blue-600"></i>설치 정보
+              <div class="mb-6 pb-6 border-b-2 border-green-200 bg-green-50 p-5 rounded-lg">
+                <h4 class="font-black text-xl mb-4 text-green-800 border-b-2 border-green-300 pb-2">
+                  <i class="fas fa-calendar-check mr-2 text-green-600"></i>📅 설치 정보
                 </h4>
-                <div class="grid grid-cols-2 gap-4 text-sm">
-                  <div><strong>설치 날짜:</strong> ${installDate}</div>
-                  <div><strong>설치 시간:</strong> ${installTime}</div>
-                  <div class="col-span-2"><strong>설치 주소:</strong> ${installAddress}</div>
-                  ${notes ? `<div class="col-span-2"><strong>특이사항:</strong> ${notes}</div>` : ''}
+                <div class="grid grid-cols-2 gap-4 text-base">
+                  <div class="bg-white p-3 rounded shadow-sm"><strong class="text-gray-700">설치 날짜:</strong> <span class="text-green-700 font-bold text-lg">${installDate}</span></div>
+                  <div class="bg-white p-3 rounded shadow-sm"><strong class="text-gray-700">설치 시간:</strong> <span class="text-green-700 font-bold text-lg">${installTime}</span></div>
+                  <div class="col-span-2 bg-white p-3 rounded shadow-sm"><strong class="text-gray-700">설치 주소:</strong> <span class="text-gray-900 font-semibold">${installAddress}</span></div>
+                  ${notes ? `<div class="col-span-2 bg-yellow-50 p-3 rounded shadow-sm border-l-4 border-yellow-400"><strong class="text-gray-700">특이사항:</strong> <span class="text-gray-900 font-semibold">${notes}</span></div>` : ''}
                 </div>
               </div>
               
