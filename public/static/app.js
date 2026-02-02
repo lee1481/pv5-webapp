@@ -892,11 +892,12 @@ function displayFinalPreview() {
           <i class="fas fa-user mr-2 text-blue-600"></i>고객 정보
         </h4>
         <div class="grid grid-cols-2 gap-4 text-sm">
+          <div><strong>출력일자:</strong> ${ocrData?.outputDate || '-'}</div>
+          <div><strong>상품번호:</strong> ${ocrData?.productCode || '-'}</div>
           <div><strong>고객명:</strong> ${ocrData?.receiverName || '-'}</div>
           <div><strong>연락처:</strong> ${ocrData?.receiverPhone || '-'}</div>
           <div class="col-span-2"><strong>주소:</strong> ${ocrData?.receiverAddress || '-'}</div>
           <div><strong>주문번호:</strong> ${ocrData?.orderNumber || '-'}</div>
-          <div><strong>주문일:</strong> ${new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
         </div>
       </div>
       
