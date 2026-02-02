@@ -116,6 +116,11 @@ function goToStep(step) {
     updateStepIndicator();
     showCurrentSection();
     displayFinalPreview();
+  } else if (step === 5) {
+    // Step 5는 언제든지 접근 가능
+    currentStep = 5;
+    updateStepIndicator();
+    showCurrentSection();
   }
 }
 
