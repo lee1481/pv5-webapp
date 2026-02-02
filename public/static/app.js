@@ -1466,40 +1466,6 @@ async function showReportPreview(reportId) {
     const notes = report.notes || '';
     const installerName = report.installerName || '-';
     
-    // 자재 목록 HTML 생성
-    let materialsHTML = '';
-    if (packages.length > 0) {
-      packages.forEach(pkg => {
-        if (pkg.sections) {
-          materialsHTML += pkg.sections.map(section => `
-            <div class="mb-4">
-              <h4 class="font-bold text-gray-800 mb-2 bg-gray-100 px-3 py-2 rounded">${pkg.name} - ${section.title}</h4>
-              <table class="w-full text-sm">
-                <thead class="bg-gray-50">
-                  <tr>
-                    <th class="px-3 py-2 text-left">자재명</th>
-                    <th class="px-3 py-2 text-center">수량</th>
-                    <th class="px-3 py-2 text-center">확인</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${section.items.map(item => `
-                    <tr class="border-b">
-                      <td class="px-3 py-2">${item.name}</td>
-                      <td class="px-3 py-2 text-center">${item.quantity}</td>
-                      <td class="px-3 py-2 text-center">
-                        <input type="checkbox" class="w-4 h-4" disabled>
-                      </td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            </div>
-          `).join('');
-        }
-      });
-    }
-    
     // 모달 HTML
     const modalHTML = `
       <div id="previewModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onclick="closePreviewModal(event)">
@@ -1568,16 +1534,6 @@ async function showReportPreview(reportId) {
                   ${notes ? `<div class="col-span-2"><strong>특이사항:</strong> ${notes}</div>` : ''}
                 </div>
               </div>
-              
-              <!-- 자재 점검표 -->
-              ${materialsHTML ? `
-              <div class="mb-6 pb-6 border-b">
-                <h4 class="font-bold text-lg mb-3 text-gray-800">
-                  <i class="fas fa-clipboard-check mr-2 text-blue-600"></i>자재 점검표
-                </h4>
-                ${materialsHTML}
-              </div>
-              ` : ''}
               
               <!-- 접수/작성자 -->
               <div class="mt-6">
