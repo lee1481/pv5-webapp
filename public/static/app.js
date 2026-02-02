@@ -1471,10 +1471,10 @@ async function showReportPreview(reportId) {
     
     // 모달 HTML
     const modalHTML = `
-      <div id="previewModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onclick="closePreviewModal(event)">
-        <div class="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+      <div id="previewModal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onclick="closePreviewModal(event)">
+        <div class="modal-content bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
           <!-- 모달 헤더 -->
-          <div class="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6 rounded-t-lg flex justify-between items-center">
+          <div class="modal-header sticky top-0 bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6 rounded-t-lg flex justify-between items-center">
             <h2 class="text-2xl font-bold">
               <i class="fas fa-file-alt mr-2"></i>
               시공 확인서 상세보기
@@ -1549,7 +1549,7 @@ async function showReportPreview(reportId) {
           </div>
           
           <!-- 모달 푸터 -->
-          <div class="sticky bottom-0 bg-gray-50 p-6 rounded-b-lg flex justify-end space-x-4">
+          <div class="modal-footer sticky bottom-0 bg-gray-50 p-6 rounded-b-lg flex justify-end space-x-4">
             <button onclick="closePreviewModal()" 
                     class="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-100">
               <i class="fas fa-times mr-2"></i>닫기

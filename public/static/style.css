@@ -12,6 +12,30 @@
   #finalPreview {
     box-shadow: none !important;
   }
+  
+  /* 모달 인쇄 시 배경 및 버튼 숨김 */
+  .modal-overlay {
+    background: transparent !important;
+    position: static !important;
+    padding: 0 !important;
+  }
+  
+  .modal-content {
+    max-width: 100% !important;
+    max-height: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+  
+  .modal-header,
+  .modal-footer {
+    display: none !important;
+  }
+  
+  /* 인쇄 시 확인서 내용만 표시 */
+  #previewModal .border-2 {
+    border: none !important;
+  }
 }
 
 .material-table {
