@@ -825,6 +825,56 @@ app.get('/', (c) => {
             border-bottom-color: #48bb78;
             color: #48bb78;
           }
+          
+          /* 인쇄 전용 스타일 */
+          @media print {
+            /* body의 모든 자식 요소 중 모달 제외하고 숨김 */
+            body > *:not(#previewModal) {
+              display: none !important;
+            }
+            
+            body {
+              padding: 0 !important;
+              margin: 0 !important;
+              background: white !important;
+            }
+            
+            /* 모달 배경 투명 */
+            .modal-overlay {
+              background: white !important;
+              position: static !important;
+              padding: 0 !important;
+              display: block !important;
+            }
+            
+            /* 모달 내용 전체 화면 */
+            .modal-content {
+              max-width: 100% !important;
+              max-height: none !important;
+              box-shadow: none !important;
+              border-radius: 0 !important;
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+            
+            /* 헤더와 푸터 숨김 */
+            .modal-header,
+            .modal-footer {
+              display: none !important;
+            }
+            
+            /* 모달만 표시 */
+            #previewModal {
+              display: block !important;
+              position: static !important;
+              background: white !important;
+            }
+            
+            /* 테두리 제거 */
+            #previewModal .border-2 {
+              border: none !important;
+            }
+          }
         </style>
     </head>
     <body class="bg-gray-50">
