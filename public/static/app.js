@@ -812,14 +812,16 @@ function prevStep(step) {
 
 // 단계 표시기 업데이트
 function updateStepIndicator() {
-  for (let i = 1; i <= 4; i++) {
+  for (let i = 1; i <= 5; i++) {
     const step = document.getElementById(`step${i}`);
-    step.classList.remove('active', 'completed');
-    
-    if (i === currentStep) {
-      step.classList.add('active');
-    } else if (i < currentStep) {
-      step.classList.add('completed');
+    if (step) {
+      step.classList.remove('active', 'completed');
+      
+      if (i === currentStep) {
+        step.classList.add('active');
+      } else if (i < currentStep) {
+        step.classList.add('completed');
+      }
     }
   }
 }
