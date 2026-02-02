@@ -1267,9 +1267,13 @@ function displayReportsList(reports) {
             </div>
           </div>
           <div class="flex space-x-2">
+            <button onclick="showReportPreview('${reportId}')" 
+                    class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm">
+              <i class="fas fa-eye mr-1"></i>상세보기
+            </button>
             <button onclick="loadReport('${reportId}')" 
                     class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm">
-              <i class="fas fa-edit mr-1"></i>불러오기
+              <i class="fas fa-edit mr-1"></i>수정하기
             </button>
             <button onclick="deleteReport('${reportId}')" 
                     class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm">
@@ -1428,4 +1432,200 @@ function resetSearch() {
 function enterStep5() {
   loadReportsList();
 }
+
+// 문서 상세보기 (미리보기 모달)
+async function showReportPreview(reportId) {
+  try {
+    // 로컬스토리지에서 먼저 찾기
+    const localReports = JSON.parse(localStorage.getItem('pv5_reports') || '[]');
+    let report = localReports.find(r => r.reportId === reportId || r.id === reportId);
+    
+    // 서버에서도 시도
+    if (!report) {
+      try {
+        const response = await axios.get(`/api/reports/${reportId}`, { timeout: 10000 });
+        if (response.data.success) {
+          report = response.data.report;
+        }
+      } catch (error) {
+        console.warn('Server load failed, using local storage:', error);
+      }
+    }
+    
+    if (!report) {
+      alert('❌ 문서를 찾을 수 없습니다.');
+      return;
+    }
+    
+    // 미리보기 HTML 생성 (Step 4와 동일한 구조)
+    const customerInfo = report.customerInfo || {};
+    const packages = report.packages || [];
+    const installDate = report.installDate || '-';
+    const installTime = report.installTime || '-';
+    const installAddress = report.installAddress || '-';
+    const notes = report.notes || '';
+    const installerName = report.installerName || '-';
+    
+    // 자재 목록 HTML 생성
+    let materialsHTML = '';
+    if (packages.length > 0) {
+      packages.forEach(pkg => {
+        if (pkg.sections) {
+          materialsHTML += pkg.sections.map(section => `
+            <div class="mb-4">
+              <h4 class="font-bold text-gray-800 mb-2 bg-gray-100 px-3 py-2 rounded">${pkg.name} - ${section.title}</h4>
+              <table class="w-full text-sm">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-3 py-2 text-left">자재명</th>
+                    <th class="px-3 py-2 text-center">수량</th>
+                    <th class="px-3 py-2 text-center">확인</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${section.items.map(item => `
+                    <tr class="border-b">
+                      <td class="px-3 py-2">${item.name}</td>
+                      <td class="px-3 py-2 text-center">${item.quantity}</td>
+                      <td class="px-3 py-2 text-center">
+                        <input type="checkbox" class="w-4 h-4" disabled>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          `).join('');
+        }
+      });
+    }
+    
+    // 모달 HTML
+    const modalHTML = `
+      <div id="previewModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onclick="closePreviewModal(event)">
+        <div class="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+          <!-- 모달 헤더 -->
+          <div class="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6 rounded-t-lg flex justify-between items-center">
+            <h2 class="text-2xl font-bold">
+              <i class="fas fa-file-alt mr-2"></i>
+              시공 확인서 상세보기
+            </h2>
+            <button onclick="closePreviewModal()" class="text-white hover:text-gray-200 text-3xl leading-none">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          
+          <!-- 모달 내용 -->
+          <div class="p-6">
+            <div class="border-2 border-gray-300 rounded-lg p-6">
+              <h3 class="text-2xl font-bold mb-6 text-center text-blue-600">
+                PV5 시공(예약) 확인서
+              </h3>
+              
+              <!-- 고객 정보 -->
+              <div class="mb-6 pb-6 border-b">
+                <h4 class="font-bold text-lg mb-3 text-gray-800">
+                  <i class="fas fa-user mr-2 text-blue-600"></i>고객 정보
+                </h4>
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                  <div><strong>출력일자:</strong> ${customerInfo.outputDate || '-'}</div>
+                  <div><strong>상품번호:</strong> ${customerInfo.productCode || '-'}</div>
+                  <div><strong>고객명:</strong> ${customerInfo.receiverName || '-'}</div>
+                  <div><strong>연락처:</strong> ${customerInfo.receiverPhone || '-'}</div>
+                  <div class="col-span-2"><strong>주소:</strong> ${customerInfo.receiverAddress || '-'}</div>
+                  <div><strong>주문번호:</strong> ${customerInfo.orderNumber || '-'}</div>
+                </div>
+              </div>
+              
+              <!-- 제품 정보 -->
+              <div class="mb-6 pb-6 border-b">
+                <h4 class="font-bold text-lg mb-3 text-gray-800">
+                  <i class="fas fa-box mr-2 text-blue-600"></i>선택 제품 (${packages.length}개)
+                </h4>
+                ${packages.map(pkg => `
+                  <div class="flex items-start space-x-4 mb-4 pb-4 ${packages.length > 1 ? 'border-b border-gray-200' : ''}">
+                    <img src="${pkg.image || ''}" 
+                         alt="${pkg.name || ''}" 
+                         class="w-32 h-24 object-cover rounded-lg"
+                         onerror="this.style.display='none'">
+                    <div class="flex-1">
+                      <div class="font-bold text-lg">${pkg.fullName || '-'}</div>
+                      <div class="text-sm text-gray-600 mt-1">${pkg.description || '-'}</div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+              
+              <!-- 설치 정보 -->
+              <div class="mb-6 pb-6 border-b">
+                <h4 class="font-bold text-lg mb-3 text-gray-800">
+                  <i class="fas fa-calendar-check mr-2 text-blue-600"></i>설치 정보
+                </h4>
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                  <div><strong>설치 날짜:</strong> ${installDate}</div>
+                  <div><strong>설치 시간:</strong> ${installTime}</div>
+                  <div class="col-span-2"><strong>설치 주소:</strong> ${installAddress}</div>
+                  ${notes ? `<div class="col-span-2"><strong>특이사항:</strong> ${notes}</div>` : ''}
+                </div>
+              </div>
+              
+              <!-- 자재 점검표 -->
+              ${materialsHTML ? `
+              <div class="mb-6 pb-6 border-b">
+                <h4 class="font-bold text-lg mb-3 text-gray-800">
+                  <i class="fas fa-clipboard-check mr-2 text-blue-600"></i>자재 점검표
+                </h4>
+                ${materialsHTML}
+              </div>
+              ` : ''}
+              
+              <!-- 접수/작성자 -->
+              <div class="mt-6">
+                <div class="border-2 border-gray-300 rounded-lg p-4 max-w-md">
+                  <label class="font-black text-xl mb-3 block">접수 / 작성자:</label>
+                  <div class="text-lg font-bold">${installerName}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 모달 푸터 -->
+          <div class="sticky bottom-0 bg-gray-50 p-6 rounded-b-lg flex justify-end space-x-4">
+            <button onclick="closePreviewModal()" 
+                    class="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-100">
+              <i class="fas fa-times mr-2"></i>닫기
+            </button>
+            <button onclick="closePreviewModal(); loadReport('${reportId}')" 
+                    class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700">
+              <i class="fas fa-edit mr-2"></i>수정하기
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // 모달을 body에 추가
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // 스크롤 방지
+    document.body.style.overflow = 'hidden';
+    
+  } catch (error) {
+    console.error('Preview error:', error);
+    alert('❌ 미리보기를 불러오는데 실패했습니다.');
+  }
+}
+
+// 미리보기 모달 닫기
+function closePreviewModal(event) {
+  // 배경 클릭 또는 닫기 버튼 클릭 시
+  if (!event || event.target.id === 'previewModal' || event.currentTarget === event.target) {
+    const modal = document.getElementById('previewModal');
+    if (modal) {
+      modal.remove();
+      document.body.style.overflow = 'auto';
+    }
+  }
+}
+
 
