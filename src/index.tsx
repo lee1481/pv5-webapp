@@ -220,16 +220,31 @@ app.post('/api/ocr', async (c) => {
         data.ordererName = data.receiverName;
       }
       
-      // 5. 수령자 주소 추출 (2줄 결합, 괄호 포함)
+      // 5. 수령자 주소 추출 (개선된 패턴 - 더 유연하게)
       const receiverAddressPatterns = [
-        /수령자\s*주소[\s\n]+(\(\d{5}\)\s*[^\n]+)[\s\n]+([^\n]+?)(?=\n0|\n수령자|$)/i
+        // 패턴 1: 우편번호 포함 (괄호 있음) - 2줄
+        /수령자\s*주소[\s\n]+(\(\d{5}\)\s*[^\n]+)[\s\n]+([^\n]+?)(?=\n0|\n수령자|$)/i,
+        // 패턴 2: 우편번호 포함 (괄호 있음) - 1줄
+        /수령자\s*주소[\s\n]+(\(\d{5}\)\s*[^\n]+)/i,
+        // 패턴 3: 우편번호 없음 - 2줄
+        /수령자\s*주소[\s\n]+([^\n]+)[\s\n]+([^\n]+?)(?=\n0|\n수령자|$)/i,
+        // 패턴 4: 우편번호 없음 - 1줄
+        /수령자\s*주소[\s\n]+([^\n]+?)(?=\n0|\n수령자|$)/i,
+        // 패턴 5: 주소 라벨 다음 모든 내용 (최대 2줄)
+        /주소[\s\n]+([^\n]+(?:\n[^\n]+)?)/i
       ];
       for (const pattern of receiverAddressPatterns) {
         const match = text.match(pattern);
         if (match) {
-          const line1 = match[1].trim();
-          const line2 = match[2].trim();
-          data.receiverAddress = `${line1} ${line2}`;
+          if (match[2]) {
+            // 2줄인 경우
+            const line1 = match[1].trim();
+            const line2 = match[2].trim();
+            data.receiverAddress = `${line1} ${line2}`;
+          } else if (match[1]) {
+            // 1줄인 경우
+            data.receiverAddress = match[1].trim();
+          }
           console.log('Receiver address found:', data.receiverAddress);
           break;
         }
