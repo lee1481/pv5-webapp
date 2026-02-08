@@ -691,7 +691,7 @@ function displayPackages(packages) {
       <p style="color: #718096 !important; font-size: 0.875rem !important; margin-bottom: 1rem !important; display: block !important;">${pkg.description}</p>
       ${pkg.hasPositionOption ? `
         <div style="margin-bottom: 1rem; padding: 0.75rem; background-color: #f9fafb; border-radius: 0.5rem;" onclick="event.stopPropagation();">
-          <p style="color: #374151 !important; font-size: 0.875rem !important; font-weight: 600 !important; margin-bottom: 0.5rem !important; display: block !important;">설치 위치 선택:</p>
+          <p style="color: #374151 !important; font-size: 0.875rem !important; font-weight: 600 !important; margin-bottom: 0.5rem !important; display: block !important;">3단 선반 설치 위치:</p>
           <div style="display: flex; gap: 1rem;">
             <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
               <input type="checkbox" id="position-left-${pkg.id}" value="left" 
@@ -1064,9 +1064,9 @@ function displayFinalPreview() {
               <div class="text-sm text-gray-600 mt-1">${pkg.description || '-'}</div>
               ${pkg.hasPositionOption && packagePositions[pkg.id] ? `
                 <div class="mt-2 text-sm">
-                  <strong>설치 위치:</strong> 
+                  <strong>3단 선반 설치:</strong> 
                   ${packagePositions[pkg.id].left ? '<span class="inline-block px-2 py-1 bg-blue-100 text-blue-700 rounded mr-2">좌측</span>' : ''}
-                  ${packagePositions[pkg.id].right ? '<span class="inline-block px-2 py-1 bg-blue-100 text-blue-700 rounded">우측</span>' : ''}
+                  ${packagePositions[pkg.id].right ? '<span class="inline-block px-2 py-1 bg-green-100 text-green-700 rounded">우측</span>' : ''}
                   ${!packagePositions[pkg.id].left && !packagePositions[pkg.id].right ? '<span class="text-red-600">미선택</span>' : ''}
                 </div>
               ` : ''}
