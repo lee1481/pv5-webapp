@@ -1684,6 +1684,7 @@ async function showReportPreview(reportId) {
     // 미리보기 HTML 생성 (Step 4와 동일한 구조)
     const customerInfo = report.customerInfo || {};
     const packages = report.packages || [];
+    const packagePositions = report.packagePositions || {}; // UPDATED
     const installDate = report.installDate || '-';
     const installTime = report.installTime || '-';
     const installAddress = report.installAddress || '-';
@@ -1741,6 +1742,14 @@ async function showReportPreview(reportId) {
                     <div class="flex-1">
                       <div class="font-bold text-lg">${pkg.fullName || '-'}</div>
                       <div class="text-sm text-gray-600 mt-1">${pkg.description || '-'}</div>
+                      ${pkg.hasPositionOption && packagePositions[pkg.id] ? ` <!-- UPDATED -->
+                        <div class="mt-2"> <!-- UPDATED -->
+                          <strong class="text-gray-700">3단 선반 설치:</strong> <!-- UPDATED -->
+                          ${packagePositions[pkg.id].left ? '<span class="inline-block px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg font-semibold mr-2">좌측</span>' : ''} <!-- UPDATED -->
+                          ${packagePositions[pkg.id].right ? '<span class="inline-block px-3 py-1.5 bg-green-100 text-green-700 rounded-lg font-semibold">우측</span>' : ''} <!-- UPDATED -->
+                          ${!packagePositions[pkg.id].left && !packagePositions[pkg.id].right ? '<span class="text-red-600 font-semibold">미선택</span>' : ''} <!-- UPDATED -->
+                        </div> <!-- UPDATED -->
+                      ` : ''} <!-- UPDATED -->
                     </div>
                   </div>
                 `).join('')}
