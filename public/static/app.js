@@ -1380,10 +1380,33 @@ async function saveReport() {
 // 저장된 문서 목록 불러오기
 async function loadReportsList() {
   try {
-    // 로컬스토리지에서 불러오기
+    // 🔄 서버에서 먼저 불러오기 (Primary) // UPDATED
+    try { // UPDATED
+      const response = await axios.get('/api/reports/list', { timeout: 10000 }); // UPDATED
+      if (response.data.success && response.data.reports.length > 0) { // UPDATED
+        console.log('✅ Loaded from server (D1):', response.data.reports.length, 'reports'); // UPDATED
+        allReports = response.data.reports; // UPDATED
+        
+        // 서버 데이터를 localStorage에 캐싱 // UPDATED
+        try { // UPDATED
+          localStorage.setItem('pv5_reports', JSON.stringify(allReports)); // UPDATED
+          console.log('✅ Cached to localStorage'); // UPDATED
+        } catch (cacheError) { // UPDATED
+          console.warn('⚠️ localStorage cache failed:', cacheError); // UPDATED
+        } // UPDATED
+        
+        displayReportsList(allReports); // UPDATED
+        return; // UPDATED
+      } // UPDATED
+    } catch (serverError) { // UPDATED
+      console.warn('⚠️ Server load failed, fallback to localStorage:', serverError); // UPDATED
+    } // UPDATED
+    
+    // 서버 실패 시 localStorage에서 불러오기 (Fallback) // UPDATED
     let localReports = [];
     try {
       localReports = JSON.parse(localStorage.getItem('pv5_reports') || '[]');
+      console.log('✅ Loaded from localStorage (cache):', localReports.length, 'reports'); // UPDATED
     } catch (parseError) {
       console.error('⚠️ localStorage 데이터 손상:', parseError);
       alert('❌ 저장된 데이터가 손상되었습니다.\n\n"데이터 내보내기"로 백업을 시도하거나, 데이터 초기화가 필요합니다.');
@@ -1410,20 +1433,7 @@ async function loadReportsList() {
       }
     }
     
-    // 🔧 수정: localStorage 데이터 우선 사용 (packages 필드 보존)
     allReports = localReports;
-    
-    // 서버에서도 불러오기 시도 (백업용)
-    try {
-      const response = await axios.get('/api/reports/list', { timeout: 10000 });
-      if (response.data.success && response.data.reports.length > 0) {
-        console.log('✅ Server reports available as backup');
-        // 서버 데이터는 참조용으로만 사용
-      }
-    } catch (error) {
-      console.warn('Server load failed, using local storage only:', error);
-    }
-    
     displayReportsList(allReports);
     
   } catch (error) {
