@@ -838,6 +838,63 @@ function updateInstallTime() { // UPDATED
   } // UPDATED
 } // UPDATED
 
+// 커스텀 시간 입력 토글 // UPDATED
+function toggleCustomTimeInput() { // UPDATED
+  const customInput = document.getElementById('customTimeInput'); // UPDATED
+  customInput.classList.toggle('hidden'); // UPDATED
+} // UPDATED
+// UPDATED
+// 커스텀 시간 적용 // UPDATED
+function applyCustomTime() { // UPDATED
+  if (!selectedTimePeriod) { // UPDATED
+    alert('⚠️ 먼저 오전/오후를 선택해주세요!'); // UPDATED
+    return; // UPDATED
+  } // UPDATED
+  // UPDATED
+  const customHour = document.getElementById('customHour').value; // UPDATED
+  const customMinute = document.getElementById('customMinute').value; // UPDATED
+  // UPDATED
+  if (!customHour || !customMinute) { // UPDATED
+    alert('⚠️ 시와 분을 모두 입력해주세요!'); // UPDATED
+    return; // UPDATED
+  } // UPDATED
+  // UPDATED
+  const hour = parseInt(customHour); // UPDATED
+  const minute = parseInt(customMinute); // UPDATED
+  // UPDATED
+  if (hour < 1 || hour > 12) { // UPDATED
+    alert('⚠️ 시는 1~12 사이의 숫자를 입력해주세요!'); // UPDATED
+    return; // UPDATED
+  } // UPDATED
+  // UPDATED
+  if (minute < 0 || minute > 59) { // UPDATED
+    alert('⚠️ 분은 0~59 사이의 숫자를 입력해주세요!'); // UPDATED
+    return; // UPDATED
+  } // UPDATED
+  // UPDATED
+  selectedTimeHour = customHour; // UPDATED
+  selectedTimeMinute = customMinute.padStart(2, '0'); // UPDATED
+  // UPDATED
+  // 모든 버튼 스타일 초기화 // UPDATED
+  document.querySelectorAll('.time-hour-btn').forEach(btn => { // UPDATED
+    btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600'); // UPDATED
+    btn.classList.add('border-gray-300'); // UPDATED
+  }); // UPDATED
+  document.querySelectorAll('.time-minute-btn').forEach(btn => { // UPDATED
+    btn.classList.remove('bg-green-600', 'text-white', 'border-green-600'); // UPDATED
+    btn.classList.add('border-gray-300'); // UPDATED
+  }); // UPDATED
+  // UPDATED
+  updateInstallTime(); // UPDATED
+  // UPDATED
+  // 입력 필드 초기화 및 숨기기 // UPDATED
+  document.getElementById('customHour').value = ''; // UPDATED
+  document.getElementById('customMinute').value = ''; // UPDATED
+  document.getElementById('customTimeInput').classList.add('hidden'); // UPDATED
+  // UPDATED
+  alert('✅ 시간이 설정되었습니다!'); // UPDATED
+} // UPDATED
+
 // 단계 이동
 function nextStep(step) {
   // 유효성 검사
