@@ -660,7 +660,7 @@ app.post('/api/reports/save', async (c) => {
     
     const finalReportId = reportId || `REPORT-${Date.now()}`
     
-    // D1에 저장 // UPDATED
+    // D1에 저장 (undefined 값 처리) // UPDATED
     await env.DB.prepare(` // UPDATED
       INSERT OR REPLACE INTO reports ( // UPDATED
         report_id, customer_info, packages, package_positions, // UPDATED
@@ -670,16 +670,16 @@ app.post('/api/reports/save', async (c) => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now')) // UPDATED
     `).bind( // UPDATED
       finalReportId, // UPDATED
-      JSON.stringify(customerInfo), // UPDATED
-      JSON.stringify(packages), // UPDATED
-      JSON.stringify(packagePositions), // UPDATED
-      installDate, // UPDATED
-      installTime, // UPDATED
-      installAddress, // UPDATED
-      notes, // UPDATED
-      installerName, // UPDATED
-      imageKey, // UPDATED
-      attachmentFileName // UPDATED
+      JSON.stringify(customerInfo || {}), // UPDATED
+      JSON.stringify(packages || []), // UPDATED
+      JSON.stringify(packagePositions || {}), // UPDATED
+      installDate || null, // UPDATED
+      installTime || null, // UPDATED
+      installAddress || null, // UPDATED
+      notes || null, // UPDATED
+      installerName || null, // UPDATED
+      imageKey || null, // UPDATED
+      attachmentFileName || null // UPDATED
     ).run() // UPDATED
     
     console.log('Report saved to D1:', finalReportId) // UPDATED

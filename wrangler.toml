@@ -1,0 +1,19 @@
+name = "webapp"
+compatibility_date = "2026-01-31"
+pages_build_output_dir = "./dist"
+
+[ai]
+binding = "AI"
+
+[[kv_namespaces]]
+binding = "REPORTS_KV"
+id = "11915b46155a411aadeda7ef9c613882"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "pv5-reports-db"
+database_id = "c365c48c-8338-44ca-8f6a-990c204fd9e1"
+
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "pv5-images"
