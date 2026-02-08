@@ -774,6 +774,7 @@ function copyCustomerAddress() { // UPDATED
 // 설치 시간 선택 - 오전/오후 // UPDATED
 let selectedTimePeriod = ''; // UPDATED
 let selectedTimeHour = ''; // UPDATED
+let selectedTimeMinute = '00'; // UPDATED
 // UPDATED
 function selectTimePeriod(period) { // UPDATED
   selectedTimePeriod = period; // UPDATED
@@ -813,10 +814,26 @@ function selectTimeHour(hour) { // UPDATED
   updateInstallTime(); // UPDATED
 } // UPDATED
 // UPDATED
+function selectTimeMinute(minute) { // UPDATED
+  selectedTimeMinute = minute; // UPDATED
+  // UPDATED
+  // 모든 분 버튼 스타일 초기화 // UPDATED
+  document.querySelectorAll('.time-minute-btn').forEach(btn => { // UPDATED
+    btn.classList.remove('bg-green-600', 'text-white', 'border-green-600'); // UPDATED
+    btn.classList.add('border-gray-300'); // UPDATED
+  }); // UPDATED
+  // UPDATED
+  // 선택된 버튼 스타일 업데이트 // UPDATED
+  event.target.classList.add('bg-green-600', 'text-white', 'border-green-600'); // UPDATED
+  event.target.classList.remove('border-gray-300'); // UPDATED
+  // UPDATED
+  updateInstallTime(); // UPDATED
+} // UPDATED
+// UPDATED
 function updateInstallTime() { // UPDATED
   if (selectedTimePeriod && selectedTimeHour) { // UPDATED
     const periodText = selectedTimePeriod === 'AM' ? '오전' : '오후'; // UPDATED
-    const timeText = `${periodText} ${selectedTimeHour}시`; // UPDATED
+    const timeText = `${periodText} ${selectedTimeHour}시 ${selectedTimeMinute}분`; // UPDATED
     document.getElementById('installTime').value = timeText; // UPDATED
   } // UPDATED
 } // UPDATED

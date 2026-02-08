@@ -1018,28 +1018,36 @@ app.get('/', (c) => {
                             <div class="space-y-2">
                                 <div class="flex gap-2">
                                     <button type="button" id="timePeriodAM" onclick="selectTimePeriod('AM')"
-                                            class="flex-1 px-4 py-2 border-2 border-gray-300 rounded-lg hover:bg-gray-50">
+                                            class="flex-1 px-3 py-2 text-sm border-2 border-gray-300 rounded-lg hover:bg-gray-50">
                                         오전
                                     </button>
                                     <button type="button" id="timePeriodPM" onclick="selectTimePeriod('PM')"
-                                            class="flex-1 px-4 py-2 border-2 border-gray-300 rounded-lg hover:bg-gray-50">
+                                            class="flex-1 px-3 py-2 text-sm border-2 border-gray-300 rounded-lg hover:bg-gray-50">
                                         오후
                                     </button>
                                 </div>
-                                <div class="grid grid-cols-5 gap-2">
-                                    <button type="button" onclick="selectTimeHour('9')" class="time-hour-btn px-3 py-2 border border-gray-300 rounded hover:bg-blue-50">9시</button>
-                                    <button type="button" onclick="selectTimeHour('10')" class="time-hour-btn px-3 py-2 border border-gray-300 rounded hover:bg-blue-50">10시</button>
-                                    <button type="button" onclick="selectTimeHour('11')" class="time-hour-btn px-3 py-2 border border-gray-300 rounded hover:bg-blue-50">11시</button>
-                                    <button type="button" onclick="selectTimeHour('12')" class="time-hour-btn px-3 py-2 border border-gray-300 rounded hover:bg-blue-50">12시</button>
-                                    <button type="button" onclick="selectTimeHour('1')" class="time-hour-btn px-3 py-2 border border-gray-300 rounded hover:bg-blue-50">1시</button>
-                                    <button type="button" onclick="selectTimeHour('2')" class="time-hour-btn px-3 py-2 border border-gray-300 rounded hover:bg-blue-50">2시</button>
-                                    <button type="button" onclick="selectTimeHour('3')" class="time-hour-btn px-3 py-2 border border-gray-300 rounded hover:bg-blue-50">3시</button>
-                                    <button type="button" onclick="selectTimeHour('4')" class="time-hour-btn px-3 py-2 border border-gray-300 rounded hover:bg-blue-50">4시</button>
-                                    <button type="button" onclick="selectTimeHour('5')" class="time-hour-btn px-3 py-2 border border-gray-300 rounded hover:bg-blue-50">5시</button>
-                                    <button type="button" onclick="selectTimeHour('6')" class="time-hour-btn px-3 py-2 border border-gray-300 rounded hover:bg-blue-50">6시</button>
+                                <div class="grid grid-cols-5 gap-1">
+                                    <button type="button" onclick="selectTimeHour('9')" class="time-hour-btn px-2 py-1.5 text-sm border border-gray-300 rounded hover:bg-blue-50">9시</button>
+                                    <button type="button" onclick="selectTimeHour('10')" class="time-hour-btn px-2 py-1.5 text-sm border border-gray-300 rounded hover:bg-blue-50">10시</button>
+                                    <button type="button" onclick="selectTimeHour('11')" class="time-hour-btn px-2 py-1.5 text-sm border border-gray-300 rounded hover:bg-blue-50">11시</button>
+                                    <button type="button" onclick="selectTimeHour('12')" class="time-hour-btn px-2 py-1.5 text-sm border border-gray-300 rounded hover:bg-blue-50">12시</button>
+                                    <button type="button" onclick="selectTimeHour('1')" class="time-hour-btn px-2 py-1.5 text-sm border border-gray-300 rounded hover:bg-blue-50">1시</button>
+                                    <button type="button" onclick="selectTimeHour('2')" class="time-hour-btn px-2 py-1.5 text-sm border border-gray-300 rounded hover:bg-blue-50">2시</button>
+                                    <button type="button" onclick="selectTimeHour('3')" class="time-hour-btn px-2 py-1.5 text-sm border border-gray-300 rounded hover:bg-blue-50">3시</button>
+                                    <button type="button" onclick="selectTimeHour('4')" class="time-hour-btn px-2 py-1.5 text-sm border border-gray-300 rounded hover:bg-blue-50">4시</button>
+                                    <button type="button" onclick="selectTimeHour('5')" class="time-hour-btn px-2 py-1.5 text-sm border border-gray-300 rounded hover:bg-blue-50">5시</button>
+                                    <button type="button" onclick="selectTimeHour('6')" class="time-hour-btn px-2 py-1.5 text-sm border border-gray-300 rounded hover:bg-blue-50">6시</button>
+                                </div>
+                                <div class="grid grid-cols-6 gap-1">
+                                    <button type="button" onclick="selectTimeMinute('00')" class="time-minute-btn px-2 py-1.5 text-sm border border-gray-300 rounded hover:bg-green-50">00분</button>
+                                    <button type="button" onclick="selectTimeMinute('10')" class="time-minute-btn px-2 py-1.5 text-sm border border-gray-300 rounded hover:bg-green-50">10분</button>
+                                    <button type="button" onclick="selectTimeMinute('20')" class="time-minute-btn px-2 py-1.5 text-sm border border-gray-300 rounded hover:bg-green-50">20분</button>
+                                    <button type="button" onclick="selectTimeMinute('30')" class="time-minute-btn px-2 py-1.5 text-sm border border-gray-300 rounded hover:bg-green-50">30분</button>
+                                    <button type="button" onclick="selectTimeMinute('40')" class="time-minute-btn px-2 py-1.5 text-sm border border-gray-300 rounded hover:bg-green-50">40분</button>
+                                    <button type="button" onclick="selectTimeMinute('50')" class="time-minute-btn px-2 py-1.5 text-sm border border-gray-300 rounded hover:bg-green-50">50분</button>
                                 </div>
                                 <input type="text" id="installTime" readonly
-                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-center font-semibold"
+                                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-50 text-center font-semibold"
                                        placeholder="시간을 선택하세요">
                             </div>
                         </div>
