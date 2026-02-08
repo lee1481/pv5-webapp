@@ -1305,6 +1305,7 @@ async function saveReport() {
       reportId: currentReportId || `REPORT-${Date.now()}`,
       customerInfo: ocrData,
       packages: selectedPackages,
+      packagePositions, // UPDATED - 3단 선반 설치 위치 데이터 추가
       installDate,
       installTime,
       installAddress,
