@@ -15,5 +15,18 @@
       "id": "11915b46155a411aadeda7ef9c613882",
       "preview_id": "6501349fce6f4b3abf9e31bac903a0d8"
     }
-  ]
+  ],
+  "d1_databases": [ // UPDATED
+    { // UPDATED
+      "binding": "DB", // UPDATED
+      "database_name": "pv5-reports-db", // UPDATED
+      "database_id": "c365c48c-8338-44ca-8f6a-990c204fd9e1" // UPDATED
+    } // UPDATED
+  ], // UPDATED
+  "r2_buckets": [ // UPDATED
+    { // UPDATED
+      "binding": "R2", // UPDATED
+      "bucket_name": "pv5-images" // UPDATED
+    } // UPDATED
+  ] // UPDATED
 }

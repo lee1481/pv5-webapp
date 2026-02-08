@@ -7,6 +7,8 @@ type Bindings = {
   AI: any;
   RESEND_API_KEY?: string;
   REPORTS_KV?: KVNamespace;
+  DB: D1Database; // UPDATED - D1 Database
+  R2: R2Bucket; // UPDATED - R2 Storage
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -598,6 +600,37 @@ app.post('/api/send-email', async (c) => {
 })
 
 // API: 시공 확인서 저장
+// API: 이미지 업로드 (R2) // UPDATED
+app.post('/api/upload-image', async (c) => { // UPDATED
+  try { // UPDATED
+    const { env } = c // UPDATED
+    const formData = await c.req.formData() // UPDATED
+    const file = formData.get('image') as File // UPDATED
+    
+    if (!file) { // UPDATED
+      return c.json({ success: false, message: '이미지 파일이 없습니다.' }, 400) // UPDATED
+    } // UPDATED
+    
+    // R2에 저장 // UPDATED
+    const imageKey = `images/${Date.now()}-${Math.random().toString(36).substring(7)}-${file.name}` // UPDATED
+    await env.R2.put(imageKey, file.stream()) // UPDATED
+    
+    return c.json({ // UPDATED
+      success: true, // UPDATED
+      imageKey, // UPDATED
+      filename: file.name // UPDATED
+    }) // UPDATED
+  } catch (error) { // UPDATED
+    console.error('Image upload error:', error) // UPDATED
+    return c.json({ // UPDATED
+      success: false, // UPDATED
+      message: '이미지 업로드 실패', // UPDATED
+      error: error instanceof Error ? error.message : 'Unknown error' // UPDATED
+    }, 500) // UPDATED
+  } // UPDATED
+}) // UPDATED
+
+// API: 시공 확인서 저장 (D1 + R2) // UPDATED
 app.post('/api/reports/save', async (c) => {
   try {
     const { env } = c
@@ -607,6 +640,7 @@ app.post('/api/reports/save', async (c) => {
       reportId,
       customerInfo,
       packages,
+      packagePositions, // UPDATED - 3단 선반 위치
       installDate,
       installTime,
       installAddress,
@@ -616,55 +650,43 @@ app.post('/api/reports/save', async (c) => {
       attachmentFileName
     } = body
     
-    // KV가 없으면 로컬스토리지만 사용 (프론트엔드)
-    if (!env.REPORTS_KV) {
-      return c.json({ 
-        success: false, 
-        message: 'KV 스토리지가 설정되지 않았습니다. 로컬 저장만 가능합니다.' 
-      }, 200)
-    }
+    // 이미지가 있으면 R2에 저장 // UPDATED
+    let imageKey = null // UPDATED
+    if (attachmentImage) { // UPDATED
+      imageKey = `images/${Date.now()}-${reportId}-${attachmentFileName || 'attachment.jpg'}` // UPDATED
+      const imageBuffer = Buffer.from(attachmentImage, 'base64') // UPDATED
+      await env.R2.put(imageKey, imageBuffer) // UPDATED
+    } // UPDATED
     
-    const report = {
-      id: reportId || `REPORT-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      customerInfo,
-      packages,
-      installDate,
-      installTime,
-      installAddress,
-      notes,
-      installerName,
-      attachmentImage,
-      attachmentFileName,
-      status: 'saved'
-    }
+    const finalReportId = reportId || `REPORT-${Date.now()}`
     
-    // KV에 저장 (키: report.id, 값: JSON 문자열)
-    await env.REPORTS_KV.put(report.id, JSON.stringify(report))
+    // D1에 저장 // UPDATED
+    await env.DB.prepare(` // UPDATED
+      INSERT OR REPLACE INTO reports ( // UPDATED
+        report_id, customer_info, packages, package_positions, // UPDATED
+        install_date, install_time, install_address, notes, // UPDATED
+        installer_name, image_key, image_filename, // UPDATED
+        created_at, updated_at // UPDATED
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now')) // UPDATED
+    `).bind( // UPDATED
+      finalReportId, // UPDATED
+      JSON.stringify(customerInfo), // UPDATED
+      JSON.stringify(packages), // UPDATED
+      JSON.stringify(packagePositions), // UPDATED
+      installDate, // UPDATED
+      installTime, // UPDATED
+      installAddress, // UPDATED
+      notes, // UPDATED
+      installerName, // UPDATED
+      imageKey, // UPDATED
+      attachmentFileName // UPDATED
+    ).run() // UPDATED
     
-    // 인덱스 목록 업데이트 (검색용)
-    const indexKey = 'report-index'
-    const indexData = await env.REPORTS_KV.get(indexKey)
-    const index = indexData ? JSON.parse(indexData) : []
-    
-    // 기존 항목 제거 후 새 항목 추가
-    const filteredIndex = index.filter((item: any) => item.id !== report.id)
-    filteredIndex.unshift({
-      id: report.id,
-      customerName: customerInfo?.receiverName || '',
-      createdAt: report.createdAt,
-      updatedAt: report.updatedAt,
-      installDate: installDate || ''
-    })
-    
-    await env.REPORTS_KV.put(indexKey, JSON.stringify(filteredIndex))
-    
-    console.log('Report saved successfully:', report.id)
+    console.log('Report saved to D1:', finalReportId) // UPDATED
     return c.json({ 
       success: true, 
       message: '시공 확인서가 저장되었습니다!',
-      reportId: report.id
+      reportId: finalReportId
     })
     
   } catch (error) {
@@ -677,22 +699,40 @@ app.post('/api/reports/save', async (c) => {
   }
 })
 
-// API: 시공 확인서 목록 조회
+// API: 시공 확인서 목록 조회 (D1) // UPDATED
 app.get('/api/reports/list', async (c) => {
   try {
     const { env } = c
     
-    if (!env.REPORTS_KV) {
-      return c.json({ 
-        success: false, 
-        reports: [],
-        message: 'KV 스토리지가 설정되지 않았습니다.' 
-      }, 200)
-    }
+    // D1에서 조회 // UPDATED
+    const { results } = await env.DB.prepare(` // UPDATED
+      SELECT  // UPDATED
+        id, report_id, customer_info, packages, package_positions, // UPDATED
+        install_date, install_time, install_address, notes, // UPDATED
+        installer_name, image_key, image_filename, // UPDATED
+        created_at, updated_at // UPDATED
+      FROM reports // UPDATED
+      ORDER BY created_at DESC // UPDATED
+      LIMIT 100 // UPDATED
+    `).all() // UPDATED
     
-    const indexKey = 'report-index'
-    const indexData = await env.REPORTS_KV.get(indexKey)
-    const reports = indexData ? JSON.parse(indexData) : []
+    // JSON 파싱 // UPDATED
+    const reports = results.map((row: any) => ({ // UPDATED
+      reportId: row.report_id, // UPDATED
+      id: row.report_id, // UPDATED
+      customerInfo: row.customer_info ? JSON.parse(row.customer_info) : null, // UPDATED
+      packages: row.packages ? JSON.parse(row.packages) : [], // UPDATED
+      packagePositions: row.package_positions ? JSON.parse(row.package_positions) : {}, // UPDATED
+      installDate: row.install_date, // UPDATED
+      installTime: row.install_time, // UPDATED
+      installAddress: row.install_address, // UPDATED
+      notes: row.notes, // UPDATED
+      installerName: row.installer_name, // UPDATED
+      imageKey: row.image_key, // UPDATED
+      imageFilename: row.image_filename, // UPDATED
+      createdAt: row.created_at, // UPDATED
+      updatedAt: row.updated_at // UPDATED
+    })) // UPDATED
     
     return c.json({ 
       success: true, 
@@ -709,29 +749,47 @@ app.get('/api/reports/list', async (c) => {
   }
 })
 
-// API: 시공 확인서 불러오기
+// API: 시공 확인서 불러오기 (D1) // UPDATED
 app.get('/api/reports/:id', async (c) => {
   try {
     const { env } = c
     const reportId = c.req.param('id')
     
-    if (!env.REPORTS_KV) {
-      return c.json({ 
-        success: false, 
-        message: 'KV 스토리지가 설정되지 않았습니다.' 
-      }, 404)
-    }
+    // D1에서 조회 // UPDATED
+    const { results } = await env.DB.prepare(` // UPDATED
+      SELECT  // UPDATED
+        id, report_id, customer_info, packages, package_positions, // UPDATED
+        install_date, install_time, install_address, notes, // UPDATED
+        installer_name, image_key, image_filename, // UPDATED
+        created_at, updated_at // UPDATED
+      FROM reports // UPDATED
+      WHERE report_id = ? // UPDATED
+    `).bind(reportId).all() // UPDATED
     
-    const reportData = await env.REPORTS_KV.get(reportId)
+    if (results.length === 0) { // UPDATED
+      return c.json({  // UPDATED
+        success: false,  // UPDATED
+        message: '시공 확인서를 찾을 수 없습니다.'  // UPDATED
+      }, 404) // UPDATED
+    } // UPDATED
     
-    if (!reportData) {
-      return c.json({ 
-        success: false, 
-        message: '시공 확인서를 찾을 수 없습니다.' 
-      }, 404)
-    }
-    
-    const report = JSON.parse(reportData)
+    const row = results[0] as any // UPDATED
+    const report = { // UPDATED
+      reportId: row.report_id, // UPDATED
+      id: row.report_id, // UPDATED
+      customerInfo: row.customer_info ? JSON.parse(row.customer_info) : null, // UPDATED
+      packages: row.packages ? JSON.parse(row.packages) : [], // UPDATED
+      packagePositions: row.package_positions ? JSON.parse(row.package_positions) : {}, // UPDATED
+      installDate: row.install_date, // UPDATED
+      installTime: row.install_time, // UPDATED
+      installAddress: row.install_address, // UPDATED
+      notes: row.notes, // UPDATED
+      installerName: row.installer_name, // UPDATED
+      imageKey: row.image_key, // UPDATED
+      imageFilename: row.image_filename, // UPDATED
+      createdAt: row.created_at, // UPDATED
+      updatedAt: row.updated_at // UPDATED
+    } // UPDATED
     
     return c.json({ 
       success: true, 
