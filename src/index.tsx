@@ -1117,10 +1117,6 @@ app.get('/', (c) => {
                                 class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700">
                             <i class="fas fa-save mr-2"></i>저장하기
                         </button>
-                        <button onclick="downloadPDF()" 
-                                class="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700">
-                            <i class="fas fa-file-pdf mr-2"></i>PDF 다운로드
-                        </button>
                         <button onclick="sendEmail()" 
                                 class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700">
                             <i class="fas fa-envelope mr-2"></i>이메일 발송
