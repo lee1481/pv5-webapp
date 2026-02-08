@@ -1320,56 +1320,74 @@ async function saveReport() {
     console.log('🔍 DEBUG: reportData.packages 내용:', reportData.packages);
     console.log('🔍 DEBUG: reportData.packages 길이:', reportData.packages.length);
     
-    // 로컬스토리지에 저장
-    let savedReports = [];
-    try {
-      savedReports = JSON.parse(localStorage.getItem('pv5_reports') || '[]');
-    } catch (parseError) {
-      console.error('⚠️ localStorage 데이터 손상:', parseError);
-      throw new Error('저장된 데이터가 손상되었습니다. Step 5에서 "데이터 내보내기"로 백업 후 초기화해주세요.');
-    }
-    
-    const existingIndex = savedReports.findIndex(r => r.reportId === reportData.reportId);
-    
-    if (existingIndex >= 0) {
-      savedReports[existingIndex] = reportData;
-    } else {
-      savedReports.unshift(reportData);
-    }
-    
-    try {
-      localStorage.setItem('pv5_reports', JSON.stringify(savedReports));
-      currentReportId = reportData.reportId;
-    } catch (storageError) {
-      console.error('⚠️ localStorage 저장 실패:', storageError);
-      
-      // 용량 초과 확인
-      if (storageError.name === 'QuotaExceededError') {
-        throw new Error(`❌ 저장 실패: 저장 공간이 부족합니다.\n\n해결 방법:\n1. Step 5에서 "전체 데이터 내보내기"로 백업\n2. 오래된 문서 삭제\n3. 다시 저장 시도`);
-      } else {
-        throw new Error(`❌ 저장 실패: ${storageError.message}`);
-      }
-    }
-    
-    // 서버에도 저장 시도 (KV)
-    try {
+    // 🔄 서버에 먼저 저장 (Primary) // UPDATED
+    try { // UPDATED
       const response = await axios.post('/api/reports/save', reportData, {
         timeout: 30000
       });
       
       if (response.data.success) {
+        console.log('✅ Saved to server (D1 + R2)'); // UPDATED
+        
+        // 서버 저장 성공 시 localStorage 캐시 업데이트 (용량 초과 시 무시) // UPDATED
+        try { // UPDATED
+          let savedReports = JSON.parse(localStorage.getItem('pv5_reports') || '[]'); // UPDATED
+          const existingIndex = savedReports.findIndex(r => r.reportId === reportData.reportId); // UPDATED
+          
+          if (existingIndex >= 0) { // UPDATED
+            savedReports[existingIndex] = reportData; // UPDATED
+          } else { // UPDATED
+            savedReports.unshift(reportData); // UPDATED
+          } // UPDATED
+          
+          localStorage.setItem('pv5_reports', JSON.stringify(savedReports)); // UPDATED
+          console.log('✅ Cached to localStorage'); // UPDATED
+        } catch (cacheError) { // UPDATED
+          console.warn('⚠️ localStorage cache failed (ignored):', cacheError); // UPDATED
+        } // UPDATED
+        
+        currentReportId = reportData.reportId; // UPDATED
         alert(`✅ 시공 확인서가 저장되었습니다!\n\n문서 ID: ${reportData.reportId}\n\n신규 접수를 시작합니다.`);
         resetForNewReport();
-      } else {
-        console.warn('Server save failed, using local storage only:', response.data.message);
-        alert(`✅ 시공 확인서가 로컬에 저장되었습니다!\n\n문서 ID: ${reportData.reportId}\n\n신규 접수를 시작합니다.`);
-        resetForNewReport();
-      }
-    } catch (error) {
-      console.warn('Server save failed, using local storage only:', error);
-      alert(`✅ 시공 확인서가 로컬에 저장되었습니다!\n\n문서 ID: ${reportData.reportId}\n\n신규 접수를 시작합니다.`);
-      resetForNewReport();
-    }
+      } else { // UPDATED
+        throw new Error(response.data.message || 'Server save failed'); // UPDATED
+      } // UPDATED
+    } catch (serverError) { // UPDATED
+      // 서버 저장 실패 시 localStorage에만 저장 (Fallback) // UPDATED
+      console.warn('⚠️ Server save failed, fallback to localStorage:', serverError); // UPDATED
+      
+      let savedReports = []; // UPDATED
+      try { // UPDATED
+        savedReports = JSON.parse(localStorage.getItem('pv5_reports') || '[]'); // UPDATED
+      } catch (parseError) { // UPDATED
+        console.error('⚠️ localStorage 데이터 손상:', parseError); // UPDATED
+        throw new Error('저장된 데이터가 손상되었습니다. Step 5에서 "데이터 내보내기"로 백업 후 초기화해주세요.'); // UPDATED
+      } // UPDATED
+      
+      const existingIndex = savedReports.findIndex(r => r.reportId === reportData.reportId); // UPDATED
+      
+      if (existingIndex >= 0) { // UPDATED
+        savedReports[existingIndex] = reportData; // UPDATED
+      } else { // UPDATED
+        savedReports.unshift(reportData); // UPDATED
+      } // UPDATED
+      
+      try { // UPDATED
+        localStorage.setItem('pv5_reports', JSON.stringify(savedReports)); // UPDATED
+        currentReportId = reportData.reportId; // UPDATED
+        alert(`⚠️ 서버 저장 실패, 로컬에만 저장되었습니다.\n\n문서 ID: ${reportData.reportId}\n\n신규 접수를 시작합니다.`); // UPDATED
+        resetForNewReport(); // UPDATED
+      } catch (storageError) { // UPDATED
+        console.error('⚠️ localStorage 저장 실패:', storageError); // UPDATED
+        
+        // 용량 초과 확인 // UPDATED
+        if (storageError.name === 'QuotaExceededError') { // UPDATED
+          throw new Error(`❌ 저장 실패: 저장 공간이 부족합니다.\n\n해결 방법:\n1. Step 5에서 "전체 데이터 내보내기"로 백업\n2. 오래된 문서 삭제\n3. 다시 저장 시도`); // UPDATED
+        } else { // UPDATED
+          throw new Error(`❌ 저장 실패: ${storageError.message}`); // UPDATED
+        } // UPDATED
+      } // UPDATED
+    } // UPDATED
     
   } catch (error) {
     console.error('Save error:', error);
