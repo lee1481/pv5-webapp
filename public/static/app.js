@@ -1255,8 +1255,12 @@ function displayReportsList(reports) {
     
     // 제품명 목록 생성
     const packages = report.packages || [];
-    const productNames = packages.map(pkg => pkg.fullName || pkg.name || '-').join(', ');
-    const displayName = productNames ? `${customerName} | ${productNames}` : customerName;
+    const productNamesList = packages
+      .map(pkg => pkg.fullName || pkg.name)
+      .filter(name => name && name !== '-'); // 빈 값 제거
+    const displayName = productNamesList.length > 0 
+      ? `${customerName} | ${productNamesList.join(', ')}` 
+      : customerName;
     
     return `
       <div class="border border-gray-300 rounded-lg p-4 hover:shadow-lg transition">
