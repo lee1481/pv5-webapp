@@ -1624,6 +1624,10 @@ async function showReportPreview(reportId) {
                     class="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-100">
               <i class="fas fa-times mr-2"></i>닫기
             </button>
+            <button onclick="saveAsJPG()" 
+                    class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700">
+              <i class="fas fa-image mr-2"></i>JPG로 저장하기
+            </button>
             <button onclick="window.print()" 
                     class="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700">
               <i class="fas fa-print mr-2"></i>인쇄
@@ -1660,6 +1664,61 @@ function closePreviewModal(event) {
     }
   }
 }
+
+// JPG로 저장하기 // UPDATED
+async function saveAsJPG() { // UPDATED
+  try { // UPDATED
+    // html2canvas 라이브러리가 로드되어 있는지 확인 // UPDATED
+    if (typeof html2canvas === 'undefined') { // UPDATED
+      // html2canvas 동적 로드 // UPDATED
+      const script = document.createElement('script'); // UPDATED
+      script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'; // UPDATED
+      script.onload = () => saveAsJPG(); // 로드 완료 후 재실행 // UPDATED
+      document.head.appendChild(script); // UPDATED
+      return; // UPDATED
+    } // UPDATED
+    // UPDATED
+    // 모달 내용 캡처 // UPDATED
+    const modalContent = document.querySelector('#previewModal .modal-content'); // UPDATED
+    if (!modalContent) { // UPDATED
+      alert('❌ 저장할 내용을 찾을 수 없습니다.'); // UPDATED
+      return; // UPDATED
+    } // UPDATED
+    // UPDATED
+    // 버튼 영역 임시 숨김 // UPDATED
+    const footer = modalContent.querySelector('.modal-footer'); // UPDATED
+    if (footer) footer.style.display = 'none'; // UPDATED
+    // UPDATED
+    // Canvas로 변환 // UPDATED
+    const canvas = await html2canvas(modalContent, { // UPDATED
+      backgroundColor: '#ffffff', // UPDATED
+      scale: 2, // 고해상도 // UPDATED
+      logging: false, // UPDATED
+      useCORS: true // UPDATED
+    }); // UPDATED
+    // UPDATED
+    // 버튼 영역 다시 표시 // UPDATED
+    if (footer) footer.style.display = 'flex'; // UPDATED
+    // UPDATED
+    // Canvas를 JPG로 변환 및 다운로드 // UPDATED
+    canvas.toBlob((blob) => { // UPDATED
+      const url = URL.createObjectURL(blob); // UPDATED
+      const link = document.createElement('a'); // UPDATED
+      link.href = url; // UPDATED
+      link.download = `PV5_시공확인서_${new Date().toISOString().slice(0, 10)}.jpg`; // UPDATED
+      document.body.appendChild(link); // UPDATED
+      link.click(); // UPDATED
+      document.body.removeChild(link); // UPDATED
+      URL.revokeObjectURL(url); // UPDATED
+      // UPDATED
+      alert('✅ JPG 파일로 저장되었습니다!'); // UPDATED
+    }, 'image/jpeg', 0.95); // JPG 품질 95% // UPDATED
+    // UPDATED
+  } catch (error) { // UPDATED
+    console.error('JPG save error:', error); // UPDATED
+    alert('❌ JPG 저장 실패: ' + error.message); // UPDATED
+  } // UPDATED
+} // UPDATED
 
 // 신규 접수를 위한 초기화
 function resetForNewReport() {
