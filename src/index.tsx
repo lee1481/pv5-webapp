@@ -1113,14 +1113,26 @@ app.get('/', (c) => {
                             </div>
                         </div>
                         <div class="mt-4 flex justify-between items-center">
-                            <button onclick="searchReports()" 
-                                    class="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700">
-                                <i class="fas fa-search mr-2"></i>검색
-                            </button>
-                            <button onclick="resetSearch()" 
-                                    class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600">
-                                <i class="fas fa-redo mr-2"></i>초기화
-                            </button>
+                            <div class="flex gap-2">
+                                <button onclick="searchReports()" 
+                                        class="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700">
+                                    <i class="fas fa-search mr-2"></i>검색
+                                </button>
+                                <button onclick="resetSearch()" 
+                                        class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600">
+                                    <i class="fas fa-redo mr-2"></i>초기화
+                                </button>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="exportAllData()" 
+                                        class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
+                                    <i class="fas fa-download mr-2"></i>전체 데이터 내보내기
+                                </button>
+                                <button onclick="confirmDataReset()" 
+                                        class="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700">
+                                    <i class="fas fa-trash mr-2"></i>데이터 초기화
+                                </button>
+                            </div>
                         </div>
                     </div>
                     

@@ -1182,13 +1182,13 @@ async function saveReport() {
     console.log('🔍 DEBUG: reportData.packages 내용:', reportData.packages);
     console.log('🔍 DEBUG: reportData.packages 길이:', reportData.packages.length);
     
-    // 로컬스토리지에 저장 (에러 방지)
+    // 로컬스토리지에 저장
     let savedReports = [];
     try {
       savedReports = JSON.parse(localStorage.getItem('pv5_reports') || '[]');
     } catch (parseError) {
-      console.warn('⚠️ localStorage 데이터 손상, 초기화합니다:', parseError);
-      savedReports = [];
+      console.error('⚠️ localStorage 데이터 손상:', parseError);
+      throw new Error('저장된 데이터가 손상되었습니다. Step 5에서 "데이터 내보내기"로 백업 후 초기화해주세요.');
     }
     
     const existingIndex = savedReports.findIndex(r => r.reportId === reportData.reportId);
@@ -1203,16 +1203,13 @@ async function saveReport() {
       localStorage.setItem('pv5_reports', JSON.stringify(savedReports));
       currentReportId = reportData.reportId;
     } catch (storageError) {
-      console.warn('⚠️ localStorage 저장 실패 (용량 초과 가능):', storageError);
-      // 용량 초과 시 오래된 문서 삭제 후 재시도
-      if (savedReports.length > 10) {
-        savedReports = savedReports.slice(0, 10); // 최근 10개만 유지
-        try {
-          localStorage.setItem('pv5_reports', JSON.stringify(savedReports));
-          currentReportId = reportData.reportId;
-        } catch (retryError) {
-          console.error('⚠️ localStorage 재시도 실패:', retryError);
-        }
+      console.error('⚠️ localStorage 저장 실패:', storageError);
+      
+      // 용량 초과 확인
+      if (storageError.name === 'QuotaExceededError') {
+        throw new Error(`❌ 저장 실패: 저장 공간이 부족합니다.\n\n해결 방법:\n1. Step 5에서 "전체 데이터 내보내기"로 백업\n2. 오래된 문서 삭제\n3. 다시 저장 시도`);
+      } else {
+        throw new Error(`❌ 저장 실패: ${storageError.message}`);
       }
     }
     
@@ -1238,22 +1235,20 @@ async function saveReport() {
     
   } catch (error) {
     console.error('Save error:', error);
-    // ✅ 조용히 로컬 저장 성공으로 처리
-    alert(`✅ 시공 확인서가 저장되었습니다!\n\n문서 ID: ${reportData.reportId}\n\n신규 접수를 시작합니다.`);
-    resetForNewReport();
+    alert(error.message || '❌ 저장 중 오류가 발생했습니다.');
   }
 }
 
 // 저장된 문서 목록 불러오기
 async function loadReportsList() {
   try {
-    // 로컬스토리지에서 불러오기 (에러 방지)
+    // 로컬스토리지에서 불러오기
     let localReports = [];
     try {
       localReports = JSON.parse(localStorage.getItem('pv5_reports') || '[]');
     } catch (parseError) {
-      console.warn('⚠️ localStorage 데이터 손상, 초기화합니다:', parseError);
-      localStorage.removeItem('pv5_reports');
+      console.error('⚠️ localStorage 데이터 손상:', parseError);
+      alert('❌ 저장된 데이터가 손상되었습니다.\n\n"데이터 내보내기"로 백업을 시도하거나, 데이터 초기화가 필요합니다.');
       localReports = [];
     }
     
@@ -1740,4 +1735,69 @@ function resetForNewReport() {
   console.log('Reset complete. Ready for new report.');
 }
 
+// 전체 데이터 내보내기 (JSON 파일로 다운로드)
+function exportAllData() {
+  try {
+    const allReports = JSON.parse(localStorage.getItem('pv5_reports') || '[]');
+    
+    if (allReports.length === 0) {
+      alert('⚠️ 내보낼 데이터가 없습니다.');
+      return;
+    }
+    
+    // JSON 파일 생성
+    const dataStr = JSON.stringify(allReports, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    
+    // 다운로드 링크 생성
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `PV5_시공확인서_전체데이터_${new Date().toISOString().slice(0, 10)}.json`;
+    
+    // 다운로드 실행
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    alert(`✅ 전체 데이터를 내보냈습니다!\n\n문서 개수: ${allReports.length}개\n파일명: ${link.download}`);
+    
+  } catch (error) {
+    console.error('Export error:', error);
+    alert('❌ 데이터 내보내기 실패: ' + error.message);
+  }
+}
+
+// 데이터 초기화 확인
+function confirmDataReset() {
+  const allReports = JSON.parse(localStorage.getItem('pv5_reports') || '[]');
+  
+  if (allReports.length === 0) {
+    alert('⚠️ 초기화할 데이터가 없습니다.');
+    return;
+  }
+  
+  const confirmed = confirm(
+    `⚠️ 데이터 초기화 경고!\n\n` +
+    `현재 저장된 문서 ${allReports.length}개가 모두 삭제됩니다.\n\n` +
+    `진행하기 전에 "전체 데이터 내보내기"로 백업을 권장합니다.\n\n` +
+    `정말로 초기화하시겠습니까?`
+  );
+  
+  if (confirmed) {
+    const doubleConfirm = confirm(
+      `⚠️ 최종 확인!\n\n` +
+      `${allReports.length}개의 문서가 영구 삭제됩니다.\n` +
+      `이 작업은 되돌릴 수 없습니다.\n\n` +
+      `백업하셨습니까? 계속하시겠습니까?`
+    );
+    
+    if (doubleConfirm) {
+      localStorage.removeItem('pv5_reports');
+      alert('✅ 데이터가 초기화되었습니다.');
+      loadReportsList();
+    }
+  }
+}
 
