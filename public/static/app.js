@@ -1685,6 +1685,16 @@ async function saveAsJPG() { // UPDATED
       return; // UPDATED
     } // UPDATED
     // UPDATED
+    // 스크롤 위치 저장 및 맨 위로 이동 // UPDATED
+    const originalScrollTop = modalContent.scrollTop; // UPDATED
+    modalContent.scrollTop = 0; // UPDATED
+    // UPDATED
+    // 높이 제한 임시 해제 // UPDATED
+    const originalMaxHeight = modalContent.style.maxHeight; // UPDATED
+    const originalOverflow = modalContent.style.overflow; // UPDATED
+    modalContent.style.maxHeight = 'none'; // UPDATED
+    modalContent.style.overflow = 'visible'; // UPDATED
+    // UPDATED
     // 버튼 영역 임시 숨김 // UPDATED
     const footer = modalContent.querySelector('.modal-footer'); // UPDATED
     if (footer) footer.style.display = 'none'; // UPDATED
@@ -1694,10 +1704,15 @@ async function saveAsJPG() { // UPDATED
       backgroundColor: '#ffffff', // UPDATED
       scale: 2, // 고해상도 // UPDATED
       logging: false, // UPDATED
-      useCORS: true // UPDATED
+      useCORS: true, // UPDATED
+      windowWidth: modalContent.scrollWidth, // UPDATED
+      windowHeight: modalContent.scrollHeight // UPDATED
     }); // UPDATED
     // UPDATED
-    // 버튼 영역 다시 표시 // UPDATED
+    // 원래 스타일 복원 // UPDATED
+    modalContent.style.maxHeight = originalMaxHeight; // UPDATED
+    modalContent.style.overflow = originalOverflow; // UPDATED
+    modalContent.scrollTop = originalScrollTop; // UPDATED
     if (footer) footer.style.display = 'flex'; // UPDATED
     // UPDATED
     // Canvas를 JPG로 변환 및 다운로드 // UPDATED
