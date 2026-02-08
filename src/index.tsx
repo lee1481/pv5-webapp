@@ -1015,8 +1015,33 @@ app.get('/', (c) => {
                             <label class="block text-sm font-bold text-gray-700 mb-2">
                                 <i class="fas fa-clock mr-2"></i>설치 시간
                             </label>
-                            <input type="time" id="installTime" 
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <div class="space-y-2">
+                                <div class="flex gap-2">
+                                    <button type="button" id="timePeriodAM" onclick="selectTimePeriod('AM')"
+                                            class="flex-1 px-4 py-2 border-2 border-gray-300 rounded-lg hover:bg-gray-50">
+                                        오전
+                                    </button>
+                                    <button type="button" id="timePeriodPM" onclick="selectTimePeriod('PM')"
+                                            class="flex-1 px-4 py-2 border-2 border-gray-300 rounded-lg hover:bg-gray-50">
+                                        오후
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-5 gap-2">
+                                    <button type="button" onclick="selectTimeHour('9')" class="time-hour-btn px-3 py-2 border border-gray-300 rounded hover:bg-blue-50">9시</button>
+                                    <button type="button" onclick="selectTimeHour('10')" class="time-hour-btn px-3 py-2 border border-gray-300 rounded hover:bg-blue-50">10시</button>
+                                    <button type="button" onclick="selectTimeHour('11')" class="time-hour-btn px-3 py-2 border border-gray-300 rounded hover:bg-blue-50">11시</button>
+                                    <button type="button" onclick="selectTimeHour('12')" class="time-hour-btn px-3 py-2 border border-gray-300 rounded hover:bg-blue-50">12시</button>
+                                    <button type="button" onclick="selectTimeHour('1')" class="time-hour-btn px-3 py-2 border border-gray-300 rounded hover:bg-blue-50">1시</button>
+                                    <button type="button" onclick="selectTimeHour('2')" class="time-hour-btn px-3 py-2 border border-gray-300 rounded hover:bg-blue-50">2시</button>
+                                    <button type="button" onclick="selectTimeHour('3')" class="time-hour-btn px-3 py-2 border border-gray-300 rounded hover:bg-blue-50">3시</button>
+                                    <button type="button" onclick="selectTimeHour('4')" class="time-hour-btn px-3 py-2 border border-gray-300 rounded hover:bg-blue-50">4시</button>
+                                    <button type="button" onclick="selectTimeHour('5')" class="time-hour-btn px-3 py-2 border border-gray-300 rounded hover:bg-blue-50">5시</button>
+                                    <button type="button" onclick="selectTimeHour('6')" class="time-hour-btn px-3 py-2 border border-gray-300 rounded hover:bg-blue-50">6시</button>
+                                </div>
+                                <input type="text" id="installTime" readonly
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-center font-semibold"
+                                       placeholder="시간을 선택하세요">
+                            </div>
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-sm font-bold text-gray-700 mb-2">

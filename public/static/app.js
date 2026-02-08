@@ -771,6 +771,56 @@ function copyCustomerAddress() { // UPDATED
   } // UPDATED
 } // UPDATED
 
+// 설치 시간 선택 - 오전/오후 // UPDATED
+let selectedTimePeriod = ''; // UPDATED
+let selectedTimeHour = ''; // UPDATED
+// UPDATED
+function selectTimePeriod(period) { // UPDATED
+  selectedTimePeriod = period; // UPDATED
+  // UPDATED
+  // 버튼 스타일 업데이트 // UPDATED
+  const amBtn = document.getElementById('timePeriodAM'); // UPDATED
+  const pmBtn = document.getElementById('timePeriodPM'); // UPDATED
+  // UPDATED
+  if (period === 'AM') { // UPDATED
+    amBtn.classList.add('bg-blue-600', 'text-white', 'border-blue-600'); // UPDATED
+    amBtn.classList.remove('border-gray-300'); // UPDATED
+    pmBtn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600'); // UPDATED
+    pmBtn.classList.add('border-gray-300'); // UPDATED
+  } else { // UPDATED
+    pmBtn.classList.add('bg-blue-600', 'text-white', 'border-blue-600'); // UPDATED
+    pmBtn.classList.remove('border-gray-300'); // UPDATED
+    amBtn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600'); // UPDATED
+    amBtn.classList.add('border-gray-300'); // UPDATED
+  } // UPDATED
+  // UPDATED
+  updateInstallTime(); // UPDATED
+} // UPDATED
+// UPDATED
+function selectTimeHour(hour) { // UPDATED
+  selectedTimeHour = hour; // UPDATED
+  // UPDATED
+  // 모든 시간 버튼 스타일 초기화 // UPDATED
+  document.querySelectorAll('.time-hour-btn').forEach(btn => { // UPDATED
+    btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600'); // UPDATED
+    btn.classList.add('border-gray-300'); // UPDATED
+  }); // UPDATED
+  // UPDATED
+  // 선택된 버튼 스타일 업데이트 // UPDATED
+  event.target.classList.add('bg-blue-600', 'text-white', 'border-blue-600'); // UPDATED
+  event.target.classList.remove('border-gray-300'); // UPDATED
+  // UPDATED
+  updateInstallTime(); // UPDATED
+} // UPDATED
+// UPDATED
+function updateInstallTime() { // UPDATED
+  if (selectedTimePeriod && selectedTimeHour) { // UPDATED
+    const periodText = selectedTimePeriod === 'AM' ? '오전' : '오후'; // UPDATED
+    const timeText = `${periodText} ${selectedTimeHour}시`; // UPDATED
+    document.getElementById('installTime').value = timeText; // UPDATED
+  } // UPDATED
+} // UPDATED
+
 // 단계 이동
 function nextStep(step) {
   // 유효성 검사
