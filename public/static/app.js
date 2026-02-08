@@ -1153,6 +1153,17 @@ async function saveReport() {
       imageFileName = uploadedImageFile.name;
     }
     
+    // 🔍 디버깅: 저장 전 selectedPackages 확인
+    console.log('🔍 DEBUG: selectedPackages 내용:', selectedPackages);
+    console.log('🔍 DEBUG: selectedPackages 길이:', selectedPackages.length);
+    if (selectedPackages.length > 0) {
+      console.log('🔍 DEBUG: 첫 번째 제품:', {
+        id: selectedPackages[0].id,
+        name: selectedPackages[0].name,
+        fullName: selectedPackages[0].fullName
+      });
+    }
+    
     const reportData = {
       reportId: currentReportId || `REPORT-${Date.now()}`,
       customerInfo: ocrData,
@@ -1163,8 +1174,13 @@ async function saveReport() {
       notes,
       installerName,
       attachmentImage: imageBase64,
-      attachmentFileName: imageFileName
+      attachmentFileName: imageFileName,
+      createdAt: new Date().toISOString() // 생성 시간 추가
     };
+    
+    // 🔍 디버깅: reportData.packages 확인
+    console.log('🔍 DEBUG: reportData.packages 내용:', reportData.packages);
+    console.log('🔍 DEBUG: reportData.packages 길이:', reportData.packages.length);
     
     // 로컬스토리지에 저장
     const savedReports = JSON.parse(localStorage.getItem('pv5_reports') || '[]');
