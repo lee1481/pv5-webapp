@@ -1041,13 +1041,12 @@ function displayFinalPreview() {
       
       <!-- 접수/작성자 정보 -->
       <div class="mt-8">
-        <div class="border-2 border-gray-300 rounded-lg p-4 max-w-md">
-          <label for="installerName" class="font-black text-xl mb-3 block">접수 / 작성자:</label>
+        <div class="border-2 border-gray-300 rounded-lg p-4 flex items-center gap-4"> <!-- UPDATED -->
+          <label for="installerName" class="font-bold text-lg whitespace-nowrap">접수 / 작성자:</label> <!-- UPDATED -->
           <input type="text" 
                  id="installerName" 
                  placeholder="홍길동"
-                 class="w-full px-4 py-3 border-b-2 border-gray-300 focus:border-blue-500 focus:outline-none text-lg"
-                 style="border-top: none; border-left: none; border-right: none;">
+                 class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"> <!-- UPDATED -->
         </div>
       </div>
       
