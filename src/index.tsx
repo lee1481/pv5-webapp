@@ -634,6 +634,17 @@ app.post('/api/upload-image', async (c) => { // UPDATED
 app.post('/api/reports/save', async (c) => {
   try {
     const { env } = c
+    
+    // 바인딩 확인 // UPDATED
+    if (!env.DB) { // UPDATED
+      console.error('❌ D1 binding not found!', Object.keys(env)) // UPDATED
+      return c.json({ // UPDATED
+        success: false, // UPDATED
+        message: 'D1 데이터베이스가 연결되지 않았습니다.', // UPDATED
+        error: 'D1 binding missing' // UPDATED
+      }, 500) // UPDATED
+    } // UPDATED
+    
     const body = await c.req.json()
     
     const {

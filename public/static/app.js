@@ -1382,9 +1382,12 @@ async function saveReport() {
         
         // 용량 초과 확인 // UPDATED
         if (storageError.name === 'QuotaExceededError') { // UPDATED
-          throw new Error(`❌ 저장 실패: 저장 공간이 부족합니다.\n\n해결 방법:\n1. Step 5에서 "전체 데이터 내보내기"로 백업\n2. 오래된 문서 삭제\n3. 다시 저장 시도`); // UPDATED
+          // 서버 저장도 실패했고 로컬 저장도 실패한 경우 // UPDATED
+          alert(`⚠️ 알림\n\n서버 저장과 로컬 저장이 모두 실패했습니다.\n\n원인: 브라우저 저장 공간 부족\n\n해결 방법:\n1. 브라우저를 새로고침 (Ctrl+F5 또는 Cmd+Shift+R)\n2. Step 5에서 "전체 데이터 내보내기"로 백업\n3. 브라우저 콘솔에서 다음 명령 실행:\n   localStorage.clear()\n4. 페이지 새로고침 후 다시 저장\n\n참고: 서버 연결이 복구되면 자동으로 서버에 저장됩니다.`); // UPDATED
+          return; // 오류를 throw하지 않고 종료 // UPDATED
         } else { // UPDATED
-          throw new Error(`❌ 저장 실패: ${storageError.message}`); // UPDATED
+          alert(`⚠️ 저장 실패\n\n${storageError.message}\n\n브라우저를 새로고침하고 다시 시도해주세요.`); // UPDATED
+          return; // UPDATED
         } // UPDATED
       } // UPDATED
     } // UPDATED
