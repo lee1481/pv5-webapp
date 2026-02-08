@@ -757,6 +757,20 @@ function selectPackage(packageId) {
   displayPackages(packages);
 }
 
+// 고객 주소 복사 // UPDATED
+function copyCustomerAddress() { // UPDATED
+  if (!ocrData || !ocrData.receiverAddress) { // UPDATED
+    alert('⚠️ 고객 주소 정보가 없습니다. 먼저 거래명세서를 업로드해주세요.'); // UPDATED
+    return; // UPDATED
+  } // UPDATED
+  // UPDATED
+  const installAddressInput = document.getElementById('installAddress'); // UPDATED
+  if (installAddressInput) { // UPDATED
+    installAddressInput.value = ocrData.receiverAddress; // UPDATED
+    alert('✅ 고객 주소가 복사되었습니다!'); // UPDATED
+  } // UPDATED
+} // UPDATED
+
 // 단계 이동
 function nextStep(step) {
   // 유효성 검사
