@@ -1247,18 +1247,18 @@ async function loadReportsList() {
       }
     }
     
-    // 서버에서도 불러오기 시도
+    // 🔧 수정: localStorage 데이터 우선 사용 (packages 필드 보존)
+    allReports = localReports;
+    
+    // 서버에서도 불러오기 시도 (백업용)
     try {
       const response = await axios.get('/api/reports/list', { timeout: 10000 });
       if (response.data.success && response.data.reports.length > 0) {
-        // 서버 데이터 우선
-        allReports = response.data.reports;
-      } else {
-        allReports = localReports;
+        console.log('✅ Server reports available as backup');
+        // 서버 데이터는 참조용으로만 사용
       }
     } catch (error) {
-      console.warn('Server load failed, using local storage:', error);
-      allReports = localReports;
+      console.warn('Server load failed, using local storage only:', error);
     }
     
     displayReportsList(allReports);
