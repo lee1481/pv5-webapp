@@ -504,6 +504,7 @@ app.post('/api/send-email', async (c) => {
           ul { list-style-type: none; padding-left: 0; }
           li { padding: 5px 0; }
         </style>
+        <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
       </head>
       <body>
         <div class="container">
@@ -891,6 +892,7 @@ app.get('/', (c) => {
             }
           }
         </style>
+        <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     </head>
     <body class="bg-gray-50">
         <div class="min-h-screen">
@@ -1124,9 +1126,13 @@ app.get('/', (c) => {
                                 </button>
                             </div>
                             <div class="flex gap-2">
-                                <button onclick="exportAllData()" 
+                                <button onclick="exportToExcel()" 
                                         class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
-                                    <i class="fas fa-download mr-2"></i>전체 데이터 내보내기
+                                    <i class="fas fa-file-excel mr-2"></i>Excel 내보내기
+                                </button>
+                                <button onclick="document.getElementById('excelFileInput').click()" 
+                                        class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                                    <i class="fas fa-upload mr-2"></i>데이터 가져오기
                                 </button>
                                 <button onclick="confirmDataReset()" 
                                         class="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700">
@@ -1134,6 +1140,9 @@ app.get('/', (c) => {
                                 </button>
                             </div>
                         </div>
+                        
+                        <!-- 숨겨진 Excel 파일 입력 -->
+                        <input type="file" id="excelFileInput" accept=".xlsx,.xls" style="display:none;" onchange="importFromExcel(event)" />
                     </div>
                     
                     <!-- 문서 목록 -->

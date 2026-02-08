@@ -1735,8 +1735,8 @@ function resetForNewReport() {
   console.log('Reset complete. Ready for new report.');
 }
 
-// 전체 데이터 내보내기 (JSON 파일로 다운로드)
-function exportAllData() {
+// Excel 내보내기
+function exportToExcel() {
   try {
     const allReports = JSON.parse(localStorage.getItem('pv5_reports') || '[]');
     
@@ -1745,28 +1745,142 @@ function exportAllData() {
       return;
     }
     
-    // JSON 파일 생성
-    const dataStr = JSON.stringify(allReports, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    // Excel 데이터 준비
+    const excelData = allReports.map(report => {
+      const customerInfo = report.customerInfo || {};
+      const packages = report.packages || [];
+      const productNames = packages.map(pkg => pkg.fullName || pkg.name).filter(name => name && name !== '-').join(', ');
+      
+      return {
+        '문서ID': report.reportId || report.id || '-',
+        '고객명': customerInfo.receiverName || report.customerName || '-',
+        '연락처': customerInfo.phone || '-',
+        '주소': customerInfo.address || '-',
+        '설치날짜': report.installDate || '-',
+        '설치시간': report.installTime || '-',
+        '설치주소': report.installAddress || '-',
+        '제품명': productNames || '-',
+        '특이사항': report.notes || '-',
+        '작성자': report.installerName || '-',
+        '저장시간': report.createdAt || '-'
+      };
+    });
     
-    // 다운로드 링크 생성
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `PV5_시공확인서_전체데이터_${new Date().toISOString().slice(0, 10)}.json`;
+    // Excel 워크북 생성
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '시공확인서');
     
-    // 다운로드 실행
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    // 컬럼 너비 자동 조정
+    const colWidths = [
+      { wch: 20 }, // 문서ID
+      { wch: 12 }, // 고객명
+      { wch: 15 }, // 연락처
+      { wch: 30 }, // 주소
+      { wch: 12 }, // 설치날짜
+      { wch: 10 }, // 설치시간
+      { wch: 30 }, // 설치주소
+      { wch: 35 }, // 제품명
+      { wch: 25 }, // 특이사항
+      { wch: 12 }, // 작성자
+      { wch: 20 }  // 저장시간
+    ];
+    ws['!cols'] = colWidths;
     
-    alert(`✅ 전체 데이터를 내보냈습니다!\n\n문서 개수: ${allReports.length}개\n파일명: ${link.download}`);
+    // 파일 다운로드
+    const fileName = `PV5_시공확인서_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    
+    alert(`✅ Excel 파일을 내보냈습니다!\n\n문서 개수: ${allReports.length}개\n파일명: ${fileName}`);
     
   } catch (error) {
-    console.error('Export error:', error);
-    alert('❌ 데이터 내보내기 실패: ' + error.message);
+    console.error('Excel export error:', error);
+    alert('❌ Excel 내보내기 실패: ' + error.message);
   }
+}
+
+// Excel 가져오기
+function importFromExcel(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      // Excel 파일 읽기
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      
+      // 첫 번째 시트 읽기
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(firstSheet);
+      
+      if (rows.length === 0) {
+        alert('⚠️ Excel 파일에 데이터가 없습니다.');
+        event.target.value = '';
+        return;
+      }
+      
+      // 기존 데이터 확인
+      const existingReports = JSON.parse(localStorage.getItem('pv5_reports') || '[]');
+      const confirmMsg = existingReports.length > 0
+        ? `⚠️ 기존 데이터 ${existingReports.length}개가 모두 삭제됩니다!\n\nExcel 파일의 ${rows.length}개 문서로 덮어쓰시겠습니까?`
+        : `Excel 파일에서 ${rows.length}개 문서를 가져오시겠습니까?`;
+      
+      if (!confirm(confirmMsg)) {
+        event.target.value = '';
+        return;
+      }
+      
+      // Excel 데이터를 앱 형식으로 변환
+      const importedReports = rows.map(row => {
+        // 제품명 파싱 (쉼표로 구분)
+        const productNamesStr = row['제품명'] || '';
+        const productNames = productNamesStr.split(',').map(name => name.trim()).filter(name => name && name !== '-');
+        const packages = productNames.map(name => ({
+          name: name,
+          fullName: name,
+          id: '',
+          brand: '',
+          price: 0
+        }));
+        
+        return {
+          reportId: row['문서ID'] || `REPORT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          customerInfo: {
+            receiverName: row['고객명'] || '',
+            phone: row['연락처'] || '',
+            address: row['주소'] || ''
+          },
+          packages: packages,
+          installDate: row['설치날짜'] || '',
+          installTime: row['설치시간'] || '',
+          installAddress: row['설치주소'] || '',
+          notes: row['특이사항'] || '',
+          installerName: row['작성자'] || '',
+          createdAt: row['저장시간'] || new Date().toISOString()
+        };
+      });
+      
+      // 로컬스토리지에 저장 (덮어쓰기)
+      localStorage.setItem('pv5_reports', JSON.stringify(importedReports));
+      
+      alert(`✅ Excel 데이터를 가져왔습니다!\n\n가져온 문서: ${importedReports.length}개`);
+      
+      // 목록 새로고침
+      loadReportsList();
+      
+      // 파일 입력 초기화
+      event.target.value = '';
+      
+    } catch (error) {
+      console.error('Excel import error:', error);
+      alert('❌ Excel 파일 읽기 실패: ' + error.message);
+      event.target.value = '';
+    }
+  };
+  
+  reader.readAsArrayBuffer(file);
 }
 
 // 데이터 초기화 확인
