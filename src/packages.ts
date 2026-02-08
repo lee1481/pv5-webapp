@@ -87,6 +87,7 @@ export const milwaukeePackages: ProductPackage[] = [
     description: '격벽타공판 + 격벽2단선반 + 3단선반 + 툴박스',
     price: 5200000,
     image: '/static/images/milwaukee-smart.jpg',
+    hasPositionOption: true, // UPDATED
     sections: [
       {
         title: '기초자재',
@@ -304,6 +305,7 @@ export const kiaPackages: ProductPackage[] = [
     description: '격벽타공판 + 2단선반 + 3단선반',
     price: 4500000,
     image: '/static/images/kia-smart.jpg',
+    hasPositionOption: true, // UPDATED
     sections: [
       {
         title: '기초자재',
