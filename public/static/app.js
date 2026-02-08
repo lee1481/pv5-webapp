@@ -1211,6 +1211,26 @@ async function loadReportsList() {
     // 로컬스토리지에서 불러오기
     const localReports = JSON.parse(localStorage.getItem('pv5_reports') || '[]');
     
+    // 🔧 데이터 마이그레이션: packages 필드가 없으면 빈 배열 추가
+    let migrated = false;
+    localReports.forEach(report => {
+      if (!report.packages) {
+        report.packages = [];
+        migrated = true;
+        console.log(`✅ Migrated report ${report.reportId}: added empty packages array`);
+      }
+    });
+    
+    // 마이그레이션 후 다시 저장
+    if (migrated) {
+      try {
+        localStorage.setItem('pv5_reports', JSON.stringify(localReports));
+        console.log('✅ Migration saved to localStorage');
+      } catch (e) {
+        console.warn('⚠️ Failed to save migration:', e);
+      }
+    }
+    
     // 서버에서도 불러오기 시도
     try {
       const response = await axios.get('/api/reports/list', { timeout: 10000 });
