@@ -1743,11 +1743,11 @@ async function showReportPreview(reportId) {
                       <div class="font-bold text-lg">${pkg.fullName || '-'}</div>
                       <div class="text-sm text-gray-600 mt-1">${pkg.description || '-'}</div>
                       ${pkg.hasPositionOption && packagePositions[pkg.id] ? ` <!-- UPDATED -->
-                        <div class="mt-2"> <!-- UPDATED -->
-                          <strong class="text-gray-700">3단 선반 설치:</strong> <!-- UPDATED -->
-                          ${packagePositions[pkg.id].left ? '<span class="inline-block px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg font-semibold mr-2">좌측</span>' : ''} <!-- UPDATED -->
-                          ${packagePositions[pkg.id].right ? '<span class="inline-block px-3 py-1.5 bg-green-100 text-green-700 rounded-lg font-semibold">우측</span>' : ''} <!-- UPDATED -->
-                          ${!packagePositions[pkg.id].left && !packagePositions[pkg.id].right ? '<span class="text-red-600 font-semibold">미선택</span>' : ''} <!-- UPDATED -->
+                        <div class="mt-3 p-3 bg-gray-50 rounded-lg border-2 border-gray-200"> <!-- UPDATED -->
+                          <strong class="text-gray-800 text-base">3단 선반 설치:</strong> <!-- UPDATED -->
+                          ${packagePositions[pkg.id].left ? '<span class="inline-block px-4 py-2 bg-blue-500 text-white rounded-lg font-bold text-base mr-2">좌측</span>' : ''} <!-- UPDATED -->
+                          ${packagePositions[pkg.id].right ? '<span class="inline-block px-4 py-2 bg-green-500 text-white rounded-lg font-bold text-base">우측</span>' : ''} <!-- UPDATED -->
+                          ${!packagePositions[pkg.id].left && !packagePositions[pkg.id].right ? '<span class="text-red-600 font-bold text-base">미선택</span>' : ''} <!-- UPDATED -->
                         </div> <!-- UPDATED -->
                       ` : ''} <!-- UPDATED -->
                     </div>
