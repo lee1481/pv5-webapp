@@ -52,6 +52,11 @@
     position: static !important;
     background: white !important;
   }
+  
+  /* 인쇄 시 3단 선반 설치 위치 배지 표시 */ /* UPDATED */
+  .no-print-hide { /* UPDATED */
+    display: inline-block !important; /* UPDATED */
+  } /* UPDATED */
 }
 
 .material-table {

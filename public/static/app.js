@@ -1460,6 +1460,19 @@ function displayReportsList(reports) {
       ? `${customerName} | ${productNamesList.join(', ')}` 
       : customerName;
     
+    // 3단 선반 설치 위치 정보 생성 // UPDATED
+    const packagePositions = report.packagePositions || {}; // UPDATED
+    const positionBadges = packages // UPDATED
+      .filter(pkg => pkg.hasPositionOption && packagePositions[pkg.id]) // UPDATED
+      .map(pkg => { // UPDATED
+        const pos = packagePositions[pkg.id]; // UPDATED
+        let badges = []; // UPDATED
+        if (pos.left) badges.push('<span class="inline-block px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs mr-1 no-print-hide">3단 선반 설치 좌측</span>'); // UPDATED
+        if (pos.right) badges.push('<span class="inline-block px-2 py-1 bg-green-100 text-green-700 rounded text-xs no-print-hide">3단 선반 설치 우측</span>'); // UPDATED
+        return badges.join(''); // UPDATED
+      }) // UPDATED
+      .join(''); // UPDATED
+    
     return `
       <div class="border border-gray-300 rounded-lg p-4 hover:shadow-lg transition">
         <div class="flex justify-between items-start">
@@ -1468,6 +1481,7 @@ function displayReportsList(reports) {
               <i class="fas fa-file-alt text-blue-600 mr-2"></i>
               ${displayName}
             </h3>
+            ${positionBadges ? `<div class="mb-2">${positionBadges}</div>` : ''} <!-- UPDATED -->
             <div class="grid grid-cols-2 gap-2 text-sm text-gray-600">
               <div><i class="fas fa-calendar mr-2"></i>설치 날짜: ${installDate}</div>
               <div><i class="fas fa-clock mr-2"></i>저장 시간: ${createdAt}</div>
