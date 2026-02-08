@@ -1253,13 +1253,18 @@ function displayReportsList(reports) {
     const createdAt = report.createdAt ? new Date(report.createdAt).toLocaleString('ko-KR') : '-';
     const reportId = report.reportId || report.id || `REPORT-${index}`;
     
+    // 제품명 목록 생성
+    const packages = report.packages || [];
+    const productNames = packages.map(pkg => pkg.fullName || pkg.name || '-').join(', ');
+    const displayName = productNames ? `${customerName} | ${productNames}` : customerName;
+    
     return `
       <div class="border border-gray-300 rounded-lg p-4 hover:shadow-lg transition">
         <div class="flex justify-between items-start">
           <div class="flex-1">
             <h3 class="text-lg font-bold text-gray-800 mb-2">
               <i class="fas fa-file-alt text-blue-600 mr-2"></i>
-              ${customerName}
+              ${displayName}
             </h3>
             <div class="grid grid-cols-2 gap-2 text-sm text-gray-600">
               <div><i class="fas fa-calendar mr-2"></i>설치 날짜: ${installDate}</div>
