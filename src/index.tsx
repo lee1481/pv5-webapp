@@ -705,16 +705,18 @@ app.get('/api/reports/list', async (c) => {
     const { env } = c
     
     // D1에서 조회 // UPDATED
-    const { results } = await env.DB.prepare(` // UPDATED
-      SELECT  // UPDATED
-        id, report_id, customer_info, packages, package_positions, // UPDATED
-        install_date, install_time, install_address, notes, // UPDATED
-        installer_name, image_key, image_filename, // UPDATED
-        created_at, updated_at // UPDATED
-      FROM reports // UPDATED
-      ORDER BY created_at DESC // UPDATED
-      LIMIT 100 // UPDATED
-    `).all() // UPDATED
+    const stmt = env.DB.prepare(`
+      SELECT 
+        id, report_id, customer_info, packages, package_positions,
+        install_date, install_time, install_address, notes,
+        installer_name, image_key, image_filename,
+        created_at, updated_at
+      FROM reports
+      ORDER BY created_at DESC
+      LIMIT 100
+    `);
+    
+    const { results } = await stmt.all(); // UPDATED
     
     // JSON 파싱 // UPDATED
     const reports = results.map((row: any) => ({ // UPDATED
