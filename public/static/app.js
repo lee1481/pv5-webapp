@@ -2329,28 +2329,47 @@ async function loadRevenueList(filterType = 'all', startDate = null, endDate = n
       
       displayRevenueList(filteredReports);
     } else {
-      alert('❌ ' + (response.data.message || '매출 목록 로드 실패'));
+      // 마이그레이션 메시지가 있으면 로그만 출력 (UI에 이미 표시됨)
+      if (response.data.message) {
+        console.log('Revenue list info:', response.data.message);
+      }
+      // 빈 목록 표시 (오류 alert 제거)
+      displayRevenueList([]);
     }
   } catch (error) {
     console.error('Load revenue list error:', error);
-    alert('❌ 매출 목록을 불러오는 중 오류가 발생했습니다.');
+    // 오류 발생 시에도 빈 목록 표시 (alert 제거)
+    // Step 6 UI에 이미 마이그레이션 안내가 표시되어 있음
+    displayRevenueList([]);
   }
 }
 
 // 매출 목록 표시
 function displayRevenueList(reports) {
-  const listContainer = document.getElementById('revenueList');
-  const statsContainer = document.getElementById('revenueStats');
+  // 실제 HTML 구조에 맞게 수정
+  const tableBody = document.getElementById('revenueTableBody');
+  const totalRevenueEl = document.getElementById('totalRevenue');
+  const totalCountEl = document.getElementById('totalCount');
+  const averageRevenueEl = document.getElementById('averageRevenue');
+  
+  if (!tableBody) {
+    console.error('revenueTableBody not found');
+    return;
+  }
   
   if (!reports || reports.length === 0) {
-    listContainer.innerHTML = `
-      <div class="text-center py-12 text-gray-500">
-        <i class="fas fa-chart-line text-6xl mb-4"></i>
-        <p>시공 완료된 문서가 없습니다.</p>
-        <p class="text-sm mt-2">Step 5에서 "시공 완료" 버튼을 클릭하세요.</p>
-      </div>
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="7" class="border border-gray-300 px-4 py-12 text-center text-gray-500">
+          <i class="fas fa-chart-line text-6xl mb-4 block"></i>
+          <p>시공 완료된 문서가 없습니다.</p>
+          <p class="text-sm mt-2">Step 5에서 "시공 완료" 버튼을 클릭하세요.</p>
+        </td>
+      </tr>
     `;
-    statsContainer.innerHTML = '';
+    if (totalRevenueEl) totalRevenueEl.textContent = '₩0';
+    if (totalCountEl) totalCountEl.textContent = '0건';
+    if (averageRevenueEl) averageRevenueEl.textContent = '₩0';
     return;
   }
   
@@ -2365,7 +2384,6 @@ function displayRevenueList(reports) {
     let reportConsumerPrice = 0;
     
     packages.forEach(pkg => {
-      // margins.ts에서 매출 데이터 가져오기 (여기서는 가격표 기준)
       const margin = getMarginByPackageId(pkg.id);
       if (margin) {
         reportRevenue += margin.revenue;
@@ -2383,81 +2401,39 @@ function displayRevenueList(reports) {
     });
   });
   
-  // 통계 표시
-  statsContainer.innerHTML = `
-    <div class="grid grid-cols-3 gap-6 mb-8">
-      <div class="bg-blue-50 p-6 rounded-lg border-l-4 border-blue-600">
-        <div class="text-sm text-gray-600 mb-2">총 매출액 (지사 마진)</div>
-        <div class="text-3xl font-bold text-blue-600">₩${totalRevenue.toLocaleString()}</div>
-      </div>
-      <div class="bg-green-50 p-6 rounded-lg border-l-4 border-green-600">
-        <div class="text-sm text-gray-600 mb-2">총 소비자 가격</div>
-        <div class="text-3xl font-bold text-green-600">₩${totalConsumerPrice.toLocaleString()}</div>
-      </div>
-      <div class="bg-purple-50 p-6 rounded-lg border-l-4 border-purple-600">
-        <div class="text-sm text-gray-600 mb-2">시공 건수</div>
-        <div class="text-3xl font-bold text-purple-600">${reports.length}<span class="text-lg">건</span></div>
-      </div>
-    </div>
-  `;
+  // 통계 업데이트
+  const averageRevenue = reports.length > 0 ? Math.round(totalRevenue / reports.length) : 0;
+  if (totalRevenueEl) totalRevenueEl.textContent = '₩' + totalRevenue.toLocaleString();
+  if (totalCountEl) totalCountEl.textContent = reports.length + '건';
+  if (averageRevenueEl) averageRevenueEl.textContent = '₩' + averageRevenue.toLocaleString();
   
-  // 목록 표시
-  listContainer.innerHTML = `
-    <div class="overflow-x-auto">
-      <table class="w-full border-collapse">
-        <thead class="bg-gray-100">
-          <tr>
-            <th class="border px-4 py-3 text-left">시공 날짜</th>
-            <th class="border px-4 py-3 text-left">고객명</th>
-            <th class="border px-4 py-3 text-left">제품명</th>
-            <th class="border px-4 py-3 text-right">소비자 가격</th>
-            <th class="border px-4 py-3 text-right">매출 (마진)</th>
-            <th class="border px-4 py-3 text-center">마진율</th>
-            <th class="border px-4 py-3 text-left">시공자</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${revenueDetails.map(report => {
-            const customerName = report.customerInfo?.receiverName || '-';
-            const installDate = report.installDate || '-';
-            const installerName = report.installerName || '-';
-            const packages = report.packages || [];
-            const productNames = packages.map(p => p.fullName || p.name).join(', ');
-            const marginRate = report.consumerPrice > 0 
-              ? ((report.revenue / report.consumerPrice) * 100).toFixed(1) 
-              : 0;
-            
-            return `
-              <tr class="hover:bg-gray-50">
-                <td class="border px-4 py-3">${installDate}</td>
-                <td class="border px-4 py-3 font-semibold">${customerName}</td>
-                <td class="border px-4 py-3 text-sm">${productNames || '-'}</td>
-                <td class="border px-4 py-3 text-right">₩${report.consumerPrice.toLocaleString()}</td>
-                <td class="border px-4 py-3 text-right font-bold text-blue-600">₩${report.revenue.toLocaleString()}</td>
-                <td class="border px-4 py-3 text-center">
-                  <span class="inline-block px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
-                    ${marginRate}%
-                  </span>
-                </td>
-                <td class="border px-4 py-3">${installerName}</td>
-              </tr>
-            `;
-          }).join('')}
-        </tbody>
-        <tfoot class="bg-gray-100 font-bold">
-          <tr>
-            <td colspan="3" class="border px-4 py-3 text-right">합계</td>
-            <td class="border px-4 py-3 text-right">₩${totalConsumerPrice.toLocaleString()}</td>
-            <td class="border px-4 py-3 text-right text-blue-600">₩${totalRevenue.toLocaleString()}</td>
-            <td class="border px-4 py-3 text-center">
-              ${totalConsumerPrice > 0 ? `${((totalRevenue / totalConsumerPrice) * 100).toFixed(1)}%` : '-'}
-            </td>
-            <td class="border px-4 py-3">${reports.length}건</td>
-          </tr>
-        </tfoot>
-      </table>
-    </div>
-  `;
+  // 테이블 목록 업데이트
+  tableBody.innerHTML = revenueDetails.map(report => {
+    const customerName = report.customerInfo?.receiverName || '-';
+    const installDate = report.installDate || '-';
+    const installerName = report.installerName || '-';
+    const packages = report.packages || [];
+    const productNames = packages.map(p => p.fullName || p.name).join(', ');
+    const marginRate = report.consumerPrice > 0 
+      ? ((report.revenue / report.consumerPrice) * 100).toFixed(1) 
+      : 0;
+    
+    return `
+      <tr class="hover:bg-gray-50">
+        <td class="border border-gray-300 px-4 py-3">${installDate}</td>
+        <td class="border border-gray-300 px-4 py-3 font-semibold">${customerName}</td>
+        <td class="border border-gray-300 px-4 py-3 text-sm">${productNames || '-'}</td>
+        <td class="border border-gray-300 px-4 py-3 text-right">₩${report.consumerPrice.toLocaleString()}</td>
+        <td class="border border-gray-300 px-4 py-3 text-right font-bold text-blue-600">₩${report.revenue.toLocaleString()}</td>
+        <td class="border border-gray-300 px-4 py-3 text-center">
+          <span class="inline-block px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+            ${marginRate}%
+          </span>
+        </td>
+        <td class="border border-gray-300 px-4 py-3">${installerName}</td>
+      </tr>
+    `;
+  }).join('');
 }
 
 // 제품 ID로 매출 데이터 가져오기 (margins.ts 매핑)
