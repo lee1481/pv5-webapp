@@ -761,7 +761,7 @@ app.get('/api/reports/list', async (c) => {
         id, report_id, customer_info, packages, package_positions,
         install_date, install_time, install_address, notes,
         installer_name, image_key, image_filename,
-        created_at, updated_at
+        created_at, updated_at, status
       FROM reports
       ORDER BY created_at DESC
       LIMIT 100
@@ -784,7 +784,8 @@ app.get('/api/reports/list', async (c) => {
       imageKey: row.image_key, // UPDATED
       imageFilename: row.image_filename, // UPDATED
       createdAt: row.created_at, // UPDATED
-      updatedAt: row.updated_at // UPDATED
+      updatedAt: row.updated_at, // UPDATED
+      status: row.status || 'draft' // UPDATED - status 필드 추가
     })) // UPDATED
     
     return c.json({ 
@@ -814,7 +815,7 @@ app.get('/api/reports/:id', async (c) => {
         id, report_id, customer_info, packages, package_positions, // UPDATED
         install_date, install_time, install_address, notes, // UPDATED
         installer_name, image_key, image_filename, // UPDATED
-        created_at, updated_at // UPDATED
+        created_at, updated_at, status // UPDATED
       FROM reports // UPDATED
       WHERE report_id = ? // UPDATED
     `).bind(reportId).all() // UPDATED
@@ -841,7 +842,8 @@ app.get('/api/reports/:id', async (c) => {
       imageKey: row.image_key, // UPDATED
       imageFilename: row.image_filename, // UPDATED
       createdAt: row.created_at, // UPDATED
-      updatedAt: row.updated_at // UPDATED
+      updatedAt: row.updated_at, // UPDATED
+      status: row.status || 'draft' // UPDATED - status 필드 추가
     } // UPDATED
     
     return c.json({ 
@@ -1283,27 +1285,27 @@ app.get('/', (c) => {
             <main class="container mx-auto px-4 py-8">
                 <!-- Step Indicator -->
                 <div class="step-indicator bg-white rounded-lg shadow-md mb-8">
-                    <div class="step active" id="step1">
+                    <div class="step active" id="step1" onclick="goToStep(1)" style="cursor: pointer;">
                         <i class="fas fa-upload text-2xl mb-2"></i>
                         <div>1. 거래명세서 업로드</div>
                     </div>
-                    <div class="step" id="step2">
+                    <div class="step" id="step2" onclick="goToStep(2)" style="cursor: pointer;">
                         <i class="fas fa-box text-2xl mb-2"></i>
                         <div>2. 제품 선택</div>
                     </div>
-                    <div class="step" id="step3">
+                    <div class="step" id="step3" onclick="goToStep(3)" style="cursor: pointer;">
                         <i class="fas fa-calendar-alt text-2xl mb-2"></i>
                         <div>3. 설치 정보 입력</div>
                     </div>
-                    <div class="step" id="step4">
+                    <div class="step" id="step4" onclick="goToStep(4)" style="cursor: pointer;">
                         <i class="fas fa-check-circle text-2xl mb-2"></i>
                         <div>4. 확인 및 발송</div>
                     </div>
-                    <div class="step" id="step5">
+                    <div class="step" id="step5" onclick="goToStep(5)" style="cursor: pointer;">
                         <i class="fas fa-folder-open text-2xl mb-2"></i>
                         <div>5. 저장 문서 관리</div>
                     </div>
-                    <div class="step" id="step6">
+                    <div class="step" id="step6" onclick="goToStep(6)" style="cursor: pointer;">
                         <i class="fas fa-chart-line text-2xl mb-2"></i>
                         <div>6. 매출 관리</div>
                     </div>
