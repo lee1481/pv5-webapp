@@ -9,6 +9,7 @@
   - 설치 일정 및 장소 정보 입력
   - 자재 점검표 자동 생성
   - 시공 확인서 저장 및 관리 (Cloudflare D1 + R2 + KV)
+  - **시공 완료 처리 및 매출 관리** (NEW v2.1)
   - PDF 다운로드 (인쇄 기능)
   - 이메일 발송 (거래명세서 이미지 첨부)
   - Excel 데이터 내보내기/가져오기
@@ -19,9 +20,15 @@
 - **GitHub**: (설정 후 업데이트 예정)
 
 ## 버전 정보
-- **현재 버전**: v2.0
+- **현재 버전**: v2.1
 - **마지막 업데이트**: 2026-02-09
 - **주요 변경사항**:
+  - ✅ **Step 6: 매출 관리 기능 추가** (NEW)
+    - 시공 완료 처리 버튼
+    - 매출 통계 대시보드 (총 매출, 건수, 평균 매출)
+    - 기간별 검색 (주간/월간/분기/사용자 지정)
+    - 제품별 매출 자동 계산 (소비자 가격 × 마진율)
+    - Excel 다운로드
   - ✅ **Cloudflare D1 Database 통합** (SQLite 기반 관계형 데이터베이스)
   - ✅ **Cloudflare R2 Storage 통합** (이미지 파일 저장)
   - ✅ **서버 우선 저장 로직** (D1 + R2 → localStorage 캐시)
@@ -115,6 +122,7 @@
     - **3단 선반 설치 위치 표시** (미리보기 모달)
   - **JPG 저장**: 확인서를 JPG 이미지로 다운로드
   - **수정하기**: 데이터 복원 및 Step 1로 이동
+  - **시공 완료** (NEW): 시공 완료로 표시 → Step 6 매출 관리로 이동
   - **삭제**: D1 + localStorage에서 삭제
 - **Excel 내보내기**: 
   - 전체 데이터를 Excel 파일로 내보내기
@@ -126,6 +134,43 @@
 - **데이터 초기화**: 
   - 모든 저장된 문서 삭제
   - D1 + localStorage 완전 초기화
+
+### ✅ 6단계: 매출 관리 (NEW v2.1)
+- **시공 완료된 문서만 조회**
+- **매출 통계 대시보드**:
+  - 총 매출액 (지사 마진 합계)
+  - 총 소비자 가격
+  - 시공 건수
+- **기간별 검색 필터**:
+  - 이번 주 (월~일)
+  - 이번 달
+  - 이번 분기 (Q1, Q2, Q3, Q4)
+  - 사용자 지정 (시작일~종료일)
+  - 고객명 검색
+- **매출 목록 테이블**:
+  - 시공 날짜
+  - 고객명
+  - 제품명 (전체 제품 목록)
+  - 소비자 가격 (합계)
+  - 매출 (지사 마진 합계)
+  - 마진율 (%)
+  - 시공자명
+- **제품별 매출 자동 계산**:
+  - 밀워키 격벽타공판: ₩968,000 → 매출 ₩213,620 (22.1%)
+  - 밀워키 격벽 2단선반: ₩1,210,000 → 매출 ₩251,900 (20.8%)
+  - 밀워키 3단 선반: ₩1,830,000 → 매출 ₩422,700 (23.1%)
+  - 밀워키 워크스페이스: ₩2,230,000 → 매출 ₩483,500 (21.7%)
+  - 밀워키 3단 부품선반: ₩968,000 → 매출 ₩106,920 (11.0%)
+  - KIA 격벽타공판: ₩880,000 → 매출 ₩171,200 (19.5%)
+  - KIA 격벽 2단 선반: ₩1,210,000 → 매출 ₩210,100 (17.4%)
+  - KIA 3단 선반: ₩1,210,000 → 매출 ₩218,900 (18.1%)
+  - KIA 워크스페이스: ₩1,760,000 → 매출 ₩412,500 (23.4%)
+  - 차바닥 (적재함): ₩990,000 → 매출 ₩265,100 (26.8%)
+  - **세트 - PV5 밀워키 워크스테이션**: ₩4,850,000 → 매출 ₩1,214,120 (25.0%)
+  - **세트 - PV5 밀워키 스마트 에디션**: ₩4,490,000 → 매출 ₩1,153,320 (25.7%)
+  - **세트 - 기아 PV5 워크스테이션**: ₩3,390,000 → 매출 ₩908,200 (26.8%)
+  - **세트 - 기아 PV5 스마트 패키지**: ₩3,600,000 → 매출 ₩865,300 (24.0%)
+- **Excel 다운로드**: `PV5_매출관리_YYYY-MM-DD.xlsx`
 
 ## 기능 URI 요약
 
@@ -141,6 +186,9 @@
 | `/api/reports/list` | GET | 저장된 문서 목록 조회 (D1) | - |
 | `/api/reports/:id` | GET | 특정 문서 조회 (D1) | `id`: 문서 ID |
 | `/api/reports/:id` | DELETE | 특정 문서 삭제 (D1) | `id`: 문서 ID |
+| `/api/reports/:id/complete` | PATCH | 시공 완료 처리 (NEW) | `id`: 문서 ID |
+| `/api/reports/completed/list` | GET | 시공 완료 문서 조회 (매출 관리용, NEW) | - |
+| `/api/reports/stats` | GET | 매출 통계 조회 (NEW) | Query: startDate, endDate |
 
 ### 정적 리소스
 | 경로 | 설명 |
@@ -593,6 +641,37 @@ cd /home/user/webapp && git push -f origin main
 - ✅ Step 자동 이동 제거 (사용자가 OCR 결과 확인 후 수동 이동)
 - ✅ 실시간 검색 필터링 (고객명, 날짜)
 - ✅ Cloudflare KV 클라우드 백업 활성화
+
+## 매출 관리 기능 활성화 방법 (v2.1+)
+
+**⚠️ 중요**: Step 6 매출 관리 기능을 사용하려면 D1 데이터베이스에 `status` 컬럼을 추가해야 합니다.
+
+### 방법 1: Cloudflare Dashboard (권장)
+1. [Cloudflare Dashboard](https://dash.cloudflare.com) 접속
+2. **Workers & Pages** → **D1 databases** → **pv5-reports-db** 선택
+3. **Console** 탭 클릭
+4. 다음 SQL 명령 실행:
+   ```sql
+   ALTER TABLE reports ADD COLUMN status TEXT DEFAULT 'draft' CHECK(status IN ('draft', 'completed'));
+   ```
+5. **Execute** 버튼 클릭
+
+### 방법 2: Wrangler CLI (API 토큰 필요)
+```bash
+# Production 데이터베이스에 적용
+npx wrangler d1 migrations apply pv5-reports-db --remote
+
+# 또는 직접 SQL 실행
+npx wrangler d1 execute pv5-reports-db --command="ALTER TABLE reports ADD COLUMN status TEXT DEFAULT 'draft' CHECK(status IN ('draft', 'completed'));" --remote
+```
+
+### 마이그레이션 확인
+```bash
+# 테이블 구조 확인
+npx wrangler d1 execute pv5-reports-db --command="PRAGMA table_info(reports);" --remote
+```
+
+**확인 방법**: https://pv5-webapp.pages.dev에 접속 후 Step 6 (매출 관리) 탭을 클릭했을 때 오류가 발생하지 않으면 성공입니다.
 
 ## 문의 및 지원
 - **개발자**: 사인마스터 AI 팀

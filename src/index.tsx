@@ -909,19 +909,32 @@ app.get('/api/reports/completed/list', async (c) => {
     }
     
     // D1에서 시공 완료된 문서만 조회
-    const stmt = env.DB.prepare(`
-      SELECT 
-        id, report_id, customer_info, packages, package_positions,
-        install_date, install_time, install_address, notes,
-        installer_name, image_key, image_filename,
-        created_at, updated_at, status
-      FROM reports
-      WHERE status = 'completed'
-      ORDER BY install_date DESC, created_at DESC
-      LIMIT 1000
-    `)
-    
-    const { results } = await stmt.all()
+    // status 컬럼이 없을 경우를 대비한 쿼리
+    let results: any[]
+    try {
+      const stmt = env.DB.prepare(`
+        SELECT 
+          id, report_id, customer_info, packages, package_positions,
+          install_date, install_time, install_address, notes,
+          installer_name, image_key, image_filename,
+          created_at, updated_at, status
+        FROM reports
+        WHERE status = 'completed'
+        ORDER BY install_date DESC, created_at DESC
+        LIMIT 1000
+      `)
+      
+      const queryResult = await stmt.all()
+      results = queryResult.results
+    } catch (columnError) {
+      // status 컬럼이 없는 경우 빈 배열 반환
+      console.warn('status column not found, returning empty array:', columnError)
+      return c.json({
+        success: true,
+        reports: [],
+        message: 'D1 마이그레이션이 필요합니다. Cloudflare Dashboard에서 D1 database를 선택하고, Console 탭에서 다음 SQL을 실행하세요: ALTER TABLE reports ADD COLUMN status TEXT DEFAULT \'draft\' CHECK(status IN (\'draft\', \'completed\'));'
+      })
+    }
     
     // JSON 파싱
     const reports = results.map((row: any) => ({
