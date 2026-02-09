@@ -688,6 +688,7 @@ function displayPackages(packages) {
              onerror="this.src='https://via.placeholder.com/400x400?text=${encodeURIComponent(pkg.name)}'">
       </div>
       <h3 style="color: #1a202c !important; font-size: 1.125rem !important; font-weight: 700 !important; margin-bottom: 0.5rem !important; display: block !important;">${pkg.name}</h3>
+      <p style="color: #2563eb !important; font-size: 1.25rem !important; font-weight: 700 !important; margin-bottom: 0.5rem !important; display: block !important;">₩${pkg.price.toLocaleString('ko-KR')}</p>
       <p style="color: #718096 !important; font-size: 0.875rem !important; margin-bottom: 1rem !important; display: block !important;">${pkg.description}</p>
       ${pkg.hasPositionOption ? `
         <div style="margin-bottom: 1rem; padding: 0.75rem; background-color: #f9fafb; border-radius: 0.5rem;" onclick="event.stopPropagation();">
