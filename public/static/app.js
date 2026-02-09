@@ -121,6 +121,11 @@ function goToStep(step) {
     currentStep = 5;
     updateStepIndicator();
     showCurrentSection();
+  } else if (step === 6) {
+    // Step 6 매출 관리는 언제든지 접근 가능
+    currentStep = 6;
+    updateStepIndicator();
+    showCurrentSection();
   }
 }
 
@@ -957,7 +962,7 @@ function prevStep(step) {
 
 // 단계 표시기 업데이트
 function updateStepIndicator() {
-  for (let i = 1; i <= 5; i++) {
+  for (let i = 1; i <= 6; i++) {
     const step = document.getElementById(`step${i}`);
     if (step) {
       step.classList.remove('active', 'completed');
@@ -978,10 +983,16 @@ function showCurrentSection() {
   document.getElementById('install-section').classList.toggle('hidden', currentStep !== 3);
   document.getElementById('confirm-section').classList.toggle('hidden', currentStep !== 4);
   document.getElementById('manage-section').classList.toggle('hidden', currentStep !== 5);
+  document.getElementById('revenue-section')?.classList.toggle('hidden', currentStep !== 6);
   
   // Step 5 진입 시 목록 로드
   if (currentStep === 5) {
     enterStep5();
+  }
+  
+  // Step 6 진입 시 매출 목록 로드
+  if (currentStep === 6) {
+    loadRevenueList();
   }
 }
 
@@ -1535,10 +1546,25 @@ function displayReportsList(reports) {
                     class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm">
               <i class="fas fa-eye mr-1"></i>상세보기
             </button>
+            <button onclick="downloadReportAsJPG('${reportId}')" 
+                    class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 text-sm">
+              <i class="fas fa-image mr-1"></i>JPG 저장
+            </button>
             <button onclick="loadReport('${reportId}')" 
                     class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm">
               <i class="fas fa-edit mr-1"></i>수정하기
             </button>
+            ${report.status === 'completed' ? `
+              <button disabled 
+                      class="bg-gray-400 text-white px-4 py-2 rounded-lg text-sm cursor-not-allowed">
+                <i class="fas fa-check-circle mr-1"></i>시공 완료됨
+              </button>
+            ` : `
+              <button onclick="completeReport('${reportId}')" 
+                      class="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 text-sm">
+                <i class="fas fa-check-circle mr-1"></i>시공 완료
+              </button>
+            `}
             <button onclick="deleteReport('${reportId}')" 
                     class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm">
               <i class="fas fa-trash mr-1"></i>삭제
@@ -2187,5 +2213,274 @@ function confirmDataReset() {
       loadReportsList();
     }
   }
+}
+
+// ========== Step 6: 매출 관리 기능 ==========
+
+// 시공 완료 처리
+async function completeReport(reportId) {
+  if (!confirm('이 문서를 시공 완료로 표시하시겠습니까?\n\n시공 완료된 문서는 "매출 관리" 탭에서 확인할 수 있습니다.')) {
+    return;
+  }
+  
+  try {
+    const response = await axios.patch(`/api/reports/${reportId}/complete`);
+    
+    if (response.data.success) {
+      alert('✅ 시공이 완료되었습니다!');
+      loadReportsList(); // 목록 새로고침
+    } else {
+      alert('❌ ' + (response.data.message || '시공 완료 처리 실패'));
+    }
+  } catch (error) {
+    console.error('Complete report error:', error);
+    alert('❌ 시공 완료 처리 중 오류가 발생했습니다.');
+  }
+}
+
+// 매출 관리 목록 로드
+async function loadRevenueList(filterType = 'all', startDate = null, endDate = null) {
+  try {
+    const response = await axios.get('/api/reports/completed/list');
+    
+    if (response.data.success) {
+      const reports = response.data.reports;
+      
+      // 날짜 필터링
+      let filteredReports = reports;
+      
+      if (filterType === 'week') {
+        const today = new Date();
+        const monday = new Date(today);
+        monday.setDate(today.getDate() - today.getDay() + 1);
+        monday.setHours(0, 0, 0, 0);
+        
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        sunday.setHours(23, 59, 59, 999);
+        
+        filteredReports = reports.filter(r => {
+          const installDate = new Date(r.installDate);
+          return installDate >= monday && installDate <= sunday;
+        });
+      } else if (filterType === 'month') {
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59);
+        
+        filteredReports = reports.filter(r => {
+          const installDate = new Date(r.installDate);
+          return installDate >= firstDay && installDate <= lastDay;
+        });
+      } else if (filterType === 'quarter') {
+        const today = new Date();
+        const quarter = Math.floor(today.getMonth() / 3);
+        const firstDay = new Date(today.getFullYear(), quarter * 3, 1);
+        const lastDay = new Date(today.getFullYear(), quarter * 3 + 3, 0, 23, 59, 59);
+        
+        filteredReports = reports.filter(r => {
+          const installDate = new Date(r.installDate);
+          return installDate >= firstDay && installDate <= lastDay;
+        });
+      } else if (filterType === 'custom' && startDate && endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        
+        filteredReports = reports.filter(r => {
+          const installDate = new Date(r.installDate);
+          return installDate >= start && installDate <= end;
+        });
+      }
+      
+      displayRevenueList(filteredReports);
+    } else {
+      alert('❌ ' + (response.data.message || '매출 목록 로드 실패'));
+    }
+  } catch (error) {
+    console.error('Load revenue list error:', error);
+    alert('❌ 매출 목록을 불러오는 중 오류가 발생했습니다.');
+  }
+}
+
+// 매출 목록 표시
+function displayRevenueList(reports) {
+  const listContainer = document.getElementById('revenueList');
+  const statsContainer = document.getElementById('revenueStats');
+  
+  if (!reports || reports.length === 0) {
+    listContainer.innerHTML = `
+      <div class="text-center py-12 text-gray-500">
+        <i class="fas fa-chart-line text-6xl mb-4"></i>
+        <p>시공 완료된 문서가 없습니다.</p>
+        <p class="text-sm mt-2">Step 5에서 "시공 완료" 버튼을 클릭하세요.</p>
+      </div>
+    `;
+    statsContainer.innerHTML = '';
+    return;
+  }
+  
+  // 매출 통계 계산
+  let totalRevenue = 0;
+  let totalConsumerPrice = 0;
+  const revenueDetails = [];
+  
+  reports.forEach(report => {
+    const packages = report.packages || [];
+    let reportRevenue = 0;
+    let reportConsumerPrice = 0;
+    
+    packages.forEach(pkg => {
+      // margins.ts에서 매출 데이터 가져오기 (여기서는 가격표 기준)
+      const margin = getMarginByPackageId(pkg.id);
+      if (margin) {
+        reportRevenue += margin.revenue;
+        reportConsumerPrice += margin.consumerPrice;
+      }
+    });
+    
+    totalRevenue += reportRevenue;
+    totalConsumerPrice += reportConsumerPrice;
+    
+    revenueDetails.push({
+      ...report,
+      revenue: reportRevenue,
+      consumerPrice: reportConsumerPrice
+    });
+  });
+  
+  // 통계 표시
+  statsContainer.innerHTML = `
+    <div class="grid grid-cols-3 gap-6 mb-8">
+      <div class="bg-blue-50 p-6 rounded-lg border-l-4 border-blue-600">
+        <div class="text-sm text-gray-600 mb-2">총 매출액 (지사 마진)</div>
+        <div class="text-3xl font-bold text-blue-600">₩${totalRevenue.toLocaleString()}</div>
+      </div>
+      <div class="bg-green-50 p-6 rounded-lg border-l-4 border-green-600">
+        <div class="text-sm text-gray-600 mb-2">총 소비자 가격</div>
+        <div class="text-3xl font-bold text-green-600">₩${totalConsumerPrice.toLocaleString()}</div>
+      </div>
+      <div class="bg-purple-50 p-6 rounded-lg border-l-4 border-purple-600">
+        <div class="text-sm text-gray-600 mb-2">시공 건수</div>
+        <div class="text-3xl font-bold text-purple-600">${reports.length}<span class="text-lg">건</span></div>
+      </div>
+    </div>
+  `;
+  
+  // 목록 표시
+  listContainer.innerHTML = `
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="border px-4 py-3 text-left">시공 날짜</th>
+            <th class="border px-4 py-3 text-left">고객명</th>
+            <th class="border px-4 py-3 text-left">제품명</th>
+            <th class="border px-4 py-3 text-right">소비자 가격</th>
+            <th class="border px-4 py-3 text-right">매출 (마진)</th>
+            <th class="border px-4 py-3 text-center">마진율</th>
+            <th class="border px-4 py-3 text-left">시공자</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${revenueDetails.map(report => {
+            const customerName = report.customerInfo?.receiverName || '-';
+            const installDate = report.installDate || '-';
+            const installerName = report.installerName || '-';
+            const packages = report.packages || [];
+            const productNames = packages.map(p => p.fullName || p.name).join(', ');
+            const marginRate = report.consumerPrice > 0 
+              ? ((report.revenue / report.consumerPrice) * 100).toFixed(1) 
+              : 0;
+            
+            return `
+              <tr class="hover:bg-gray-50">
+                <td class="border px-4 py-3">${installDate}</td>
+                <td class="border px-4 py-3 font-semibold">${customerName}</td>
+                <td class="border px-4 py-3 text-sm">${productNames || '-'}</td>
+                <td class="border px-4 py-3 text-right">₩${report.consumerPrice.toLocaleString()}</td>
+                <td class="border px-4 py-3 text-right font-bold text-blue-600">₩${report.revenue.toLocaleString()}</td>
+                <td class="border px-4 py-3 text-center">
+                  <span class="inline-block px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+                    ${marginRate}%
+                  </span>
+                </td>
+                <td class="border px-4 py-3">${installerName}</td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+        <tfoot class="bg-gray-100 font-bold">
+          <tr>
+            <td colspan="3" class="border px-4 py-3 text-right">합계</td>
+            <td class="border px-4 py-3 text-right">₩${totalConsumerPrice.toLocaleString()}</td>
+            <td class="border px-4 py-3 text-right text-blue-600">₩${totalRevenue.toLocaleString()}</td>
+            <td class="border px-4 py-3 text-center">
+              ${totalConsumerPrice > 0 ? `${((totalRevenue / totalConsumerPrice) * 100).toFixed(1)}%` : '-'}
+            </td>
+            <td class="border px-4 py-3">${reports.length}건</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  `;
+}
+
+// 제품 ID로 매출 데이터 가져오기 (margins.ts 매핑)
+function getMarginByPackageId(packageId) {
+  const marginData = {
+    'milwaukee-partition-panel': { consumerPrice: 968000, revenue: 213620, marginRate: 22.1 },
+    'milwaukee-2shelf-partition': { consumerPrice: 1210000, revenue: 251900, marginRate: 20.8 },
+    'milwaukee-3shelf-standard': { consumerPrice: 1830000, revenue: 422700, marginRate: 23.1 },
+    'milwaukee-workspace': { consumerPrice: 2230000, revenue: 483500, marginRate: 21.7 },
+    'milwaukee-3shelf-parts': { consumerPrice: 968000, revenue: 106920, marginRate: 11.0 },
+    'kia-partition-panel': { consumerPrice: 880000, revenue: 171200, marginRate: 19.5 },
+    'kia-2shelf-partition': { consumerPrice: 1210000, revenue: 210100, marginRate: 17.4 },
+    'kia-3shelf-standard': { consumerPrice: 1210000, revenue: 218900, marginRate: 18.1 },
+    'kia-workspace': { consumerPrice: 1760000, revenue: 412500, marginRate: 23.4 },
+    'milwaukee-floor-board': { consumerPrice: 990000, revenue: 265100, marginRate: 26.8 },
+    'kia-floor-board': { consumerPrice: 990000, revenue: 265100, marginRate: 26.8 },
+    'milwaukee-workstation': { consumerPrice: 4850000, revenue: 1214120, marginRate: 25.0 },
+    'milwaukee-smart': { consumerPrice: 4490000, revenue: 1153320, marginRate: 25.7 },
+    'kia-workstation': { consumerPrice: 3390000, revenue: 908200, marginRate: 26.8 },
+    'kia-smart': { consumerPrice: 3600000, revenue: 865300, marginRate: 24.0 }
+  };
+  
+  return marginData[packageId] || null;
+}
+
+// 매출 데이터 Excel 다운로드
+function downloadRevenueExcel() {
+  // 현재 표시된 데이터 기반으로 다운로드
+  const revenueList = document.getElementById('revenueList');
+  const table = revenueList.querySelector('table');
+  
+  if (!table) {
+    alert('⚠️ 다운로드할 데이터가 없습니다.');
+    return;
+  }
+  
+  // SheetJS를 이용한 Excel 생성
+  const wb = XLSX.utils.table_to_book(table, { sheet: "매출관리" });
+  const today = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `PV5_매출관리_${today}.xlsx`);
+  
+  alert('✅ Excel 파일이 다운로드되었습니다!');
+}
+
+// 검색 필터 적용
+function applyRevenueFilter() {
+  const filterType = document.getElementById('revenueFilterType')?.value || 'all';
+  const startDate = document.getElementById('revenueStartDate')?.value;
+  const endDate = document.getElementById('revenueEndDate')?.value;
+  
+  if (filterType === 'custom') {
+    if (!startDate || !endDate) {
+      alert('시작 날짜와 종료 날짜를 모두 선택해주세요.');
+      return;
+    }
+  }
+  
+  loadRevenueList(filterType, startDate, endDate);
 }
 

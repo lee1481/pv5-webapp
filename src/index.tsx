@@ -859,29 +859,136 @@ app.get('/api/reports/:id', async (c) => {
   }
 })
 
-// API: 시공 확인서 삭제
+// API: 시공 완료 상태 변경
+app.patch('/api/reports/:id/complete', async (c) => {
+  try {
+    const { env } = c
+    const reportId = c.req.param('id')
+    
+    if (!env.DB) {
+      return c.json({
+        success: false,
+        message: 'D1 데이터베이스가 연결되지 않았습니다.'
+      }, 500)
+    }
+    
+    // D1에서 상태 업데이트
+    await env.DB.prepare(`
+      UPDATE reports 
+      SET status = 'completed', updated_at = datetime('now')
+      WHERE report_id = ?
+    `).bind(reportId).run()
+    
+    console.log('Report marked as completed:', reportId)
+    
+    return c.json({
+      success: true,
+      message: '시공이 완료되었습니다!'
+    })
+    
+  } catch (error) {
+    console.error('Complete report error:', error)
+    return c.json({
+      success: false,
+      message: '시공 완료 처리 중 오류가 발생했습니다.',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500)
+  }
+})
+
+// API: 시공 완료 목록 조회 (매출 관리용)
+app.get('/api/reports/completed/list', async (c) => {
+  try {
+    const { env } = c
+    
+    if (!env.DB) {
+      return c.json({
+        success: false,
+        message: 'D1 데이터베이스가 연결되지 않았습니다.'
+      }, 500)
+    }
+    
+    // D1에서 시공 완료된 문서만 조회
+    const stmt = env.DB.prepare(`
+      SELECT 
+        id, report_id, customer_info, packages, package_positions,
+        install_date, install_time, install_address, notes,
+        installer_name, image_key, image_filename,
+        created_at, updated_at, status
+      FROM reports
+      WHERE status = 'completed'
+      ORDER BY install_date DESC, created_at DESC
+      LIMIT 1000
+    `)
+    
+    const { results } = await stmt.all()
+    
+    // JSON 파싱
+    const reports = results.map((row: any) => ({
+      reportId: row.report_id,
+      id: row.report_id,
+      customerInfo: row.customer_info ? JSON.parse(row.customer_info) : null,
+      packages: row.packages ? JSON.parse(row.packages) : [],
+      packagePositions: row.package_positions ? JSON.parse(row.package_positions) : {},
+      installDate: row.install_date,
+      installTime: row.install_time,
+      installAddress: row.install_address,
+      notes: row.notes,
+      installerName: row.installer_name,
+      imageKey: row.image_key,
+      imageFilename: row.image_filename,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      status: row.status
+    }))
+    
+    return c.json({
+      success: true,
+      reports
+    })
+    
+  } catch (error) {
+    console.error('Completed reports list error:', error)
+    return c.json({
+      success: false,
+      reports: [],
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500)
+  }
+})
+
+// API: 시공 확인서 삭제 (D1) // UPDATED
 app.delete('/api/reports/:id', async (c) => {
   try {
     const { env } = c
     const reportId = c.req.param('id')
     
-    if (!env.REPORTS_KV) {
+    if (!env.DB) {
       return c.json({ 
         success: false, 
-        message: 'KV 스토리지가 설정되지 않았습니다.' 
-      }, 404)
+        message: 'D1 데이터베이스가 연결되지 않았습니다.' 
+      }, 500)
     }
     
-    // KV에서 삭제
-    await env.REPORTS_KV.delete(reportId)
+    // D1에서 삭제 // UPDATED
+    await env.DB.prepare(`
+      DELETE FROM reports WHERE report_id = ?
+    `).bind(reportId).run()
     
-    // 인덱스에서도 삭제
-    const indexKey = 'report-index'
-    const indexData = await env.REPORTS_KV.get(indexKey)
-    if (indexData) {
-      const index = JSON.parse(indexData)
-      const filteredIndex = index.filter((item: any) => item.id !== reportId)
-      await env.REPORTS_KV.put(indexKey, JSON.stringify(filteredIndex))
+    // R2에서 이미지 삭제 (있다면) // UPDATED
+    if (env.R2) {
+      const { results } = await env.DB.prepare(`
+        SELECT image_key FROM reports WHERE report_id = ?
+      `).bind(reportId).all()
+      
+      if (results.length > 0 && results[0].image_key) {
+        try {
+          await env.R2.delete(results[0].image_key)
+          console.log('Image deleted from R2:', results[0].image_key)
+        } catch (r2Error) {
+          console.error('R2 delete error (continuing):', r2Error)
+        }
+      }
     }
     
     return c.json({ 
@@ -894,6 +1001,68 @@ app.delete('/api/reports/:id', async (c) => {
     return c.json({ 
       success: false, 
       message: '삭제 중 오류가 발생했습니다.',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500)
+  }
+})
+
+// API: 매출 통계 조회 (Step 6용) // NEW
+app.get('/api/reports/stats', async (c) => {
+  try {
+    const { env } = c
+    const { startDate, endDate } = c.req.query()
+    
+    if (!env.DB) {
+      return c.json({
+        success: false,
+        message: 'D1 데이터베이스가 연결되지 않았습니다.'
+      }, 500)
+    }
+    
+    // 기본 쿼리: 시공 완료된 문서만
+    let query = `
+      SELECT 
+        COUNT(*) as totalCount,
+        install_date,
+        packages
+      FROM reports
+      WHERE status = 'completed'
+    `
+    
+    const bindings: any[] = []
+    
+    // 날짜 필터링
+    if (startDate && endDate) {
+      query += ` AND install_date BETWEEN ? AND ?`
+      bindings.push(startDate, endDate)
+    } else if (startDate) {
+      query += ` AND install_date >= ?`
+      bindings.push(startDate)
+    } else if (endDate) {
+      query += ` AND install_date <= ?`
+      bindings.push(endDate)
+    }
+    
+    query += ` ORDER BY install_date DESC`
+    
+    const stmt = env.DB.prepare(query)
+    const { results } = bindings.length > 0 
+      ? await stmt.bind(...bindings).all()
+      : await stmt.all()
+    
+    return c.json({
+      success: true,
+      stats: {
+        totalCount: results.length,
+        reports: results
+      }
+    })
+    
+  } catch (error) {
+    console.error('Stats error:', error)
+    return c.json({
+      success: false,
+      message: '통계 조회 중 오류가 발생했습니다.',
       error: error instanceof Error ? error.message : 'Unknown error'
     }, 500)
   }
@@ -1048,6 +1217,10 @@ app.get('/', (c) => {
                     <div class="step" id="step5">
                         <i class="fas fa-folder-open text-2xl mb-2"></i>
                         <div>5. 저장 문서 관리</div>
+                    </div>
+                    <div class="step" id="step6">
+                        <i class="fas fa-chart-line text-2xl mb-2"></i>
+                        <div>6. 매출 관리</div>
                     </div>
                 </div>
 
@@ -1316,6 +1489,132 @@ app.get('/', (c) => {
                     
                     <div class="mt-6 flex justify-start">
                         <button onclick="prevStep(4)" 
+                                class="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50">
+                            <i class="fas fa-arrow-left mr-2"></i>이전
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 6: 매출 관리 -->
+                <div id="revenue-section" class="bg-white rounded-lg shadow-lg p-8 mb-8 hidden">
+                    <h2 class="text-2xl font-bold mb-6 text-gray-800">
+                        <i class="fas fa-chart-line text-purple-600 mr-2"></i>
+                        6단계: 매출 관리
+                    </h2>
+                    
+                    <!-- 검색 및 필터 -->
+                    <div class="mb-6">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">
+                                    <i class="fas fa-filter mr-2"></i>검색 기간
+                                </label>
+                                <select id="revenuePeriodType" onchange="updateRevenueFilters()"
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                    <option value="custom">직접 선택</option>
+                                    <option value="week">이번 주</option>
+                                    <option value="month">이번 달</option>
+                                    <option value="quarter">이번 분기</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">
+                                    <i class="fas fa-calendar mr-2"></i>시작 날짜
+                                </label>
+                                <input type="date" id="revenueStartDate"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">
+                                    <i class="fas fa-calendar mr-2"></i>종료 날짜
+                                </label>
+                                <input type="date" id="revenueEndDate"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">
+                                    <i class="fas fa-search mr-2"></i>고객명 검색
+                                </label>
+                                <input type="text" id="revenueSearchCustomer" placeholder="고객명 입력..."
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <div class="flex gap-2">
+                                <button onclick="searchRevenue()" 
+                                        class="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700">
+                                    <i class="fas fa-search mr-2"></i>검색
+                                </button>
+                                <button onclick="resetRevenueSearch()" 
+                                        class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600">
+                                    <i class="fas fa-redo mr-2"></i>초기화
+                                </button>
+                            </div>
+                            <button onclick="exportRevenueToExcel()" 
+                                    class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
+                                <i class="fas fa-file-excel mr-2"></i>Excel 다운로드
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 통계 대시보드 -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div class="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-lg shadow-lg">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-blue-100 text-sm mb-1">총 매출액</p>
+                                    <p class="text-3xl font-bold" id="totalRevenue">₩0</p>
+                                </div>
+                                <i class="fas fa-won-sign text-5xl text-blue-200 opacity-50"></i>
+                            </div>
+                        </div>
+                        <div class="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-lg shadow-lg">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-green-100 text-sm mb-1">시공 건수</p>
+                                    <p class="text-3xl font-bold" id="totalCount">0건</p>
+                                </div>
+                                <i class="fas fa-clipboard-check text-5xl text-green-200 opacity-50"></i>
+                            </div>
+                        </div>
+                        <div class="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-6 rounded-lg shadow-lg">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-purple-100 text-sm mb-1">평균 매출</p>
+                                    <p class="text-3xl font-bold" id="averageRevenue">₩0</p>
+                                </div>
+                                <i class="fas fa-chart-bar text-5xl text-purple-200 opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 매출 목록 테이블 -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse">
+                            <thead>
+                                <tr class="bg-gray-100">
+                                    <th class="border border-gray-300 px-4 py-3 text-left text-sm font-bold text-gray-700">시공 날짜</th>
+                                    <th class="border border-gray-300 px-4 py-3 text-left text-sm font-bold text-gray-700">고객명</th>
+                                    <th class="border border-gray-300 px-4 py-3 text-left text-sm font-bold text-gray-700">제품</th>
+                                    <th class="border border-gray-300 px-4 py-3 text-right text-sm font-bold text-gray-700">소비자 가격</th>
+                                    <th class="border border-gray-300 px-4 py-3 text-right text-sm font-bold text-gray-700">매출</th>
+                                    <th class="border border-gray-300 px-4 py-3 text-center text-sm font-bold text-gray-700">마진율</th>
+                                    <th class="border border-gray-300 px-4 py-3 text-left text-sm font-bold text-gray-700">시공자</th>
+                                </tr>
+                            </thead>
+                            <tbody id="revenueTableBody">
+                                <tr>
+                                    <td colspan="7" class="border border-gray-300 px-4 py-12 text-center text-gray-500">
+                                        <i class="fas fa-chart-line text-6xl mb-4"></i>
+                                        <p>시공 완료된 문서가 없습니다.</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="mt-6 flex justify-start">
+                        <button onclick="prevStep(5)" 
                                 class="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50">
                             <i class="fas fa-arrow-left mr-2"></i>이전
                         </button>
