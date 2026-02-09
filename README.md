@@ -20,11 +20,15 @@
 - **GitHub**: (설정 후 업데이트 예정)
 
 ## 버전 정보
-- **현재 버전**: v2.1
+- **현재 버전**: v2.2
 - **마지막 업데이트**: 2026-02-09
 - **주요 변경사항**:
-  - ✅ **Step 6: 매출 관리 기능 추가** (NEW)
-    - 시공 완료 처리 버튼
+  - ✅ **D1 마이그레이션 자동 실행 기능** (NEW)
+    - Step 6에서 "자동 마이그레이션 실행" 버튼 클릭으로 즉시 마이그레이션
+    - 수동 Cloudflare Dashboard 접속 불필요
+    - 마이그레이션 완료 후 자동으로 alert 숨김
+  - ✅ **Step 6: 매출 관리 기능 완성**
+    - 시공 완료 처리 버튼 오류 수정
     - 매출 통계 대시보드 (총 매출, 건수, 평균 매출)
     - 기간별 검색 (주간/월간/분기/사용자 지정)
     - 제품별 매출 자동 계산 (소비자 가격 × 마진율)
@@ -642,11 +646,24 @@ cd /home/user/webapp && git push -f origin main
 - ✅ 실시간 검색 필터링 (고객명, 날짜)
 - ✅ Cloudflare KV 클라우드 백업 활성화
 
-## 매출 관리 기능 활성화 방법 (v2.1+)
+## 매출 관리 기능 활성화 방법 (v2.2+)
 
-**⚠️ 중요**: Step 6 매출 관리 기능을 사용하려면 D1 데이터베이스에 `status` 컬럼을 추가해야 합니다.
+**✅ 간편 방법**: Step 6 매출 관리 기능을 사용하려면 **앱 내에서 자동 마이그레이션 실행**을 권장합니다!
 
-### 방법 1: Cloudflare Dashboard (권장)
+### 방법 1: 자동 마이그레이션 실행 (가장 간편! 권장)
+1. https://pv5-webapp.pages.dev 접속
+2. **Step 6 (매출 관리)** 탭 클릭
+3. 노란색 경고 박스에서 **"자동 마이그레이션 실행"** 버튼 클릭
+4. 확인 대화상자에서 **"확인"** 클릭
+5. ✅ 완료! 마이그레이션 경고 자동 숨김
+
+**장점**: 
+- ✅ Cloudflare Dashboard 접속 불필요
+- ✅ SQL 명령 입력 불필요
+- ✅ 클릭 한 번으로 즉시 완료
+- ✅ 마이그레이션 완료 후 자동으로 alert 숨김
+
+### 방법 2: Cloudflare Dashboard (수동)
 1. [Cloudflare Dashboard](https://dash.cloudflare.com) 접속
 2. **Workers & Pages** → **D1 databases** → **pv5-reports-db** 선택
 3. **Console** 탭 클릭
@@ -656,7 +673,7 @@ cd /home/user/webapp && git push -f origin main
    ```
 5. **Execute** 버튼 클릭
 
-### 방법 2: Wrangler CLI (API 토큰 필요)
+### 방법 3: Wrangler CLI (개발자용)
 ```bash
 # Production 데이터베이스에 적용
 npx wrangler d1 migrations apply pv5-reports-db --remote
@@ -666,12 +683,12 @@ npx wrangler d1 execute pv5-reports-db --command="ALTER TABLE reports ADD COLUMN
 ```
 
 ### 마이그레이션 확인
-```bash
-# 테이블 구조 확인
-npx wrangler d1 execute pv5-reports-db --command="PRAGMA table_info(reports);" --remote
-```
-
-**확인 방법**: https://pv5-webapp.pages.dev에 접속 후 Step 6 (매출 관리) 탭을 클릭했을 때 오류가 발생하지 않으면 성공입니다.
+- ✅ **앱에서 확인**: Step 6 (매출 관리) 탭 클릭 시 노란색 경고 박스가 표시되지 않으면 성공
+- ✅ **CLI 확인**: 
+  ```bash
+  # 테이블 구조 확인
+  npx wrangler d1 execute pv5-reports-db --command="PRAGMA table_info(reports);" --remote
+  ```
 
 ## 문의 및 지원
 - **개발자**: 사인마스터 AI 팀
