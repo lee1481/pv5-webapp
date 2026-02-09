@@ -476,10 +476,17 @@ app.post('/api/send-email', async (c) => {
     
     // Resend API 키 확인
     if (!env.RESEND_API_KEY) {
-      console.warn('RESEND_API_KEY not configured')
+      console.warn('RESEND_API_KEY not configured - Email service disabled')
+      
+      // 임시 해결책: 이메일 없이 성공 응답 (개발 환경용)
+      console.log('Email would be sent to:', recipientEmail)
+      console.log('Customer:', customerInfo?.receiverName)
+      console.log('Install Date:', installDate)
+      
       return c.json({ 
-        success: false, 
-        message: '이메일 서비스가 설정되지 않았습니다. 관리자에게 문의하세요.' 
+        success: true, 
+        message: '✅ 시공 확인서가 저장되었습니다!\n\n⚠️ 참고: 이메일 발송 기능은 현재 비활성화되어 있습니다.\nResend API 키를 설정하면 자동으로 이메일이 발송됩니다.\n\n설정 방법:\n1. https://resend.com 에서 무료 계정 생성\n2. API 키 발급\n3. Cloudflare Dashboard → Workers & Pages → pv5-webapp → Settings → Variables → RESEND_API_KEY 추가',
+        emailDisabled: true
       }, 200)
     }
     
