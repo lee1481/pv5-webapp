@@ -2230,11 +2230,45 @@ async function completeReport(reportId) {
       alert('✅ 시공이 완료되었습니다!');
       loadReportsList(); // 목록 새로고침
     } else {
-      alert('❌ ' + (response.data.message || '시공 완료 처리 실패'));
+      // 마이그레이션 필요 오류
+      if (response.data.needsMigration) {
+        const goToStep6 = confirm(
+          '⚠️ D1 마이그레이션이 필요합니다.\n\n' +
+          '매출 관리 기능을 사용하려면 Cloudflare Dashboard에서\n' +
+          'D1 데이터베이스에 status 컬럼을 추가해야 합니다.\n\n' +
+          '자세한 방법은 README.md를 참고하세요.\n\n' +
+          'Step 6 (매출 관리) 페이지로 이동하시겠습니까?\n' +
+          '(마이그레이션 안내를 확인할 수 있습니다)'
+        );
+        
+        if (goToStep6) {
+          goToStep(6);
+        }
+      } else {
+        alert('❌ ' + (response.data.message || '시공 완료 처리 실패'));
+      }
     }
   } catch (error) {
     console.error('Complete report error:', error);
-    alert('❌ 시공 완료 처리 중 오류가 발생했습니다.');
+    
+    // 네트워크 오류 또는 서버 오류
+    const errorMsg = error.response?.data?.message || error.message || '알 수 없는 오류';
+    const needsMigration = error.response?.data?.needsMigration;
+    
+    if (needsMigration) {
+      const goToStep6 = confirm(
+        '⚠️ D1 마이그레이션이 필요합니다.\n\n' +
+        errorMsg + '\n\n' +
+        'Step 6 (매출 관리) 페이지로 이동하시겠습니까?\n' +
+        '(마이그레이션 안내를 확인할 수 있습니다)'
+      );
+      
+      if (goToStep6) {
+        goToStep(6);
+      }
+    } else {
+      alert('❌ 시공 완료 처리 중 오류가 발생했습니다.\n\n' + errorMsg);
+    }
   }
 }
 

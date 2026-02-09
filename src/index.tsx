@@ -868,30 +868,47 @@ app.patch('/api/reports/:id/complete', async (c) => {
     if (!env.DB) {
       return c.json({
         success: false,
-        message: 'D1 데이터베이스가 연결되지 않았습니다.'
+        message: 'D1 데이터베이스가 연결되지 않았습니다.',
+        needsMigration: false
       }, 500)
     }
     
-    // D1에서 상태 업데이트
-    await env.DB.prepare(`
-      UPDATE reports 
-      SET status = 'completed', updated_at = datetime('now')
-      WHERE report_id = ?
-    `).bind(reportId).run()
-    
-    console.log('Report marked as completed:', reportId)
-    
-    return c.json({
-      success: true,
-      message: '시공이 완료되었습니다!'
-    })
+    // D1에서 상태 업데이트 (status 컬럼 없을 경우 대비)
+    try {
+      await env.DB.prepare(`
+        UPDATE reports 
+        SET status = 'completed', updated_at = datetime('now')
+        WHERE report_id = ?
+      `).bind(reportId).run()
+      
+      console.log('Report marked as completed:', reportId)
+      
+      return c.json({
+        success: true,
+        message: '시공이 완료되었습니다!'
+      })
+    } catch (dbError) {
+      // status 컬럼이 없는 경우
+      const errorMessage = dbError instanceof Error ? dbError.message : String(dbError)
+      if (errorMessage.includes('no such column: status') || errorMessage.includes('status')) {
+        console.warn('status column not found, migration needed')
+        return c.json({
+          success: false,
+          message: 'D1 마이그레이션이 필요합니다.',
+          needsMigration: true,
+          migrationGuide: 'Cloudflare Dashboard → D1 databases → pv5-reports-db → Console 탭에서 다음 SQL을 실행하세요: ALTER TABLE reports ADD COLUMN status TEXT DEFAULT \'draft\' CHECK(status IN (\'draft\', \'completed\'));'
+        }, 400)
+      }
+      throw dbError // 다른 오류는 외부 catch로
+    }
     
   } catch (error) {
     console.error('Complete report error:', error)
     return c.json({
       success: false,
       message: '시공 완료 처리 중 오류가 발생했습니다.',
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
+      needsMigration: false
     }, 500)
   }
 })
@@ -1514,6 +1531,36 @@ app.get('/', (c) => {
                         <i class="fas fa-chart-line text-purple-600 mr-2"></i>
                         6단계: 매출 관리
                     </h2>
+                    
+                    <!-- 마이그레이션 안내 (처음 진입 시 표시) -->
+                    <div id="migrationAlert" class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-exclamation-triangle text-yellow-400 text-xl"></i>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium text-yellow-800">
+                                    ⚠️ D1 마이그레이션이 필요할 수 있습니다
+                                </h3>
+                                <div class="mt-2 text-sm text-yellow-700">
+                                    <p>매출 관리 기능을 처음 사용하시는 경우, Cloudflare Dashboard에서 D1 데이터베이스 마이그레이션이 필요합니다.</p>
+                                    <div class="mt-2">
+                                        <p class="font-bold">마이그레이션 방법:</p>
+                                        <ol class="list-decimal ml-5 mt-1">
+                                            <li><a href="https://dash.cloudflare.com" target="_blank" class="underline hover:text-yellow-900">Cloudflare Dashboard</a> 접속</li>
+                                            <li>Workers & Pages → D1 databases → pv5-reports-db 선택</li>
+                                            <li>Console 탭에서 다음 SQL 실행:
+                                                <code class="block bg-yellow-100 p-2 mt-1 rounded text-xs">
+                                                    ALTER TABLE reports ADD COLUMN status TEXT DEFAULT 'draft' CHECK(status IN ('draft', 'completed'));
+                                                </code>
+                                            </li>
+                                        </ol>
+                                    </div>
+                                    <p class="mt-2">자세한 내용은 <a href="https://github.com/your-repo/webapp/blob/main/README.md" target="_blank" class="underline font-bold hover:text-yellow-900">README.md</a>를 참고하세요.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     
                     <!-- 검색 및 필터 -->
                     <div class="mb-6">
