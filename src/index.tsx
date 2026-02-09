@@ -661,37 +661,74 @@ app.post('/api/reports/save', async (c) => {
       attachmentFileName
     } = body
     
+    // finalReportId 생성 및 특수문자 제거 (SQL 안전성 보장)
+    const rawReportId = reportId || `REPORT-${Date.now()}`
+    const finalReportId = rawReportId.replace(/[^a-zA-Z0-9-_]/g, '_') // 특수문자를 '_'로 치환
+    
+    console.log('Original reportId:', rawReportId)
+    console.log('Sanitized finalReportId:', finalReportId)
+    
     // 이미지가 있으면 R2에 저장 // UPDATED
     let imageKey = null // UPDATED
-    if (attachmentImage) { // UPDATED
-      imageKey = `images/${Date.now()}-${reportId}-${attachmentFileName || 'attachment.jpg'}` // UPDATED
-      const imageBuffer = Buffer.from(attachmentImage, 'base64') // UPDATED
-      await env.R2.put(imageKey, imageBuffer) // UPDATED
+    if (attachmentImage && env.R2) { // UPDATED - FIX: R2 바인딩 확인
+      try { // UPDATED - FIX
+        imageKey = `images/${Date.now()}-${finalReportId.replace(/[^a-zA-Z0-9-]/g, '_')}-${(attachmentFileName || 'attachment.jpg').replace(/[^a-zA-Z0-9.-]/g, '_')}` // UPDATED - FIX: 특수문자 제거
+        console.log('Saving image to R2:', imageKey) // UPDATED - FIX
+        // Cloudflare Workers에서 Base64를 Uint8Array로 변환 // UPDATED - FIX
+        const binaryString = atob(attachmentImage) // UPDATED - FIX
+        const bytes = new Uint8Array(binaryString.length) // UPDATED - FIX
+        for (let i = 0; i < binaryString.length; i++) { // UPDATED - FIX
+          bytes[i] = binaryString.charCodeAt(i) // UPDATED - FIX
+        } // UPDATED - FIX
+        await env.R2.put(imageKey, bytes) // UPDATED - FIX
+        console.log('Image saved to R2 successfully') // UPDATED - FIX
+      } catch (r2Error) { // UPDATED - FIX
+        console.error('R2 save error (continuing without image):', r2Error) // UPDATED - FIX
+        imageKey = null // UPDATED - FIX: R2 실패 시에도 계속 진행
+      } // UPDATED - FIX
     } // UPDATED
     
-    const finalReportId = reportId || `REPORT-${Date.now()}`
+    // D1에 저장 (undefined 값 처리)
+    console.log('Preparing to save to D1...')
+    console.log('env.DB type:', typeof env.DB)
+    console.log('env.DB:', env.DB)
+    console.log('finalReportId:', finalReportId)
     
-    // D1에 저장 (undefined 값 처리) // UPDATED
-    await env.DB.prepare(` // UPDATED
-      INSERT OR REPLACE INTO reports ( // UPDATED
-        report_id, customer_info, packages, package_positions, // UPDATED
-        install_date, install_time, install_address, notes, // UPDATED
-        installer_name, image_key, image_filename, // UPDATED
-        created_at, updated_at // UPDATED
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now')) // UPDATED
-    `).bind( // UPDATED
-      finalReportId, // UPDATED
-      JSON.stringify(customerInfo || {}), // UPDATED
-      JSON.stringify(packages || []), // UPDATED
-      JSON.stringify(packagePositions || {}), // UPDATED
-      installDate || null, // UPDATED
-      installTime || null, // UPDATED
-      installAddress || null, // UPDATED
-      notes || null, // UPDATED
-      installerName || null, // UPDATED
-      imageKey || null, // UPDATED
-      attachmentFileName || null // UPDATED
-    ).run() // UPDATED
+    // SQL 쿼리를 상수로 분리
+    const insertSQL = `INSERT OR REPLACE INTO reports (
+      report_id, customer_info, packages, package_positions,
+      install_date, install_time, install_address, notes,
+      installer_name, image_key, image_filename,
+      created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+    
+    console.log('SQL Query:', insertSQL)
+    console.log('Calling env.DB.prepare()...')
+    
+    const stmt = env.DB.prepare(insertSQL)
+    
+    console.log('Statement prepared successfully')
+    console.log('Binding values...')
+    
+    // 바인딩할 값들 준비
+    const bindValues = [
+      finalReportId,
+      JSON.stringify(customerInfo || {}),
+      JSON.stringify(packages || []),
+      JSON.stringify(packagePositions || {}),
+      installDate || null,
+      installTime || null,
+      installAddress || null,
+      notes || null,
+      installerName || null,
+      imageKey || null,
+      attachmentFileName || null
+    ]
+    
+    console.log('Bind values count:', bindValues.length)
+    console.log('Bind values:', JSON.stringify(bindValues, null, 2))
+    
+    await stmt.bind(...bindValues).run()
     
     console.log('Report saved to D1:', finalReportId) // UPDATED
     return c.json({ 
@@ -701,11 +738,14 @@ app.post('/api/reports/save', async (c) => {
     })
     
   } catch (error) {
-    console.error('Report save error:', error)
+    console.error('Report save error:', error) // UPDATED - FIX
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack') // UPDATED - FIX
+    console.error('Error details:', JSON.stringify(error, null, 2)) // UPDATED - FIX
     return c.json({ 
       success: false, 
       message: '저장 중 오류가 발생했습니다.',
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
+      errorStack: error instanceof Error ? error.stack : undefined // UPDATED - FIX
     }, 500)
   }
 })

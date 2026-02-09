@@ -1,0 +1,75 @@
+/* 추가 커스텀 스타일 */
+@media print {
+  /* 인쇄 시 body의 모든 자식 요소 숨김 */
+  body > *:not(#previewModal) {
+    display: none !important;
+  }
+  
+  body {
+    padding: 0;
+    margin: 0;
+    background: white !important;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+  
+  #finalPreview {
+    box-shadow: none !important;
+  }
+  
+  /* 모달 인쇄 시 배경 및 버튼 숨김 */
+  .modal-overlay {
+    background: white !important;
+    position: static !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+  
+  .modal-content {
+    max-width: 100% !important;
+    max-height: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  .modal-header,
+  .modal-footer {
+    display: none !important;
+  }
+  
+  /* 인쇄 시 확인서 내용만 표시 */
+  #previewModal .border-2 {
+    border: none !important;
+  }
+  
+  /* 인쇄 시 모달 내용만 표시 */
+  #previewModal {
+    display: block !important;
+    position: static !important;
+    background: white !important;
+  }
+  
+  /* 인쇄 시 3단 선반 설치 위치 배지 표시 */ /* UPDATED */
+  .no-print-hide { /* UPDATED */
+    display: inline-block !important; /* UPDATED */
+  } /* UPDATED */
+}
+
+.material-table {
+  font-size: 0.875rem;
+}
+
+.material-table th {
+  background-color: #f7fafc;
+  font-weight: 600;
+  padding: 0.75rem;
+}
+
+.material-table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+}

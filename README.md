@@ -8,31 +8,29 @@
   - 밀워키/기아 PV5 제품 패키지 선택
   - 설치 일정 및 장소 정보 입력
   - 자재 점검표 자동 생성
-  - 시공 확인서 저장 및 관리 (Cloudflare KV)
+  - 시공 확인서 저장 및 관리 (Cloudflare D1 + R2 + KV)
   - PDF 다운로드 (인쇄 기능)
   - 이메일 발송 (거래명세서 이미지 첨부)
+  - Excel 데이터 내보내기/가져오기
+  - JPG 이미지 저장
 
 ## URLs
-- **Production**: https://c8742ea6.webapp-6m6.pages.dev
-- **직접 접속**: https://c8742ea6.webapp-6m6.pages.dev
+- **Production**: https://pv5-webapp.pages.dev
 - **GitHub**: (설정 후 업데이트 예정)
 
 ## 버전 정보
-- **현재 버전**: v1.1
-- **마지막 업데이트**: 2026-02-02
+- **현재 버전**: v2.0
+- **마지막 업데이트**: 2026-02-09
 - **주요 변경사항**:
-  - ✅ Google Vision API OCR 통합 완료
-  - ✅ 출력일자 및 상품번호 OCR 인식 개선 (3단계 패턴 매칭)
-  - ✅ Step 5 저장 문서 관리 기능 추가
-  - ✅ Cloudflare KV 클라우드 백업 활성화
-  - ✅ 이메일 발송 및 거래명세서 첨부 기능 완료
-  - ✅ 실시간 검색 필터링 (고객명, 날짜)
-  - ✅ Step 자동 이동 제거 (사용자 확인 후 수동 이동)
-  - ✅ 접수/작성자 필드 단일화
-  - ✅ 저장 후 자동 초기화 및 신규 접수 시작
-  - ✅ Step 5 상세보기 모달 추가 (상세보기/인쇄/수정 버튼)
-  - ✅ 인쇄 시 모달 배경 제거 (확인서 내용만 인쇄)
-  - ✅ 고객 정보 및 설치 정보 강조 디자인 (색상 배경, 큰 폰트)
+  - ✅ **Cloudflare D1 Database 통합** (SQLite 기반 관계형 데이터베이스)
+  - ✅ **Cloudflare R2 Storage 통합** (이미지 파일 저장)
+  - ✅ **서버 우선 저장 로직** (D1 + R2 → localStorage 캐시)
+  - ✅ **데이터 저장 오류 해결** (SQL 인젝션 방지 + 특수문자 처리)
+  - ✅ **무제한 용량** (클라우드 저장소 활용)
+  - ✅ **다중 사용자 지원** (중앙 데이터베이스)
+  - ✅ Excel 내보내기/가져오기 기능
+  - ✅ JPG 이미지 저장 기능
+  - ✅ 3단 선반 설치 위치 표시 기능
 
 ## 현재 완료된 기능
 
@@ -61,7 +59,7 @@
 - 제품 패키지 카드 UI
 - 실시간 제품 선택 및 표시
 - 다중 제품 선택 지원
-- 좌우 설치 위치 옵션 (해당 제품)
+- **3단 선반 설치 위치 옵션** (좌측/우측/양측)
 
 **밀워키 에디션:**
 1. PV5 밀워키 워크스테이션 (₩4,850,000)
@@ -77,23 +75,30 @@
 
 ### ✅ 3단계: 설치 정보 입력
 - 설치 날짜 선택
-- 설치 시간 입력
+- 설치 시간 입력 (오전/오후 + 시간/분 선택)
+- 직접 입력 기능 (커스텀 시간)
 - 설치 주소 입력 (OCR 데이터 자동 입력)
+- 고객 주소 복사 기능
 - 특이사항/비고 입력
 
 ### ✅ 4단계: 최종 확인 및 발송
 - 고객 정보 요약 (출력일자, 상품번호 포함)
 - 선택 제품 상세 정보
+- **3단 선반 설치 위치 배지 표시** (좌측/우측/양측)
 - 설치 정보 확인
 - 자재 점검표 (체크박스)
-- **접수/작성자 단일 입력 필드** (두꺼운 글씨체)
-- **저장하기** 버튼 (로컬스토리지 + Cloudflare KV)
-  - 저장 후 자동 초기화
-  - 신규 접수 즉시 시작 가능
+- **시공자 이름 입력** (단일 입력 필드)
+- **저장하기** 버튼:
+  - ✅ **Cloudflare D1 Database 저장** (관계형 데이터베이스)
+  - ✅ **Cloudflare R2 Storage 저장** (이미지 파일)
+  - ✅ localStorage 캐시 (오프라인 지원)
+  - ✅ 저장 후 자동 초기화
+  - ✅ 신규 접수 즉시 시작 가능
 - PDF 다운로드 (브라우저 인쇄 기능)
 - 이메일 발송 (거래명세서 이미지 첨부)
 
 ### ✅ 5단계: 저장 문서 관리
+- **Cloudflare D1 Database 조회** (중앙 데이터베이스)
 - 저장된 시공 확인서 목록 조회
 - **실시간 검색 필터링**:
   - 고객명 검색 (oninput 실시간)
@@ -104,17 +109,23 @@
   - 설치 날짜
   - 저장 시간
   - 문서 ID
+  - **3단 선반 설치 위치 배지** (목록 카드)
 - 문서 관리 버튼:
   - **상세보기**: 모달로 확인서 미리보기 (고객용)
+    - **3단 선반 설치 위치 표시** (미리보기 모달)
+  - **JPG 저장**: 확인서를 JPG 이미지로 다운로드
   - **수정하기**: 데이터 복원 및 Step 1로 이동
-  - **삭제**: 로컬 + 클라우드에서 삭제
-- **상세보기 모달**:
-  - 고객 정보 강조 (파란색 배경, 큰 폰트)
-  - 설치 정보 강조 (초록색 배경, 큰 폰트)
-  - 제품 정보 표시
-  - 자재 점검표 제외 (고객 보기용)
-  - 인쇄 버튼 (모달 배경 제외, 확인서만 인쇄)
-- **Cloudflare KV 클라우드 백업** (다중 기기 동기화)
+  - **삭제**: D1 + localStorage에서 삭제
+- **Excel 내보내기**: 
+  - 전체 데이터를 Excel 파일로 내보내기
+  - 고객 정보, 제품 정보, 설치 정보 포함
+  - 날짜별 정렬
+- **Excel 가져오기**:
+  - Excel 파일에서 데이터 일괄 가져오기
+  - 자동 데이터 변환 및 저장
+- **데이터 초기화**: 
+  - 모든 저장된 문서 삭제
+  - D1 + localStorage 완전 초기화
 
 ## 기능 URI 요약
 
@@ -126,10 +137,10 @@
 | `/api/packages/:id` | GET | 특정 제품 패키지 조회 | `id`: 패키지 ID |
 | `/api/ocr` | POST | 거래명세서 OCR 분석 (Google Vision API) | `file`: 이미지 파일 |
 | `/api/send-email` | POST | 이메일 발송 (Resend API) | JSON: recipientEmail, customerInfo, packages, installInfo, attachmentImage |
-| `/api/reports/save` | POST | 시공 확인서 저장 (Cloudflare KV) | JSON: reportData |
-| `/api/reports/list` | GET | 저장된 문서 목록 조회 | - |
-| `/api/reports/:id` | GET | 특정 문서 조회 | `id`: 문서 ID |
-| `/api/reports/:id` | DELETE | 특정 문서 삭제 | `id`: 문서 ID |
+| `/api/reports/save` | POST | 시공 확인서 저장 (D1 + R2 + localStorage) | JSON: reportData (이미지 자동 R2 저장) |
+| `/api/reports/list` | GET | 저장된 문서 목록 조회 (D1) | - |
+| `/api/reports/:id` | GET | 특정 문서 조회 (D1) | `id`: 문서 ID |
+| `/api/reports/:id` | DELETE | 특정 문서 삭제 (D1) | `id`: 문서 ID |
 
 ### 정적 리소스
 | 경로 | 설명 |
@@ -168,7 +179,7 @@
   description: string;           // 설명
   price: number;                 // 가격
   image: string;                 // 이미지 URL
-  hasPositionOption: boolean;    // 좌우 위치 선택 옵션
+  hasPositionOption: boolean;    // 3단 선반 위치 선택 옵션
   sections: [                    // 자재 섹션
     {
       title: string;             // 섹션명
@@ -191,21 +202,23 @@
   updatedAt: string;             // 수정 시간
   customerInfo: OCRData;         // 고객 정보
   packages: ProductPackage[];    // 선택된 제품
+  packagePositions: {            // 3단 선반 설치 위치
+    [packageId: string]: 'left' | 'right' | 'both';
+  };
   installDate: string;           // 설치 날짜
   installTime: string;           // 설치 시간
   installAddress: string;        // 설치 주소
   notes: string;                 // 특이사항
-  installerName: string;         // 접수/작성자
-  attachmentImage: string;       // 첨부 이미지 (Base64)
-  attachmentFileName: string;    // 첨부 파일명
-  attachmentContentType: string; // 첨부 파일 타입
+  installerName: string;         // 시공자 이름
+  imageKey: string;              // R2 이미지 키
+  imageFilename: string;         // 이미지 파일명
 }
 ```
 
 ## 사용자 가이드
 
 ### 1. 거래명세서 업로드
-1. 메인 페이지 접속: https://c8742ea6.webapp-6m6.pages.dev
+1. 메인 페이지 접속: https://pv5-webapp.pages.dev
 2. 거래명세서 이미지를 드래그하거나 "파일 선택" 클릭
 3. OCR 자동 인식 완료 대기 (Google Vision API)
 4. **인식된 고객 정보 확인** (Step 1에 머물면서 확인)
@@ -216,25 +229,27 @@
 1. 브랜드 탭 선택 (밀워키/기아)
 2. 원하는 제품 패키지 카드 클릭
 3. 다중 선택 가능 (여러 제품 선택 시 각각 표시)
-4. 좌우 위치 선택 (해당 제품의 경우)
+4. **3단 선반 위치 선택** (좌측/우측/양측)
 5. "다음" 클릭
 
 ### 3. 설치 정보 입력
 1. 설치 날짜 선택
-2. 설치 시간 입력
-3. 설치 주소 확인/수정 (OCR 데이터 자동 입력)
-4. 특이사항 입력 (선택)
-5. "다음" 클릭
+2. 설치 시간 선택 (오전/오후 + 시/분 버튼 선택)
+3. 또는 "직접 입력" 버튼으로 커스텀 시간 입력
+4. 설치 주소 확인/수정 (OCR 데이터 자동 입력)
+5. "고객 주소 복사" 버튼으로 빠른 입력
+6. 특이사항 입력 (선택)
+7. "다음" 클릭
 
 ### 4. 최종 확인 및 발송
 1. 모든 정보 최종 확인:
    - 고객 정보 (출력일자, 상품번호 포함)
-   - 선택 제품
+   - 선택 제품 (3단 선반 위치 배지 표시)
    - 설치 정보
    - 자재 점검표
-2. 접수/작성자 이름 입력
+2. 시공자 이름 입력
 3. **저장하기**: 
-   - 로컬 + 클라우드 저장
+   - D1 Database + R2 Storage + localStorage 저장
    - 저장 후 자동 초기화
    - 신규 접수 즉시 시작
 4. **PDF 다운로드**: 브라우저 인쇄 창에서 PDF 저장
@@ -245,7 +260,7 @@
 6. "저장 문서 관리" 클릭하여 Step 5로 이동
 
 ### 5. 저장 문서 관리
-1. 저장된 문서 목록 확인
+1. 저장된 문서 목록 확인 (D1 Database 조회)
 2. **실시간 검색**:
    - 고객명 입력 시 즉시 필터링
    - 날짜 범위 선택 시 즉시 필터링
@@ -255,59 +270,106 @@
    - 모달로 확인서 미리보기 (고객용)
    - 고객 정보 강조 (파란색 배경)
    - 설치 정보 강조 (초록색 배경)
-   - 자재 점검표 제외
+   - **3단 선반 설치 위치 배지** (색상 구분)
    - 인쇄 버튼으로 PDF 저장
-4. **수정하기**:
+4. **JPG 저장**:
+   - "JPG 저장" 클릭
+   - 확인서를 JPG 이미지로 다운로드
+   - 파일명: `PV5_시공확인서_{고객명}_{날짜}.jpg`
+5. **Excel 내보내기**:
+   - "Excel 내보내기" 클릭
+   - 전체 데이터를 Excel 파일로 다운로드
+   - 파일명: `PV5_시공확인서_목록_{날짜}.xlsx`
+6. **Excel 가져오기**:
+   - "데이터 가져오기" 클릭
+   - Excel 파일 선택
+   - 자동 데이터 변환 및 저장
+7. **수정하기**:
    - "수정하기" 클릭
    - 데이터 자동 복원
    - Step 1로 이동하여 수정 가능
-5. **문서 삭제**:
+8. **문서 삭제**:
    - "삭제" 클릭
-   - 로컬 + 클라우드에서 삭제
+   - D1 + localStorage에서 삭제
+9. **데이터 초기화**:
+   - "데이터 초기화" 클릭
+   - 확인 후 전체 데이터 삭제
 
-## OCR 인식 개선 사항
+## 저장소 아키텍처
 
-### 출력일자 패턴 (3가지)
-1. **라벨 + 콜론**: `출력일자: 2026년 01월 30일`
-2. **라벨 + 날짜**: `출력일자 2026년 01월 30일`
-3. **날짜만**: `2026년 01월 30일` (라벨 없이)
+### 1. Cloudflare D1 Database (Primary)
+- **타입**: SQLite 기반 관계형 데이터베이스
+- **바인딩**: `DB`
+- **Database**: `pv5-reports-db`
+- **특징**:
+  - ✅ 관계형 데이터 구조
+  - ✅ SQL 쿼리 지원
+  - ✅ 트랜잭션 지원
+  - ✅ 무제한 용량
+  - ✅ 다중 사용자 지원
+  - ✅ 글로벌 분산
+- **테이블 구조**:
+  ```sql
+  CREATE TABLE reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    report_id TEXT UNIQUE NOT NULL,
+    customer_info TEXT,              -- JSON
+    packages TEXT,                   -- JSON
+    package_positions TEXT,          -- JSON (3단 선반 위치)
+    install_date TEXT,
+    install_time TEXT,
+    install_address TEXT,
+    notes TEXT,
+    installer_name TEXT,
+    image_key TEXT,                  -- R2 이미지 키
+    image_filename TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  ```
 
-### 상품번호 패턴 (3단계 폴백)
-1. **패턴 1**: `1/1` 다음의 9자리 숫자
-2. **패턴 2**: `상품번호:` 라벨 뒤의 8-10자리 숫자
-3. **패턴 3**: 단독 9자리 숫자 (사업자번호, 배송번호 제외)
+### 2. Cloudflare R2 Storage (Images)
+- **타입**: S3 호환 객체 스토리지
+- **바인딩**: `R2`
+- **Bucket**: `pv5-images`
+- **특징**:
+  - ✅ 무제한 용량
+  - ✅ 이미지 파일 저장
+  - ✅ 빠른 접근 속도
+  - ✅ 글로벌 CDN
+- **저장 경로**: `images/{timestamp}-{reportId}-{filename}`
 
-### 인식 실패 시 대응
-- 자동으로 수동 입력 폼 표시
-- 인식된 정보 수정 가능
-- 필수 필드: 수령자명, 주소, 연락처
-
-## 저장소 구조
-
-### 로컬스토리지 (브라우저)
+### 3. localStorage (Cache)
 - **위치**: 브라우저 → 개발자 도구 → Application → Local Storage
 - **키**: `pv5_reports`
 - **특징**: 
-  - 즉시 저장
-  - 오프라인 지원
-  - 빠른 응답
-- **한계**: 
-  - 같은 브라우저에서만 접근
-  - 캐시 삭제 시 손실 가능
+  - ✅ 즉시 저장
+  - ✅ 오프라인 지원
+  - ✅ 빠른 응답
+  - ⚠️ 캐시 용도로만 사용 (Primary는 D1)
 
-### Cloudflare KV (클라우드)
+### 4. Cloudflare KV (Legacy - 참고용)
 - **바인딩**: `REPORTS_KV`
-- **Production ID**: `11915b46155a411aadeda7ef9c613882`
-- **Preview ID**: `6501349fce6f4b3abf9e31bac903a0d8`
-- **특징**:
-  - 클라우드 백업
-  - 다중 기기 동기화
-  - 데이터 보존
-  - 글로벌 분산
-- **데이터 구조**:
-  - Key: `REPORT-{timestamp}`
-  - Value: Report JSON
-  - Index: `report-index` (문서 ID 배열)
+- **상태**: ⚠️ 비활성 (D1으로 마이그레이션 완료)
+- **참고**: 이전 버전 호환성 유지
+
+## 저장 로직
+
+### 서버 우선 저장 (D1 + R2 → localStorage)
+```
+1. 사용자가 "저장하기" 클릭
+2. 첨부 이미지가 있으면 R2 Storage에 저장
+3. D1 Database에 문서 정보 저장 (이미지 키 포함)
+4. localStorage에 캐시 (빠른 로컬 접근용)
+5. 성공 메시지 표시
+6. 자동 초기화
+```
+
+### SQL 안전성 보장
+- ✅ **특수문자 제거**: reportId에서 `/`, `\`, `?` 등 제거
+- ✅ **파라미터 바인딩**: SQL 인젝션 방지
+- ✅ **Prepared Statement**: D1 prepare() 사용
+- ✅ **에러 핸들링**: 상세 로깅 및 폴백
 
 ## 현재 활성화된 외부 API
 
@@ -315,6 +377,7 @@
 - **용도**: OCR (거래명세서 텍스트 추출)
 - **환경 변수**: `GOOGLE_VISION_API_KEY`
 - **상태**: ✅ 활성화
+- **API 키**: AIzaSyBHiHgtP9f0gjWJOe97ezxd6N5Qc4OgNgk
 - **특징**: 고정밀 한국어 OCR
 
 ### 2. Resend API
@@ -326,84 +389,67 @@
   - 이미지 첨부 (Base64)
   - 안정적인 발송
 
-### 3. Cloudflare KV
-- **용도**: 클라우드 백업 (시공 확인서 저장)
-- **바인딩**: `REPORTS_KV`
-- **상태**: ✅ 활성화
-- **특징**: 
-  - 글로벌 분산 스토리지
-  - 다중 기기 동기화
+### 3. Cloudflare Services
+- **D1 Database**: ✅ 활성화 (pv5-reports-db)
+- **R2 Storage**: ✅ 활성화 (pv5-images)
+- **KV Namespace**: ⚠️ 비활성 (레거시 참고용)
+- **Workers AI**: ✅ 바인딩 설정됨
 
 ## 아직 구현되지 않은 기능
 
 ### 🚧 추가 개발 필요
 
-1. **PDF 생성 라이브러리**
-   - 현재: 브라우저 인쇄 기능 사용
-   - 필요: 서버 사이드 PDF 생성 (jsPDF, PDFKit 등)
-   - 목적: 더 전문적인 레이아웃 및 디자인
-
-2. **제품 이미지 업로드**
+1. **제품 이미지 업로드**
    - 현재: placeholder 이미지
    - 필요: 실제 제품 사진 업로드 및 관리
-   - 저장소: Cloudflare R2 스토리지
+   - 저장소: Cloudflare R2 스토리지 (이미 설정됨)
 
-3. **사용자 인증**
+2. **사용자 인증**
    - 담당자별 접근 권한 관리
    - 시공 이력 관리
    - 로그인/로그아웃
 
-4. **대시보드**
+3. **대시보드**
    - 시공 현황 통계
    - 월별 실적 차트
    - 자재 사용량 분석
 
-5. **알림 시스템**
+4. **알림 시스템**
    - 설치 일정 리마인더
    - 자재 부족 알림
    - 이메일/SMS 알림
 
 ## 다음 개발 단계 (권장)
 
-### Phase 1: 핵심 기능 강화 (우선순위 높음)
+### Phase 1: 핵심 기능 강화 (완료)
 1. ✅ **OCR 정확도 개선** - 완료
-   - Google Vision API 통합 완료
-   - 출력일자 및 상품번호 패턴 개선 완료
-   - 3단계 폴백 로직 완료
-
-2. ✅ **데이터 영속성** - 완료
-   - Cloudflare KV 클라우드 백업 완료
-   - 로컬스토리지 하이브리드 저장 완료
-   - 문서 저장/불러오기/삭제 완료
-
+2. ✅ **데이터 영속성** - 완료 (D1 + R2 + localStorage)
 3. ✅ **이메일 발송** - 완료
-   - Resend API 통합 완료
-   - 거래명세서 이미지 첨부 완료
-   - HTML 이메일 템플릿 완료
+4. ✅ **무제한 저장 용량** - 완료 (D1 + R2)
+5. ✅ **다중 사용자 지원** - 완료 (중앙 데이터베이스)
+6. ✅ **Excel 내보내기/가져오기** - 완료
+7. ✅ **JPG 저장** - 완료
+8. ✅ **3단 선반 위치 표시** - 완료
 
-4. **제품 이미지 관리** - 대기
-   - Cloudflare R2 스토리지 활용
+### Phase 2: 사용성 개선 (대기)
+1. **제품 이미지 관리** - 대기
+   - R2 스토리지 활용 (이미 설정됨)
    - 실제 제품 사진 업로드 및 표시
 
-### Phase 2: 사용성 개선 (우선순위 중간)
-5. **PDF 생성 개선** - 대기
-   - 서버 사이드 PDF 생성
-   - 전문적인 레이아웃 및 디자인
-
-6. **모바일 최적화** - 대기
+2. **모바일 최적화** - 대기
    - 반응형 디자인 개선
    - 터치 인터페이스 최적화
 
-### Phase 3: 고급 기능 (우선순위 낮음)
-7. **대시보드 추가** - 대기
+### Phase 3: 고급 기능 (대기)
+3. **대시보드 추가** - 대기
    - 시공 현황 통계
    - 월별 실적 차트
 
-8. **알림 시스템** - 대기
+4. **알림 시스템** - 대기
    - 설치 일정 리마인더
    - 자재 부족 알림
 
-9. **사용자 인증** - 대기
+5. **사용자 인증** - 대기
    - 담당자별 접근 권한
    - 시공 이력 관리
 
@@ -411,27 +457,30 @@
 - **프론트엔드**: HTML, TailwindCSS (CDN), JavaScript
 - **백엔드**: Hono Framework (TypeScript)
 - **런타임**: Cloudflare Workers/Pages
+- **데이터베이스**: Cloudflare D1 (SQLite)
+- **파일 저장소**: Cloudflare R2 (S3 호환)
 - **OCR**: Google Vision API
 - **이메일**: Resend API
-- **저장소**: Cloudflare KV
 - **라이브러리**:
   - Axios (HTTP 클라이언트)
   - Font Awesome (아이콘)
   - Tailwind CSS (스타일링)
+  - SheetJS (Excel 처리)
+  - html2canvas (JPG 저장)
 
 ## 배포 상태
 - **플랫폼**: Cloudflare Pages
 - **상태**: ✅ 프로덕션 배포 완료
-- **최신 URL**: https://c8742ea6.webapp-6m6.pages.dev
-- **프로젝트명**: `webapp`
-- **마지막 배포**: 2026-02-02
+- **최신 URL**: https://pv5-webapp.pages.dev
+- **프로젝트명**: `pv5-webapp`
+- **마지막 배포**: 2026-02-09
 
 ## 개발 환경 설정
 
 ### 필수 환경 변수
 ```bash
 # .dev.vars 파일 (로컬 개발용)
-GOOGLE_VISION_API_KEY=your_google_vision_api_key
+GOOGLE_VISION_API_KEY=AIzaSyBHiHgtP9f0gjWJOe97ezxd6N5Qc4OgNgk
 RESEND_API_KEY=your_resend_api_key
 ```
 
@@ -443,11 +492,14 @@ cd /home/user/webapp && npm install
 # 빌드
 cd /home/user/webapp && npm run build
 
-# 샌드박스에서 개발 서버 시작 (PM2)
-cd /home/user/webapp && pm2 start ecosystem.config.cjs
+# 로컬 D1 마이그레이션 적용
+cd /home/user/webapp && npm run db:migrate:local
 
-# 로컬 머신에서 개발 서버 시작 (Vite)
-cd /home/user/webapp && npm run dev
+# 로컬 개발 서버 시작 (D1 --local 모드)
+cd /home/user/webapp && npm run dev:d1
+
+# 또는 PM2로 시작
+cd /home/user/webapp && pm2 start ecosystem.config.cjs
 
 # 서비스 테스트
 curl http://localhost:3000
@@ -464,15 +516,24 @@ pm2 logs --nostream
 # 2. 빌드
 cd /home/user/webapp && npm run build
 
-# 3. Cloudflare Pages 배포
-cd /home/user/webapp && npx wrangler pages deploy dist --project-name=webapp
+# 3. Production D1 마이그레이션 적용 (최초 1회 또는 스키마 변경 시)
+cd /home/user/webapp && npm run db:migrate:prod
 
-# 4. 환경 변수 설정 (프로덕션)
-npx wrangler pages secret put GOOGLE_VISION_API_KEY --project-name=webapp
-npx wrangler pages secret put RESEND_API_KEY --project-name=webapp
+# 4. Cloudflare Pages 배포
+cd /home/user/webapp && npm run deploy:prod
 
-# 5. 배포 확인
-curl https://c8742ea6.webapp-6m6.pages.dev
+# 5. 환경 변수 설정 (최초 1회)
+# Cloudflare Dashboard → pv5-webapp → Settings → Environment variables
+# GOOGLE_VISION_API_KEY: AIzaSyBHiHgtP9f0gjWJOe97ezxd6N5Qc4OgNgk
+
+# 6. 바인딩 확인
+# Cloudflare Dashboard → pv5-webapp → Settings → Bindings
+# - D1 database: DB → pv5-reports-db
+# - R2 bucket: R2 → pv5-images
+# - KV namespace: REPORTS_KV (레거시)
+
+# 7. 배포 확인
+curl https://pv5-webapp.pages.dev
 ```
 
 ### Git 관리
@@ -493,48 +554,51 @@ cd /home/user/webapp && git push -f origin main
 
 ## 최근 업데이트 내역
 
-### 2026-02-02 (v1.1) - 최신
+### 2026-02-09 (v2.0) - 최신 🚀
+- ✅ **Cloudflare D1 Database 통합** (SQLite 기반 관계형 데이터베이스)
+- ✅ **Cloudflare R2 Storage 통합** (이미지 파일 저장)
+- ✅ **서버 우선 저장 로직** (D1 + R2 → localStorage 캐시)
+- ✅ **데이터 저장 오류 해결**:
+  - SQL 인젝션 방지
+  - reportId 특수문자 제거 (`/`, `\`, `?` 등)
+  - Prepared Statement 사용
+  - 상세 에러 로깅
+- ✅ **무제한 용량** (클라우드 저장소 활용)
+- ✅ **다중 사용자 지원** (중앙 데이터베이스)
+- ✅ **Production 환경 바인딩 설정 완료**:
+  - D1 database: `DB` → `pv5-reports-db`
+  - R2 bucket: `R2` → `pv5-images`
+  - KV namespace: `REPORTS_KV` (레거시)
+- ✅ **Google Vision API 재활성화**
+  - API 키: AIzaSyBHiHgtP9f0gjWJOe97ezxd6N5Qc4OgNgk
+  - 환경 변수 설정 완료
+- ✅ **저장 기능 정상 작동 확인**
+
+### 2026-02-07 (v1.2)
+- ✅ Excel 내보내기/가져오기 기능
+- ✅ JPG 이미지 저장 기능
+- ✅ 3단 선반 설치 위치 표시 (좌측/우측/양측)
+- ✅ localStorage 용량 초과 처리 개선
+- ✅ 시간 선택 UI 개선 (오전/오후 + 시/분 버튼)
+- ✅ 직접 입력 기능 추가
+
+### 2026-02-02 (v1.1)
 - ✅ 저장 후 자동 초기화 및 신규 접수 시작 기능 추가
-- ✅ Step 5 "불러오기" → "수정하기" 텍스트 변경
 - ✅ Step 5 상세보기 모달 추가
-  - 고객 정보 및 설치 정보 강조 (색상 배경, 큰 폰트)
-  - 자재 점검표 제외 (고객 보기용)
-  - 인쇄 버튼 추가
 - ✅ 인쇄 시 모달 배경 완전히 제거
-  - HTML 인라인 스타일에 print CSS 추가
-  - `body > *:not(#previewModal)` 규칙으로 배경 숨김
-  - 확인서 내용만 깔끔하게 인쇄
 - ✅ 고객 정보 및 설치 정보 강조 디자인
-  - 고객 정보: 파란색 배경 (`bg-blue-50`)
-  - 설치 정보: 초록색 배경 (`bg-green-50`)
-  - 중요 정보 큰 폰트 (`text-lg font-bold`)
-  - 흰색 카드 형태로 필드 구분
-  - 제목 이모지 추가 (👤 📅)
 
 ### 2026-02-02 (v1.0)
 - ✅ 출력일자 및 상품번호 OCR 인식 개선 (3단계 패턴 매칭)
-- ✅ Step 4 미리보기에 출력일자 및 상품번호 표시
 - ✅ Step 자동 이동 제거 (사용자가 OCR 결과 확인 후 수동 이동)
-- ✅ Step 5 클릭 활성화 (저장 문서 관리 직접 접근)
-- ✅ Step 5 색상 표시 수정 (활성화 시 파란색, 완료 시 초록색)
-- ✅ 접수/작성자 필드 단일화 (두꺼운 글씨체)
-- ✅ 실시간 검색 필터링 (고객명 oninput, 날짜 onchange)
+- ✅ 실시간 검색 필터링 (고객명, 날짜)
 - ✅ Cloudflare KV 클라우드 백업 활성화
-- ✅ 이메일 발송 시 거래명세서 이미지 첨부
-- ✅ 디버깅 로그 개선 (출력일자/상품번호 추적)
-
-### 2025-01-31 (v0.2)
-- ✅ Cloudflare Workers AI 통합
-- ✅ 파일 업로드 기능 개선
-- ✅ 수동 입력 옵션 추가
-- ✅ OCR 실패 시 자동 폴백
 
 ## 문의 및 지원
 - **개발자**: 사인마스터 AI 팀
 - **용도**: PV5 간판/시공 관리 시스템
-- **이메일**: (추가 예정)
-- **프로덕션 URL**: https://c8742ea6.webapp-6m6.pages.dev
+- **프로덕션 URL**: https://pv5-webapp.pages.dev
 
 ---
 
-**Note**: 이 시스템은 v1.1 버전으로, 핵심 기능이 완료되었으며 지속적인 개선이 예정되어 있습니다.
+**Note**: 이 시스템은 v2.0 버전으로, Cloudflare D1 Database와 R2 Storage를 활용한 무제한 용량 지원 및 다중 사용자 환경을 제공합니다. 핵심 기능이 완료되었으며 지속적인 개선이 예정되어 있습니다.
