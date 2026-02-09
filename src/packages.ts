@@ -85,7 +85,7 @@ export const milwaukeePackages: ProductPackage[] = [
     name: 'PV5 밀워키 스마트 에디션',
     fullName: 'PV5 기아 밀워키 스마트 에디션',
     description: '격벽타공판 + 격벽2단선반 + 3단선반 + 툴박스',
-    price: 5200000,
+    price: 4490000,
     image: '/static/images/milwaukee-smart.jpg',
     hasPositionOption: true, // UPDATED
     sections: [
@@ -141,7 +141,7 @@ export const milwaukeePackages: ProductPackage[] = [
     name: 'PV5 밀워키 3단 부품선반',
     fullName: 'PV5 기아 밀워키 3단 부품선반 (좌/우측)',
     description: '밀워키 단품 - 3단 부품선반',
-    price: 1800000,
+    price: 968000,
     image: '/static/images/milwaukee-3shelf-parts.jpg',
     hasPositionOption: true,
     sections: [
@@ -165,7 +165,7 @@ export const milwaukeePackages: ProductPackage[] = [
     name: 'PV5 밀워키 3단 선반',
     fullName: 'PV5 기아 밀워키 3단 선반 (좌/우측)',
     description: '밀워키 단품 - 3단 선반',
-    price: 1900000,
+    price: 1830000,
     image: '/static/images/milwaukee-3shelf-standard.jpg',
     hasPositionOption: true,
     sections: [
@@ -251,7 +251,7 @@ export const kiaPackages: ProductPackage[] = [
     name: '기아 PV5 워크스테이션',
     fullName: '기아 PV5 순정형 워크스테이션',
     description: '격벽타공판 + 3단부품선반 + 워크스페이스',
-    price: 4200000,
+    price: 3390000,
     image: '/static/images/kia-workstation.jpg',
     sections: [
       {
@@ -303,7 +303,7 @@ export const kiaPackages: ProductPackage[] = [
     name: '기아 PV5 스마트 패키지',
     fullName: '기아 PV5 순정형 스마트 패키지',
     description: '격벽타공판 + 2단선반 + 3단선반',
-    price: 4500000,
+    price: 3600000,
     image: '/static/images/kia-smart.jpg',
     hasPositionOption: true, // UPDATED
     sections: [
@@ -352,7 +352,7 @@ export const kiaPackages: ProductPackage[] = [
     name: '기아 PV5 3단 부품선반',
     fullName: '기아 PV5 순정형 3단 부품선반 (좌/우측)',
     description: '기아 단품 - 3단 부품선반',
-    price: 1600000,
+    price: 880000,
     image: '/static/images/kia-3shelf-parts.jpg',
     hasPositionOption: true,
     sections: [
@@ -377,7 +377,7 @@ export const kiaPackages: ProductPackage[] = [
     name: '기아 PV5 3단 선반',
     fullName: '기아 PV5 순정형 3단 선반 (좌/우측)',
     description: '기아 단품 - 3단 선반',
-    price: 1700000,
+    price: 1210000,
     image: '/static/images/kia-3shelf-standard.jpg',
     hasPositionOption: true,
     sections: [
