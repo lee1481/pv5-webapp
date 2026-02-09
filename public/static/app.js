@@ -2229,6 +2229,9 @@ async function completeReport(reportId) {
     if (response.data.success) {
       alert('✅ 시공이 완료되었습니다!');
       loadReportsList(); // 목록 새로고침
+      
+      // Step 6 (매출 관리)로 자동 이동
+      goToStep(6);
     } else {
       // 마이그레이션 필요 오류
       if (response.data.needsMigration) {
