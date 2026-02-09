@@ -2478,6 +2478,42 @@ function downloadRevenueExcel() {
   alert('✅ Excel 파일이 다운로드되었습니다!');
 }
 
+// D1 마이그레이션 자동 실행
+async function runMigration() {
+  if (!confirm('⚠️ D1 데이터베이스 마이그레이션을 실행하시겠습니까?\n\nreports 테이블에 status 컬럼이 추가됩니다.\n\n진행하시겠습니까?')) {
+    return;
+  }
+  
+  try {
+    const response = await axios.post('/api/migrate-status-column');
+    
+    if (response.data.success) {
+      // 마이그레이션 성공
+      const message = response.data.alreadyExists 
+        ? '✅ status 컬럼이 이미 존재합니다.\n마이그레이션이 필요하지 않습니다.'
+        : '✅ 마이그레이션이 완료되었습니다!\n\nstatus 컬럼이 추가되었습니다.\n이제 "시공 완료" 기능을 사용할 수 있습니다.';
+      
+      alert(message);
+      
+      // 마이그레이션 알림 숨기기
+      const migrationAlert = document.getElementById('migrationAlert');
+      if (migrationAlert) {
+        migrationAlert.style.display = 'none';
+      }
+      
+      // 매출 목록 새로고침
+      loadRevenueList();
+    } else {
+      // 마이그레이션 실패
+      alert('❌ 마이그레이션 실패\n\n' + (response.data.message || '알 수 없는 오류가 발생했습니다.'));
+    }
+  } catch (error) {
+    console.error('Migration error:', error);
+    const errorMsg = error.response?.data?.message || error.message || '알 수 없는 오류';
+    alert('❌ 마이그레이션 실행 중 오류가 발생했습니다.\n\n' + errorMsg);
+  }
+}
+
 // 검색 필터 적용
 function applyRevenueFilter() {
   const filterType = document.getElementById('revenueFilterType')?.value || 'all';

@@ -913,6 +913,61 @@ app.patch('/api/reports/:id/complete', async (c) => {
   }
 })
 
+// API: D1 마이그레이션 실행 (status 컬럼 추가)
+app.post('/api/migrate-status-column', async (c) => {
+  try {
+    const { env } = c
+    
+    if (!env.DB) {
+      return c.json({
+        success: false,
+        message: 'D1 데이터베이스가 연결되지 않았습니다.'
+      }, 500)
+    }
+    
+    try {
+      // status 컬럼 추가 시도
+      await env.DB.prepare(`
+        ALTER TABLE reports ADD COLUMN status TEXT DEFAULT 'draft' CHECK(status IN ('draft', 'completed'))
+      `).run()
+      
+      console.log('✅ D1 Migration completed: status column added')
+      
+      return c.json({
+        success: true,
+        message: '✅ 마이그레이션이 완료되었습니다! status 컬럼이 추가되었습니다.'
+      })
+    } catch (migrationError) {
+      const errorMessage = migrationError instanceof Error ? migrationError.message : String(migrationError)
+      
+      // 이미 컬럼이 존재하는 경우
+      if (errorMessage.includes('duplicate column name') || errorMessage.includes('already exists')) {
+        return c.json({
+          success: true,
+          message: '✅ status 컬럼이 이미 존재합니다. 마이그레이션이 필요하지 않습니다.',
+          alreadyExists: true
+        })
+      }
+      
+      // 다른 오류
+      console.error('Migration error:', errorMessage)
+      return c.json({
+        success: false,
+        message: '❌ 마이그레이션 실패: ' + errorMessage,
+        error: errorMessage
+      }, 500)
+    }
+    
+  } catch (error) {
+    console.error('Migration endpoint error:', error)
+    return c.json({
+      success: false,
+      message: '마이그레이션 처리 중 오류가 발생했습니다.',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500)
+  }
+})
+
 // API: 시공 완료 목록 조회 (매출 관리용)
 app.get('/api/reports/completed/list', async (c) => {
   try {
@@ -1538,25 +1593,46 @@ app.get('/', (c) => {
                             <div class="flex-shrink-0">
                                 <i class="fas fa-exclamation-triangle text-yellow-400 text-xl"></i>
                             </div>
-                            <div class="ml-3">
+                            <div class="ml-3 flex-1">
                                 <h3 class="text-sm font-medium text-yellow-800">
                                     ⚠️ D1 마이그레이션이 필요할 수 있습니다
                                 </h3>
                                 <div class="mt-2 text-sm text-yellow-700">
-                                    <p>매출 관리 기능을 처음 사용하시는 경우, Cloudflare Dashboard에서 D1 데이터베이스 마이그레이션이 필요합니다.</p>
-                                    <div class="mt-2">
-                                        <p class="font-bold">마이그레이션 방법:</p>
-                                        <ol class="list-decimal ml-5 mt-1">
-                                            <li><a href="https://dash.cloudflare.com" target="_blank" class="underline hover:text-yellow-900">Cloudflare Dashboard</a> 접속</li>
-                                            <li>Workers & Pages → D1 databases → pv5-reports-db 선택</li>
-                                            <li>Console 탭에서 다음 SQL 실행:
-                                                <code class="block bg-yellow-100 p-2 mt-1 rounded text-xs">
-                                                    ALTER TABLE reports ADD COLUMN status TEXT DEFAULT 'draft' CHECK(status IN ('draft', 'completed'));
-                                                </code>
-                                            </li>
-                                        </ol>
+                                    <p>매출 관리 기능을 처음 사용하시는 경우, D1 데이터베이스 마이그레이션이 필요합니다.</p>
+                                    
+                                    <!-- 자동 마이그레이션 버튼 -->
+                                    <div class="mt-3">
+                                        <button 
+                                            onclick="runMigration()" 
+                                            class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded inline-flex items-center"
+                                        >
+                                            <i class="fas fa-database mr-2"></i>
+                                            자동 마이그레이션 실행
+                                        </button>
+                                        <p class="mt-2 text-xs">
+                                            <i class="fas fa-info-circle mr-1"></i>
+                                            버튼을 클릭하면 D1 데이터베이스에 status 컬럼이 자동으로 추가됩니다.
+                                        </p>
                                     </div>
-                                    <p class="mt-2">자세한 내용은 <a href="https://github.com/your-repo/webapp/blob/main/README.md" target="_blank" class="underline font-bold hover:text-yellow-900">README.md</a>를 참고하세요.</p>
+                                    
+                                    <!-- 수동 마이그레이션 안내 (접기/펼치기) -->
+                                    <details class="mt-3">
+                                        <summary class="cursor-pointer font-bold hover:text-yellow-900">
+                                            <i class="fas fa-chevron-right mr-1"></i>
+                                            수동 마이그레이션 방법 (Cloudflare Dashboard)
+                                        </summary>
+                                        <div class="mt-2">
+                                            <ol class="list-decimal ml-5 mt-1">
+                                                <li><a href="https://dash.cloudflare.com" target="_blank" class="underline hover:text-yellow-900">Cloudflare Dashboard</a> 접속</li>
+                                                <li>Workers & Pages → D1 databases → pv5-reports-db 선택</li>
+                                                <li>Console 탭에서 다음 SQL 실행:
+                                                    <code class="block bg-yellow-100 p-2 mt-1 rounded text-xs">
+                                                        ALTER TABLE reports ADD COLUMN status TEXT DEFAULT 'draft' CHECK(status IN ('draft', 'completed'));
+                                                    </code>
+                                                </li>
+                                            </ol>
+                                        </div>
+                                    </details>
                                 </div>
                             </div>
                         </div>
