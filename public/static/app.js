@@ -1535,6 +1535,15 @@ function displayReportsList(reports) {
             ${displayName}
           </h3>
           ${positionBadges ? `<div class="mb-2">${positionBadges}</div>` : ''} <!-- UPDATED -->
+          <!-- 상태 배지 -->
+          <div class="mb-2">
+            ${report.status === 'draft' || !report.status ? 
+              '<span class="inline-block px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold"><i class="fas fa-clipboard-list mr-1"></i>예약 접수 중</span>' :
+              report.status === 'confirmed' ?
+              '<span class="inline-block px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold"><i class="fas fa-check-circle mr-1"></i>예약 확정</span>' :
+              '<span class="inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-semibold"><i class="fas fa-check-double mr-1"></i>시공 완료</span>'
+            }
+          </div>
           <div class="text-sm text-gray-600 space-y-1">
             <div><i class="fas fa-calendar mr-2"></i>설치 날짜: ${installDate}</div>
             <div><i class="fas fa-clock mr-2"></i>설치 시간: ${installTime}</div>
@@ -1555,12 +1564,17 @@ function displayReportsList(reports) {
           ${report.status === 'completed' ? `
             <button disabled 
                     class="bg-gray-400 text-white px-4 py-2 rounded-lg text-sm cursor-not-allowed">
-              <i class="fas fa-check-circle mr-1"></i>시공 완료됨
+              <i class="fas fa-check-double mr-1"></i>완료됨
+            </button>
+          ` : report.status === 'confirmed' ? `
+            <button onclick="completeReport('${reportId}')" 
+                    class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm">
+              <i class="fas fa-check-circle mr-1"></i>시공 완료
             </button>
           ` : `
-            <button onclick="completeReport('${reportId}')" 
+            <button onclick="confirmReport('${reportId}')" 
                     class="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 text-sm">
-              <i class="fas fa-check-circle mr-1"></i>시공 완료
+              <i class="fas fa-calendar-check mr-1"></i>예약 확정
             </button>
           `}
           <button onclick="deleteReport('${reportId}')" 
@@ -1582,12 +1596,17 @@ function displayReportsList(reports) {
           ${report.status === 'completed' ? `
             <button disabled 
                     class="bg-gray-400 text-white px-4 py-3 rounded-lg text-sm font-semibold cursor-not-allowed">
-              <i class="fas fa-check-circle mr-1"></i>완료됨
+              <i class="fas fa-check-double mr-1"></i>완료됨
+            </button>
+          ` : report.status === 'confirmed' ? `
+            <button onclick="completeReport('${reportId}')" 
+                    class="bg-red-600 text-white px-4 py-3 rounded-lg hover:bg-red-700 text-sm font-semibold">
+              <i class="fas fa-check-circle mr-1"></i>시공 완료
             </button>
           ` : `
-            <button onclick="completeReport('${reportId}')" 
+            <button onclick="confirmReport('${reportId}')" 
                     class="bg-orange-600 text-white px-4 py-3 rounded-lg hover:bg-orange-700 text-sm font-semibold">
-              <i class="fas fa-check-circle mr-1"></i>시공 완료
+              <i class="fas fa-calendar-check mr-1"></i>예약 확정
             </button>
           `}
           <button onclick="deleteReport('${reportId}')" 
@@ -2383,6 +2402,29 @@ function confirmDataReset() {
 }
 
 // ========== Step 6: 매출 관리 기능 ==========
+
+// 예약 확정 처리
+async function confirmReport(reportId) {
+  if (!confirm('이 예약을 확정하시겠습니까?\n\n예약 확정 후 시공 완료 처리가 가능합니다.')) {
+    return;
+  }
+  
+  try {
+    const response = await axios.patch(`/api/reports/${reportId}/confirm`);
+    
+    if (response.data.success) {
+      alert('✅ 예약이 확정되었습니다!');
+      
+      // 목록 새로고침
+      loadReportsList();
+    } else {
+      alert('❌ 예약 확정 실패: ' + (response.data.message || '알 수 없는 오류'));
+    }
+  } catch (error) {
+    console.error('Confirm report error:', error);
+    alert('❌ 예약 확정 중 오류가 발생했습니다.');
+  }
+}
 
 // 시공 완료 처리
 async function completeReport(reportId) {

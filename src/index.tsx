@@ -868,6 +868,42 @@ app.get('/api/reports/:id', async (c) => {
   }
 })
 
+// API: 예약 확정 상태 변경
+app.patch('/api/reports/:id/confirm', async (c) => {
+  try {
+    const { env } = c
+    const reportId = c.req.param('id')
+    
+    if (!env.DB) {
+      return c.json({
+        success: false,
+        message: 'D1 데이터베이스가 연결되지 않았습니다.'
+      }, 500)
+    }
+    
+    // D1에서 상태 업데이트
+    await env.DB.prepare(`
+      UPDATE reports 
+      SET status = 'confirmed', updated_at = datetime('now')
+      WHERE report_id = ?
+    `).bind(reportId).run()
+    
+    console.log('Report confirmed:', reportId)
+    
+    return c.json({
+      success: true,
+      message: '예약이 확정되었습니다.'
+    })
+  } catch (error) {
+    console.error('Confirm report error:', error)
+    return c.json({
+      success: false,
+      message: '예약 확정 중 오류가 발생했습니다.',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500)
+  }
+})
+
 // API: 시공 완료 상태 변경
 app.patch('/api/reports/:id/complete', async (c) => {
   try {
