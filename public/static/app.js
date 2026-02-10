@@ -1534,12 +1534,9 @@ function displayReportsList(reports) {
             ${displayName}
           </h3>
           ${positionBadges ? `<div class="mb-2">${positionBadges}</div>` : ''} <!-- UPDATED -->
-          <div class="grid grid-cols-2 gap-2 text-sm text-gray-600">
+          <div class="text-sm text-gray-600 space-y-1">
             <div><i class="fas fa-calendar mr-2"></i>설치 날짜: ${installDate}</div>
-            <div><i class="fas fa-clock mr-2"></i>저장 시간: ${createdAt}</div>
-          </div>
-          <div class="text-xs text-gray-500 mt-2">
-            문서 ID: ${reportId}
+            <div><i class="fas fa-id-card mr-2"></i>문서 ID: ${reportId}</div>
           </div>
         </div>
         
