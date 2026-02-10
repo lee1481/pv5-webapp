@@ -1505,83 +1505,149 @@ app.get('/', (c) => {
                 </div>
 
                 <!-- Step 5: 저장 문서 관리 -->
-                <div id="manage-section" class="bg-white rounded-lg shadow-lg p-8 mb-8 hidden">
-                    <h2 class="text-2xl font-bold mb-6 text-gray-800">
+<div id="manage-section" class="bg-white rounded-lg shadow-lg p-4 sm:p-8 mb-8 hidden">
+                    <h2 class="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800">
                         <i class="fas fa-folder-open text-purple-600 mr-2"></i>
                         5단계: 저장 문서 관리
                     </h2>
                     
-                    <!-- 검색 및 필터 -->
+                    <!-- 목록/달력 탭 전환 -->
                     <div class="mb-6">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label class="block text-sm font-bold text-gray-700 mb-2">
-                                    <i class="fas fa-calendar mr-2"></i>시작 날짜
-                                </label>
-                                <input type="date" id="searchStartDate" 
-                                       onchange="searchReports()"
-                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-bold text-gray-700 mb-2">
-                                    <i class="fas fa-calendar mr-2"></i>종료 날짜
-                                </label>
-                                <input type="date" id="searchEndDate" 
-                                       onchange="searchReports()"
-                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-bold text-gray-700 mb-2">
-                                    <i class="fas fa-search mr-2"></i>고객명 검색
-                                </label>
-                                <input type="text" id="searchCustomerName" 
-                                       placeholder="고객명 입력..."
-                                       oninput="searchReports()"
-                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
-                            </div>
+                        <div class="flex gap-2 border-b-2 border-gray-200">
+                            <button id="listViewTab" onclick="switchManageView('list')" 
+                                    class="px-4 sm:px-6 py-3 font-semibold text-purple-600 border-b-2 border-purple-600 transition">
+                                <i class="fas fa-list mr-2"></i>목록 보기
+                            </button>
+                            <button id="calendarViewTab" onclick="switchManageView('calendar')" 
+                                    class="px-4 sm:px-6 py-3 font-semibold text-gray-500 hover:text-purple-600 transition">
+                                <i class="fas fa-calendar-alt mr-2"></i>달력 보기
+                            </button>
                         </div>
-                        <div class="mt-4 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
-                            <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                                <button onclick="searchReports()" 
-                                        class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 font-semibold">
-                                    <i class="fas fa-search mr-2"></i>검색
-                                </button>
-                                <button onclick="resetSearch()" 
-                                        class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 font-semibold">
-                                    <i class="fas fa-redo mr-2"></i>초기화
-                                </button>
-                            </div>
-                            <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                                <button onclick="exportToExcel()" 
-                                        class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-semibold">
-                                    <i class="fas fa-file-excel mr-2"></i>Excel 내보내기
-                                </button>
-                                <button onclick="document.getElementById('excelFileInput').click()" 
-                                        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-semibold">
-                                    <i class="fas fa-upload mr-2"></i>데이터 가져오기
-                                </button>
-                                <button onclick="confirmDataReset()" 
-                                        class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-semibold">
-                                    <i class="fas fa-trash mr-2"></i>데이터 초기화
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <!-- 숨겨진 Excel 파일 입력 -->
-                        <input type="file" id="excelFileInput" accept=".xlsx,.xls" style="display:none;" onchange="importFromExcel(event)" />
                     </div>
                     
-                    <!-- 문서 목록 -->
-                    <div id="reportsList" class="space-y-4">
-                        <div class="text-center py-12 text-gray-500">
-                            <i class="fas fa-folder-open text-6xl mb-4"></i>
-                            <p>저장된 문서가 없습니다.</p>
+                    <!-- 목록 뷰 -->
+                    <div id="listView">
+                        <!-- 검색 및 필터 -->
+                        <div class="mb-6">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">
+                                        <i class="fas fa-calendar mr-2"></i>시작 날짜
+                                    </label>
+                                    <input type="date" id="searchStartDate" 
+                                           onchange="searchReports()"
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">
+                                        <i class="fas fa-calendar mr-2"></i>종료 날짜
+                                    </label>
+                                    <input type="date" id="searchEndDate" 
+                                           onchange="searchReports()"
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">
+                                        <i class="fas fa-search mr-2"></i>고객명 검색
+                                    </label>
+                                    <input type="text" id="searchCustomerName" 
+                                           placeholder="고객명 입력..."
+                                           oninput="searchReports()"
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                </div>
+                            </div>
+                            <div class="mt-4 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                                <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                                    <button onclick="searchReports()" 
+                                            class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 font-semibold">
+                                        <i class="fas fa-search mr-2"></i>검색
+                                    </button>
+                                    <button onclick="resetSearch()" 
+                                            class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 font-semibold">
+                                        <i class="fas fa-redo mr-2"></i>초기화
+                                    </button>
+                                </div>
+                                <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                                    <button onclick="exportToExcel()" 
+                                            class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-semibold">
+                                        <i class="fas fa-file-excel mr-2"></i>Excel 내보내기
+                                    </button>
+                                    <button onclick="document.getElementById('excelFileInput').click()" 
+                                            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-semibold">
+                                        <i class="fas fa-upload mr-2"></i>데이터 가져오기
+                                    </button>
+                                    <button onclick="confirmDataReset()" 
+                                            class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-semibold">
+                                        <i class="fas fa-trash mr-2"></i>데이터 초기화
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- 숨겨진 Excel 파일 입력 -->
+                            <input type="file" id="excelFileInput" accept=".xlsx,.xls" style="display:none;" onchange="importFromExcel(event)" />
+                        </div>
+                        
+                        <!-- 문서 목록 -->
+                        <div id="reportsList" class="space-y-4">
+                            <div class="text-center py-12 text-gray-500">
+                                <i class="fas fa-folder-open text-6xl mb-4"></i>
+                                <p>저장된 문서가 없습니다.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 달력 뷰 -->
+                    <div id="calendarView" class="hidden">
+                        <!-- 월 선택 헤더 -->
+                        <div class="mb-6 flex items-center justify-between bg-purple-50 p-4 rounded-lg">
+                            <button onclick="changeCalendarMonth(-1)" 
+                                    class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <h3 id="calendarMonthYear" class="text-xl sm:text-2xl font-bold text-gray-800">
+                                2026년 2월
+                            </h3>
+                            <button onclick="changeCalendarMonth(1)" 
+                                    class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- 달력 테이블 -->
+                        <div class="overflow-x-auto">
+                            <table id="calendarTable" class="w-full border-collapse">
+                                <thead>
+                                    <tr class="bg-purple-100">
+                                        <th class="border border-purple-300 px-2 sm:px-4 py-2 sm:py-3 text-red-600 font-bold text-sm sm:text-base">일</th>
+                                        <th class="border border-purple-300 px-2 sm:px-4 py-2 sm:py-3 font-bold text-sm sm:text-base">월</th>
+                                        <th class="border border-purple-300 px-2 sm:px-4 py-2 sm:py-3 font-bold text-sm sm:text-base">화</th>
+                                        <th class="border border-purple-300 px-2 sm:px-4 py-2 sm:py-3 font-bold text-sm sm:text-base">수</th>
+                                        <th class="border border-purple-300 px-2 sm:px-4 py-2 sm:py-3 font-bold text-sm sm:text-base">목</th>
+                                        <th class="border border-purple-300 px-2 sm:px-4 py-2 sm:py-3 font-bold text-sm sm:text-base">금</th>
+                                        <th class="border border-purple-300 px-2 sm:px-4 py-2 sm:py-3 text-blue-600 font-bold text-sm sm:text-base">토</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="calendarBody">
+                                    <!-- 달력 날짜가 여기에 동적으로 생성됩니다 -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- 선택된 날짜의 예약 목록 -->
+                        <div id="selectedDateReports" class="mt-6 hidden">
+                            <h4 class="text-lg font-bold text-gray-800 mb-4">
+                                <i class="fas fa-calendar-check text-purple-600 mr-2"></i>
+                                <span id="selectedDateTitle"></span>
+                            </h4>
+                            <div id="selectedDateReportsList" class="space-y-3">
+                                <!-- 선택된 날짜의 예약 목록이 여기에 표시됩니다 -->
+                            </div>
                         </div>
                     </div>
                     
                     <div class="mt-6 flex justify-start">
                         <button onclick="prevStep(4)" 
-                                class="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50">
+                                class="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 font-semibold">
                             <i class="fas fa-arrow-left mr-2"></i>이전
                         </button>
                     </div>

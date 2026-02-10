@@ -2643,3 +2643,273 @@ function applyRevenueFilter() {
   loadRevenueList(filterType, startDate, endDate);
 }
 
+// ========================================
+// Step 5: 달력 뷰 관련 함수
+// ========================================
+
+// 현재 달력에 표시 중인 연도/월
+let currentCalendarYear = new Date().getFullYear();
+let currentCalendarMonth = new Date().getMonth(); // 0-11
+
+// 목록/달력 뷰 전환
+function switchManageView(view) {
+  const listView = document.getElementById('listView');
+  const calendarView = document.getElementById('calendarView');
+  const listTab = document.getElementById('listViewTab');
+  const calendarTab = document.getElementById('calendarViewTab');
+  
+  if (view === 'list') {
+    // 목록 뷰 활성화
+    listView.classList.remove('hidden');
+    calendarView.classList.add('hidden');
+    
+    // 탭 스타일 업데이트
+    listTab.classList.remove('text-gray-500');
+    listTab.classList.add('text-purple-600', 'border-b-2', 'border-purple-600');
+    calendarTab.classList.remove('text-purple-600', 'border-b-2', 'border-purple-600');
+    calendarTab.classList.add('text-gray-500');
+    
+    // 목록 새로고침
+    loadAllReports();
+  } else if (view === 'calendar') {
+    // 달력 뷰 활성화
+    listView.classList.add('hidden');
+    calendarView.classList.remove('hidden');
+    
+    // 탭 스타일 업데이트
+    calendarTab.classList.remove('text-gray-500');
+    calendarTab.classList.add('text-purple-600', 'border-b-2', 'border-purple-600');
+    listTab.classList.remove('text-purple-600', 'border-b-2', 'border-purple-600');
+    listTab.classList.add('text-gray-500');
+    
+    // 달력 렌더링
+    renderCalendar(currentCalendarYear, currentCalendarMonth);
+  }
+}
+
+// 달력 월 변경
+function changeCalendarMonth(delta) {
+  currentCalendarMonth += delta;
+  
+  if (currentCalendarMonth < 0) {
+    currentCalendarMonth = 11;
+    currentCalendarYear--;
+  } else if (currentCalendarMonth > 11) {
+    currentCalendarMonth = 0;
+    currentCalendarYear++;
+  }
+  
+  renderCalendar(currentCalendarYear, currentCalendarMonth);
+}
+
+// 달력 렌더링
+async function renderCalendar(year, month) {
+  const monthNames = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+  const monthYearTitle = document.getElementById('calendarMonthYear');
+  monthYearTitle.textContent = `${year}년 ${monthNames[month]}`;
+  
+  // 모든 리포트 가져오기
+  const allReports = await getAllReportsForCalendar();
+  
+  // 날짜별 예약 건수 집계
+  const dateMap = {};
+  allReports.forEach(report => {
+    if (report.install_date) {
+      const dateKey = report.install_date; // YYYY-MM-DD 형식
+      if (!dateMap[dateKey]) {
+        dateMap[dateKey] = [];
+      }
+      dateMap[dateKey].push(report);
+    }
+  });
+  
+  // 달력 테이블 생성
+  const firstDay = new Date(year, month, 1).getDay(); // 0 (일요일) ~ 6 (토요일)
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  
+  const calendarBody = document.getElementById('calendarBody');
+  calendarBody.innerHTML = '';
+  
+  let dayCounter = 1;
+  let rows = Math.ceil((firstDay + daysInMonth) / 7);
+  
+  for (let i = 0; i < rows; i++) {
+    const tr = document.createElement('tr');
+    
+    for (let j = 0; j < 7; j++) {
+      const td = document.createElement('td');
+      td.className = 'border border-gray-300 p-1 sm:p-2 h-16 sm:h-24 align-top relative cursor-pointer hover:bg-purple-50 transition';
+      
+      if ((i === 0 && j < firstDay) || dayCounter > daysInMonth) {
+        // 빈 셀
+        td.className = 'border border-gray-200 bg-gray-50';
+        tr.appendChild(td);
+        continue;
+      }
+      
+      const day = dayCounter;
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const reportsOnDate = dateMap[dateStr] || [];
+      const hasReports = reportsOnDate.length > 0;
+      
+      // 날짜 숫자
+      const dayDiv = document.createElement('div');
+      dayDiv.className = 'text-xs sm:text-sm font-bold mb-1';
+      
+      // 일요일은 빨간색, 토요일은 파란색
+      if (j === 0) {
+        dayDiv.className += ' text-red-600';
+      } else if (j === 6) {
+        dayDiv.className += ' text-blue-600';
+      } else {
+        dayDiv.className += ' text-gray-700';
+      }
+      
+      // 오늘 날짜 표시
+      if (dateStr === todayStr) {
+        dayDiv.className += ' bg-blue-100 rounded-full w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center';
+      }
+      
+      dayDiv.textContent = day;
+      td.appendChild(dayDiv);
+      
+      // 예약이 있으면 배지 표시
+      if (hasReports) {
+        const badge = document.createElement('div');
+        badge.className = 'absolute top-1 right-1 bg-purple-600 text-white text-xs rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center font-bold';
+        badge.textContent = reportsOnDate.length;
+        td.appendChild(badge);
+        
+        // 고객명 미리보기 (데스크톱만)
+        const preview = document.createElement('div');
+        preview.className = 'hidden sm:block text-xs text-gray-600 mt-1 truncate';
+        const firstCustomer = reportsOnDate[0].customer_info?.receiverName || reportsOnDate[0].customer_name || '고객';
+        preview.textContent = firstCustomer + (reportsOnDate.length > 1 ? ` 외 ${reportsOnDate.length - 1}건` : '');
+        td.appendChild(preview);
+      }
+      
+      // 클릭 이벤트
+      td.onclick = () => showDateDetails(dateStr, reportsOnDate);
+      
+      tr.appendChild(td);
+      dayCounter++;
+    }
+    
+    calendarBody.appendChild(tr);
+  }
+}
+
+// 특정 날짜의 예약 상세 표시
+function showDateDetails(dateStr, reports) {
+  const selectedDateReports = document.getElementById('selectedDateReports');
+  const selectedDateTitle = document.getElementById('selectedDateTitle');
+  const selectedDateReportsList = document.getElementById('selectedDateReportsList');
+  
+  if (reports.length === 0) {
+    selectedDateReports.classList.add('hidden');
+    return;
+  }
+  
+  // 날짜 포맷팅
+  const [year, month, day] = dateStr.split('-');
+  selectedDateTitle.textContent = `${year}년 ${parseInt(month)}월 ${parseInt(day)}일 예약 (${reports.length}건)`;
+  
+  // 예약 목록 렌더링
+  selectedDateReportsList.innerHTML = reports.map(report => {
+    const customerName = report.customer_info?.receiverName || report.customer_name || '고객명 없음';
+    const productNames = report.packages?.map(pkg => pkg.fullName || pkg.name).join(', ') || '제품 정보 없음';
+    const installTime = report.install_time || '시간 미정';
+    const installerName = report.installer_name || '담당자 미정';
+    const reportId = report.id;
+    const status = report.status || 'draft';
+    
+    // 3단 선반 위치 배지
+    let positionBadges = '';
+    if (report.package_positions) {
+      const positions = JSON.parse(report.package_positions);
+      Object.entries(positions).forEach(([pkgId, pos]) => {
+        if (pos === 'left') {
+          positionBadges += '<span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full mr-1">3단 선반 설치 좌측</span>';
+        } else if (pos === 'right') {
+          positionBadges += '<span class="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full mr-1">3단 선반 설치 우측</span>';
+        }
+      });
+    }
+    
+    const isCompleted = status === 'completed';
+    const completeButtonClass = isCompleted
+      ? 'bg-gray-400 text-white cursor-not-allowed'
+      : 'bg-orange-500 text-white hover:bg-orange-600';
+    
+    return `
+      <div class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3">
+          <div>
+            <h5 class="font-bold text-gray-800 text-base sm:text-lg">${customerName}</h5>
+            <p class="text-sm text-gray-600"><i class="fas fa-clock mr-1"></i>${installTime}</p>
+            <p class="text-sm text-gray-600"><i class="fas fa-user mr-1"></i>${installerName}</p>
+          </div>
+        </div>
+        <div class="mb-3">
+          <p class="text-sm font-semibold text-gray-700 mb-1"><i class="fas fa-box mr-1"></i>제품:</p>
+          <p class="text-sm text-gray-600">${productNames}</p>
+          ${positionBadges ? `<div class="mt-2">${positionBadges}</div>` : ''}
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="loadReport('${reportId}')" 
+                  class="bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 text-sm font-semibold">
+            <i class="fas fa-eye mr-1"></i>상세보기
+          </button>
+          <button onclick="saveReportAsJPG('${reportId}')" 
+                  class="bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 text-sm font-semibold">
+            <i class="fas fa-image mr-1"></i>JPG 저장
+          </button>
+          <button onclick="loadReport('${reportId}')" 
+                  class="bg-yellow-600 text-white px-3 py-1.5 rounded-lg hover:bg-yellow-700 text-sm font-semibold">
+            <i class="fas fa-edit mr-1"></i>수정하기
+          </button>
+          <button onclick="markAsCompleted('${reportId}')" 
+                  class="${completeButtonClass} px-3 py-1.5 rounded-lg text-sm font-semibold"
+                  ${isCompleted ? 'disabled' : ''}>
+            <i class="fas fa-check-circle mr-1"></i>${isCompleted ? '완료됨' : '시공 완료'}
+          </button>
+          <button onclick="deleteReport('${reportId}')" 
+                  class="bg-red-600 text-white px-3 py-1.5 rounded-lg hover:bg-red-700 text-sm font-semibold">
+            <i class="fas fa-trash mr-1"></i>삭제
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  selectedDateReports.classList.remove('hidden');
+}
+
+// 모든 리포트 가져오기 (달력용)
+async function getAllReportsForCalendar() {
+  try {
+    // 서버에서 가져오기
+    const response = await axios.get('/api/reports', { timeout: 10000 });
+    if (response.data && Array.isArray(response.data)) {
+      return response.data;
+    }
+  } catch (error) {
+    console.error('Failed to load reports from server:', error);
+  }
+  
+  // 서버 실패 시 localStorage에서 가져오기
+  const localData = localStorage.getItem('pv5_reports');
+  if (localData) {
+    try {
+      const parsed = JSON.parse(localData);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      console.error('Failed to parse localStorage reports:', e);
+    }
+  }
+  
+  return [];
+}
+
