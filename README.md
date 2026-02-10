@@ -551,7 +551,8 @@
 - **상태**: ✅ 프로덕션 배포 완료
 - **최신 URL**: https://pv5-webapp.pages.dev
 - **프로젝트명**: `pv5-webapp`
-- **마지막 배포**: 2026-02-09
+- **마지막 배포**: 2026-02-10
+- **자동 배포**: ✅ GitHub Actions 설정 완료 (main 브랜치 push 시 자동 배포)
 
 ## 개발 환경 설정
 
@@ -613,6 +614,111 @@ cd /home/user/webapp && npm run deploy:prod
 # 7. 배포 확인
 curl https://pv5-webapp.pages.dev
 ```
+
+### 🚀 자동 배포 설정 (GitHub Actions)
+
+**main 브랜치에 코드를 push하면 자동으로 Cloudflare Pages에 배포됩니다!**
+
+#### 1️⃣ GitHub Secrets 설정 (최초 1회)
+
+GitHub 저장소에서 다음 Secrets를 설정해야 합니다:
+
+1. GitHub 저장소 → **Settings** → **Secrets and variables** → **Actions**
+2. **New repository secret** 클릭
+3. 다음 2개의 Secrets 추가:
+
+| Name | Value | 설명 |
+|------|-------|------|
+| `CLOUDFLARE_API_TOKEN` | (Cloudflare API 토큰) | Cloudflare API 인증 토큰 |
+| `CLOUDFLARE_ACCOUNT_ID` | (Cloudflare Account ID) | Cloudflare 계정 ID |
+
+**Cloudflare API Token 생성 방법:**
+1. [Cloudflare Dashboard](https://dash.cloudflare.com/profile/api-tokens) 접속
+2. **Create Token** 클릭
+3. **Edit Cloudflare Workers** 템플릿 선택
+4. **Account Resources** → **Include** → **All accounts**
+5. **Zone Resources** → **Include** → **All zones**
+6. **Continue to summary** → **Create Token**
+7. 생성된 토큰을 복사하여 GitHub Secret에 저장
+
+**Cloudflare Account ID 확인 방법:**
+1. [Cloudflare Dashboard](https://dash.cloudflare.com) 접속
+2. **Workers & Pages** 클릭
+3. 우측 사이드바에서 **Account ID** 확인 및 복사
+
+#### 2️⃣ 자동 배포 워크플로우 확인
+
+`.github/workflows/deploy.yml` 파일이 생성되어 있습니다:
+
+```yaml
+name: Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy to Cloudflare Pages
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build project
+        run: npm run build
+      
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=pv5-webapp
+```
+
+#### 3️⃣ 자동 배포 사용 방법
+
+```bash
+# 1. 코드 수정 후 커밋
+git add .
+git commit -m "기능 개선: ..."
+
+# 2. main 브랜치에 push
+git push origin main
+
+# 3. GitHub Actions 자동 실행
+# → 저장소의 Actions 탭에서 진행 상황 확인
+
+# 4. 배포 완료 (약 2-3분 소요)
+# → https://pv5-webapp.pages.dev 자동 업데이트
+```
+
+#### 4️⃣ 배포 상태 확인
+
+- **GitHub**: 저장소 → **Actions** 탭
+- **Cloudflare**: [Cloudflare Dashboard](https://dash.cloudflare.com) → **Workers & Pages** → **pv5-webapp** → **Deployments**
+
+#### 5️⃣ 수동 배포 트리거
+
+GitHub Actions 워크플로우는 `workflow_dispatch` 이벤트도 지원합니다:
+
+1. GitHub 저장소 → **Actions** 탭
+2. **Deploy to Cloudflare Pages** 워크플로우 선택
+3. **Run workflow** 버튼 클릭
+4. **Run workflow** 확인
+
+---
 
 ### Git 관리
 ```bash
