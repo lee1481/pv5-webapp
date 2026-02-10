@@ -1501,7 +1501,8 @@ function displayReportsList(reports) {
   listContainer.innerHTML = reports.map((report, index) => {
     const customerName = report.customerInfo?.receiverName || report.customerName || '-';
     const installDate = report.installDate || '-';
-    const createdAt = report.createdAt ? new Date(report.createdAt).toLocaleString('ko-KR') : '-';
+    const installTime = report.installTime || '-';
+    const installAddress = report.installAddress || '-';
     const reportId = report.reportId || report.id || `REPORT-${index}`;
     
     // 제품명 목록 생성
@@ -1536,7 +1537,8 @@ function displayReportsList(reports) {
           ${positionBadges ? `<div class="mb-2">${positionBadges}</div>` : ''} <!-- UPDATED -->
           <div class="text-sm text-gray-600 space-y-1">
             <div><i class="fas fa-calendar mr-2"></i>설치 날짜: ${installDate}</div>
-            <div><i class="fas fa-id-card mr-2"></i>문서 ID: ${reportId}</div>
+            <div><i class="fas fa-clock mr-2"></i>설치 시간: ${installTime}</div>
+            <div><i class="fas fa-map-marker-alt mr-2"></i>설치 주소: ${installAddress}</div>
           </div>
         </div>
         
@@ -2068,8 +2070,8 @@ async function saveReportAsJPG(reportId) {
         </div>
         
         <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 2px solid #e5e7eb;">
-          <p style="font-size: 12px; color: #666;">문서 ID: ${report.id || reportId}</p>
-          <p style="font-size: 12px; color: #666;">생성일: ${new Date().toLocaleString('ko-KR')}</p>
+          <p style="font-size: 12px; color: #666;">설치 주소: ${installAddress}</p>
+          <p style="font-size: 12px; color: #666;">설치 시간: ${installTime}</p>
         </div>
       </div>
     `;
