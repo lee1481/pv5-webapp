@@ -1448,15 +1448,13 @@ app.get('/', (c) => {
                             <label class="block text-sm font-bold text-gray-700 mb-2">
                                 <i class="fas fa-map-marker-alt mr-2"></i>설치 주소
                             </label>
-                            <div class="flex gap-2">
-                                <input type="text" id="installAddress" 
-                                       class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                       placeholder="설치 장소 주소를 입력하세요">
-                                <button onclick="copyCustomerAddress()" type="button"
-                                        class="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 whitespace-nowrap">
-                                    <i class="fas fa-copy mr-2"></i>고객 주소 복사
-                                </button>
-                            </div>
+                            <input type="text" id="installAddress" 
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 mb-3"
+                                   placeholder="설치 장소 주소를 입력하세요">
+                            <button onclick="copyCustomerAddress()" type="button"
+                                    class="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold text-base">
+                                <i class="fas fa-copy mr-2"></i>고객 주소 복사
+                            </button>
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-sm font-bold text-gray-700 mb-2">

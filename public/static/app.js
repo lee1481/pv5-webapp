@@ -1526,50 +1526,81 @@ function displayReportsList(reports) {
     
     return `
       <div class="border border-gray-300 rounded-lg p-4 hover:shadow-lg transition">
-        <div class="flex justify-between items-start">
-          <div class="flex-1">
-            <h3 class="text-lg font-bold text-gray-800 mb-2">
-              <i class="fas fa-file-alt text-blue-600 mr-2"></i>
-              ${displayName}
-            </h3>
-            ${positionBadges ? `<div class="mb-2">${positionBadges}</div>` : ''} <!-- UPDATED -->
-            <div class="grid grid-cols-2 gap-2 text-sm text-gray-600">
-              <div><i class="fas fa-calendar mr-2"></i>설치 날짜: ${installDate}</div>
-              <div><i class="fas fa-clock mr-2"></i>저장 시간: ${createdAt}</div>
-            </div>
-            <div class="text-xs text-gray-500 mt-2">
-              문서 ID: ${reportId}
-            </div>
+        <div class="mb-4">
+          <h3 class="text-lg font-bold text-gray-800 mb-2">
+            <i class="fas fa-file-alt text-blue-600 mr-2"></i>
+            ${displayName}
+          </h3>
+          ${positionBadges ? `<div class="mb-2">${positionBadges}</div>` : ''} <!-- UPDATED -->
+          <div class="grid grid-cols-2 gap-2 text-sm text-gray-600">
+            <div><i class="fas fa-calendar mr-2"></i>설치 날짜: ${installDate}</div>
+            <div><i class="fas fa-clock mr-2"></i>저장 시간: ${createdAt}</div>
           </div>
-          <div class="flex space-x-2">
-            <button onclick="showReportPreview('${reportId}')" 
-                    class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm">
-              <i class="fas fa-eye mr-1"></i>상세보기
-            </button>
-            <button onclick="downloadReportAsJPG('${reportId}')" 
-                    class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 text-sm">
-              <i class="fas fa-image mr-1"></i>JPG 저장
-            </button>
-            <button onclick="loadReport('${reportId}')" 
-                    class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm">
-              <i class="fas fa-edit mr-1"></i>수정하기
-            </button>
-            ${report.status === 'completed' ? `
-              <button disabled 
-                      class="bg-gray-400 text-white px-4 py-2 rounded-lg text-sm cursor-not-allowed">
-                <i class="fas fa-check-circle mr-1"></i>시공 완료됨
-              </button>
-            ` : `
-              <button onclick="completeReport('${reportId}')" 
-                      class="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 text-sm">
-                <i class="fas fa-check-circle mr-1"></i>시공 완료
-              </button>
-            `}
-            <button onclick="deleteReport('${reportId}')" 
-                    class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm">
-              <i class="fas fa-trash mr-1"></i>삭제
-            </button>
+          <div class="text-xs text-gray-500 mt-2">
+            문서 ID: ${reportId}
           </div>
+        </div>
+        
+        <!-- 버튼 영역: 데스크톱 (가로 배치), 모바일 (2×3 그리드) -->
+        <div class="hidden md:flex md:space-x-2">
+          <button onclick="showReportPreview('${reportId}')" 
+                  class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm">
+            <i class="fas fa-eye mr-1"></i>상세보기
+          </button>
+          <button onclick="downloadReportAsJPG('${reportId}')" 
+                  class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 text-sm">
+            <i class="fas fa-image mr-1"></i>JPG 저장
+          </button>
+          <button onclick="loadReport('${reportId}')" 
+                  class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm">
+            <i class="fas fa-edit mr-1"></i>수정하기
+          </button>
+          ${report.status === 'completed' ? `
+            <button disabled 
+                    class="bg-gray-400 text-white px-4 py-2 rounded-lg text-sm cursor-not-allowed">
+              <i class="fas fa-check-circle mr-1"></i>시공 완료됨
+            </button>
+          ` : `
+            <button onclick="completeReport('${reportId}')" 
+                    class="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 text-sm">
+              <i class="fas fa-check-circle mr-1"></i>시공 완료
+            </button>
+          `}
+          <button onclick="deleteReport('${reportId}')" 
+                  class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm">
+            <i class="fas fa-trash mr-1"></i>삭제
+          </button>
+        </div>
+        
+        <!-- 모바일 버튼 (2×3 그리드) -->
+        <div class="md:hidden grid grid-cols-2 gap-2">
+          <button onclick="showReportPreview('${reportId}')" 
+                  class="bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 text-sm font-semibold">
+            <i class="fas fa-eye mr-1"></i>상세보기
+          </button>
+          <button onclick="downloadReportAsJPG('${reportId}')" 
+                  class="bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 text-sm font-semibold">
+            <i class="fas fa-image mr-1"></i>JPG 저장
+          </button>
+          <button onclick="loadReport('${reportId}')" 
+                  class="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 text-sm font-semibold">
+            <i class="fas fa-edit mr-1"></i>수정하기
+          </button>
+          ${report.status === 'completed' ? `
+            <button disabled 
+                    class="bg-gray-400 text-white px-4 py-3 rounded-lg text-sm font-semibold cursor-not-allowed">
+              <i class="fas fa-check-circle mr-1"></i>완료됨
+            </button>
+          ` : `
+            <button onclick="completeReport('${reportId}')" 
+                    class="bg-orange-600 text-white px-4 py-3 rounded-lg hover:bg-orange-700 text-sm font-semibold">
+              <i class="fas fa-check-circle mr-1"></i>시공 완료
+            </button>
+          `}
+          <button onclick="deleteReport('${reportId}')" 
+                  class="col-span-2 bg-red-600 text-white px-4 py-3 rounded-lg hover:bg-red-700 text-sm font-semibold">
+            <i class="fas fa-trash mr-1"></i>삭제
+          </button>
         </div>
       </div>
     `;
