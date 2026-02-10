@@ -1994,6 +1994,149 @@ async function saveAsJPG() { // UPDATED
   } // UPDATED
 } // UPDATED
 
+// 리포트를 JPG로 저장 (Step 5 달력/목록에서 호출)
+async function saveReportAsJPG(reportId) {
+  try {
+    // 리포트 데이터 가져오기
+    const report = await loadReportData(reportId);
+    if (!report) {
+      alert('❌ 리포트를 찾을 수 없습니다.');
+      return;
+    }
+    
+    // html2canvas 라이브러리 확인 및 로드
+    if (typeof html2canvas === 'undefined') {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+      script.onload = () => saveReportAsJPG(reportId);
+      document.head.appendChild(script);
+      return;
+    }
+    
+    // 임시 컨테이너 생성
+    const tempContainer = document.createElement('div');
+    tempContainer.style.position = 'absolute';
+    tempContainer.style.left = '-9999px';
+    tempContainer.style.top = '0';
+    tempContainer.style.width = '800px';
+    tempContainer.style.backgroundColor = '#ffffff';
+    tempContainer.style.padding = '20px';
+    document.body.appendChild(tempContainer);
+    
+    // 리포트 HTML 생성
+    const customerName = report.customer_info?.receiverName || report.customer_name || '고객명 없음';
+    const installDate = report.install_date || '미정';
+    const installTime = report.install_time || '미정';
+    const installAddress = report.install_address || '미정';
+    const notes = report.notes || '없음';
+    const installerName = report.installer_name || '미정';
+    
+    let productsHTML = '';
+    if (report.packages && report.packages.length > 0) {
+      productsHTML = report.packages.map(pkg => `
+        <div style="margin-bottom: 15px; padding: 10px; border: 1px solid #e5e7eb; border-radius: 8px;">
+          <h4 style="font-weight: bold; margin-bottom: 5px;">${pkg.fullName || pkg.name}</h4>
+          <p style="font-size: 14px; color: #666;">${pkg.description || ''}</p>
+        </div>
+      `).join('');
+    }
+    
+    tempContainer.innerHTML = `
+      <div style="font-family: Arial, sans-serif; max-width: 800px;">
+        <h1 style="text-align: center; color: #7c3aed; margin-bottom: 20px;">PV5 시공(예약) 확인서</h1>
+        
+        <div style="margin-bottom: 20px; padding: 15px; background: #f9fafb; border-radius: 8px;">
+          <h3 style="font-weight: bold; margin-bottom: 10px;">고객 정보</h3>
+          <p><strong>고객명:</strong> ${customerName}</p>
+          <p><strong>연락처:</strong> ${report.customer_info?.receiverPhone || '미정'}</p>
+          <p><strong>주소:</strong> ${report.customer_info?.receiverAddress || '미정'}</p>
+        </div>
+        
+        <div style="margin-bottom: 20px; padding: 15px; background: #f9fafb; border-radius: 8px;">
+          <h3 style="font-weight: bold; margin-bottom: 10px;">선택 제품</h3>
+          ${productsHTML || '<p>제품 정보 없음</p>'}
+        </div>
+        
+        <div style="margin-bottom: 20px; padding: 15px; background: #f9fafb; border-radius: 8px;">
+          <h3 style="font-weight: bold; margin-bottom: 10px;">설치 정보</h3>
+          <p><strong>설치 날짜:</strong> ${installDate}</p>
+          <p><strong>설치 시간:</strong> ${installTime}</p>
+          <p><strong>설치 주소:</strong> ${installAddress}</p>
+          <p><strong>특이사항:</strong> ${notes}</p>
+        </div>
+        
+        <div style="margin-bottom: 20px; padding: 15px; background: #f9fafb; border-radius: 8px;">
+          <h3 style="font-weight: bold; margin-bottom: 10px;">담당자</h3>
+          <p><strong>시공 담당자:</strong> ${installerName}</p>
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 2px solid #e5e7eb;">
+          <p style="font-size: 12px; color: #666;">문서 ID: ${report.id || reportId}</p>
+          <p style="font-size: 12px; color: #666;">생성일: ${new Date().toLocaleString('ko-KR')}</p>
+        </div>
+      </div>
+    `;
+    
+    // Canvas로 변환
+    const canvas = await html2canvas(tempContainer, {
+      backgroundColor: '#ffffff',
+      scale: 2,
+      logging: false,
+      useCORS: true
+    });
+    
+    // 임시 컨테이너 제거
+    document.body.removeChild(tempContainer);
+    
+    // Canvas를 JPG로 변환 및 다운로드
+    canvas.toBlob((blob) => {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `PV5_${customerName}_${installDate}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      alert('✅ JPG 파일로 저장되었습니다!');
+    }, 'image/jpeg', 0.95);
+    
+  } catch (error) {
+    console.error('❌ JPG 저장 오류:', error);
+    alert('❌ JPG 저장 실패: ' + error.message);
+  }
+}
+
+// 리포트 데이터 가져오기 (서버 우선, localStorage 폴백)
+async function loadReportData(reportId) {
+  try {
+    // 서버에서 가져오기
+    const response = await axios.get(`/api/reports/${reportId}`, { timeout: 10000 });
+    if (response.data && response.data.id) {
+      return response.data;
+    }
+  } catch (error) {
+    console.warn('⚠️ 서버에서 리포트 로드 실패, localStorage 확인:', error);
+  }
+  
+  // localStorage에서 찾기
+  const localData = localStorage.getItem('pv5_reports');
+  if (localData) {
+    try {
+      const reports = JSON.parse(localData);
+      const report = reports.find(r => r.id === reportId || r.reportId === reportId);
+      if (report) {
+        return report;
+      }
+    } catch (e) {
+      console.error('❌ localStorage 파싱 오류:', e);
+    }
+  }
+  
+  return null;
+}
+
 // 신규 접수를 위한 초기화
 function resetForNewReport() {
   console.log('Resetting for new report...');
