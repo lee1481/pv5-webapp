@@ -1478,27 +1478,27 @@ app.get('/', (c) => {
                 </div>
 
                 <!-- Step 4: 최종 확인 및 발송 -->
-                <div id="confirm-section" class="bg-white rounded-lg shadow-lg p-8 mb-8 hidden">
-                    <h2 class="text-2xl font-bold mb-6 text-gray-800">
+                <div id="confirm-section" class="bg-white rounded-lg shadow-lg p-4 sm:p-8 mb-8 hidden">
+                    <h2 class="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800">
                         <i class="fas fa-check-double text-blue-600 mr-2"></i>
                         4단계: 최종 확인 및 발송
                     </h2>
                     <div id="finalPreview" class="mb-6"></div>
-                    <div class="flex justify-end space-x-4">
+                    <div class="flex flex-col sm:flex-row justify-end gap-3 sm:space-x-4 sm:gap-0">
                         <button onclick="prevStep(3)" 
-                                class="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50">
+                                class="px-4 sm:px-6 py-2.5 sm:py-3 border border-gray-300 rounded-lg hover:bg-gray-50 font-semibold">
                             <i class="fas fa-arrow-left mr-2"></i>이전
                         </button>
                         <button onclick="saveReport()" 
-                                class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700">
+                                class="bg-blue-600 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg hover:bg-blue-700 font-semibold">
                             <i class="fas fa-save mr-2"></i>저장하기
                         </button>
                         <button onclick="sendEmail()" 
-                                class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700">
+                                class="bg-green-600 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg hover:bg-green-700 font-semibold">
                             <i class="fas fa-envelope mr-2"></i>이메일 발송
                         </button>
                         <button onclick="nextStep(5)" 
-                                class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700">
+                                class="bg-purple-600 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg hover:bg-purple-700 font-semibold">
                             저장 문서 관리 <i class="fas fa-arrow-right ml-2"></i>
                         </button>
                     </div>
@@ -1540,28 +1540,28 @@ app.get('/', (c) => {
                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
                             </div>
                         </div>
-                        <div class="mt-4 flex justify-between items-center">
-                            <div class="flex gap-2">
+                        <div class="mt-4 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                            <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
                                 <button onclick="searchReports()" 
-                                        class="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700">
+                                        class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 font-semibold">
                                     <i class="fas fa-search mr-2"></i>검색
                                 </button>
                                 <button onclick="resetSearch()" 
-                                        class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600">
+                                        class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 font-semibold">
                                     <i class="fas fa-redo mr-2"></i>초기화
                                 </button>
                             </div>
-                            <div class="flex gap-2">
+                            <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
                                 <button onclick="exportToExcel()" 
-                                        class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
+                                        class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-semibold">
                                     <i class="fas fa-file-excel mr-2"></i>Excel 내보내기
                                 </button>
                                 <button onclick="document.getElementById('excelFileInput').click()" 
-                                        class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                                        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-semibold">
                                     <i class="fas fa-upload mr-2"></i>데이터 가져오기
                                 </button>
                                 <button onclick="confirmDataReset()" 
-                                        class="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700">
+                                        class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-semibold">
                                     <i class="fas fa-trash mr-2"></i>데이터 초기화
                                 </button>
                             </div>

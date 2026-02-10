@@ -1040,101 +1040,103 @@ function displayFinalPreview() {
   }
   
   preview.innerHTML = `
-    <div class="border-2 border-gray-300 rounded-lg p-6">
-      <h3 class="text-2xl font-bold mb-6 text-center text-blue-600">
+    <div class="border-2 border-gray-300 rounded-lg p-4 sm:p-6">
+      <h3 class="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center text-blue-600">
         PV5 시공(예약) 확인서
       </h3>
       
       <!-- 고객 정보 -->
-      <div class="mb-6 pb-6 border-b">
-        <h4 class="font-bold text-lg mb-3 text-gray-800">
+      <div class="mb-4 sm:mb-6 pb-4 sm:pb-6 border-b-2">
+        <h4 class="font-bold text-base sm:text-lg mb-3 text-gray-800">
           <i class="fas fa-user mr-2 text-blue-600"></i>고객 정보
         </h4>
-        <div class="grid grid-cols-2 gap-4 text-sm">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
           <div><strong>출력일자:</strong> ${ocrData?.outputDate || '-'}</div>
           <div><strong>상품번호:</strong> ${ocrData?.productCode || '-'}</div>
           <div><strong>고객명:</strong> ${ocrData?.receiverName || '-'}</div>
           <div><strong>연락처:</strong> ${ocrData?.receiverPhone || '-'}</div>
-          <div class="col-span-2"><strong>주소:</strong> ${ocrData?.receiverAddress || '-'}</div>
+          <div class="sm:col-span-2"><strong>주소:</strong> ${ocrData?.receiverAddress || '-'}</div>
           <div><strong>주문번호:</strong> ${ocrData?.orderNumber || '-'}</div>
         </div>
       </div>
       
       <!-- 제품 정보 -->
-      <div class="mb-6 pb-6 border-b">
-        <h4 class="font-bold text-lg mb-3 text-gray-800">
+      <div class="mb-4 sm:mb-6 pb-4 sm:pb-6 border-b-2">
+        <h4 class="font-bold text-base sm:text-lg mb-3 text-gray-800">
           <i class="fas fa-box mr-2 text-blue-600"></i>선택 제품 (${selectedPackages.length}개)
         </h4>
         ${selectedPackages.map(pkg => `
-          <div class="flex items-start space-x-4 mb-4 pb-4 ${selectedPackages.length > 1 ? 'border-b border-gray-200' : ''}">
-            <img src="${pkg.image || ''}" 
-                 alt="${pkg.name || ''}" 
-                 class="w-32 h-24 object-cover rounded-lg"
-                 onerror="this.style.display='none'">
-            <div class="flex-1">
-              <div class="font-bold text-lg">${pkg.fullName || '-'}</div>
-              <div class="text-sm text-gray-600 mt-1">${pkg.description || '-'}</div>
-              ${pkg.hasPositionOption && packagePositions[pkg.id] ? ` <!-- UPDATED -->
-                <div class="mt-3 p-3 bg-gray-50 rounded-lg border-2 border-gray-200"> <!-- UPDATED -->
-                  <strong class="text-gray-800 text-base">3단 선반 설치:</strong> <!-- UPDATED -->
-                  ${packagePositions[pkg.id].left ? '<span class="inline-block px-4 py-2 bg-blue-500 text-white rounded-lg font-bold text-base mr-2">좌측</span>' : ''} <!-- UPDATED -->
-                  ${packagePositions[pkg.id].right ? '<span class="inline-block px-4 py-2 bg-green-500 text-white rounded-lg font-bold text-base">우측</span>' : ''} <!-- UPDATED -->
-                  ${!packagePositions[pkg.id].left && !packagePositions[pkg.id].right ? '<span class="text-red-600 font-bold text-base">미선택</span>' : ''} <!-- UPDATED -->
-                </div> <!-- UPDATED -->
-              ` : ''} <!-- UPDATED -->
+          <div class="mb-4 pb-4 ${selectedPackages.length > 1 ? 'border-b border-gray-200' : ''}">
+            <div class="flex flex-col sm:flex-row sm:items-start sm:space-x-4">
+              <img src="${pkg.image || ''}" 
+                   alt="${pkg.name || ''}" 
+                   class="w-full sm:w-32 h-32 sm:h-24 object-cover rounded-lg mb-3 sm:mb-0"
+                   onerror="this.style.display='none'">
+              <div class="flex-1">
+                <div class="font-bold text-base sm:text-lg mb-1">${pkg.fullName || '-'}</div>
+                <div class="text-sm text-gray-600 mb-2">${pkg.description || '-'}</div>
+                ${pkg.hasPositionOption && packagePositions[pkg.id] ? `
+                  <div class="mt-2 p-3 bg-gray-50 rounded-lg border-2 border-gray-200">
+                    <strong class="text-gray-800 text-sm sm:text-base">3단 선반 설치:</strong>
+                    ${packagePositions[pkg.id].left ? '<span class="inline-block px-3 py-1.5 bg-blue-500 text-white rounded-lg font-bold text-sm mr-2 mt-1">좌측</span>' : ''}
+                    ${packagePositions[pkg.id].right ? '<span class="inline-block px-3 py-1.5 bg-green-500 text-white rounded-lg font-bold text-sm mt-1">우측</span>' : ''}
+                    ${!packagePositions[pkg.id].left && !packagePositions[pkg.id].right ? '<span class="text-red-600 font-bold text-sm">미선택</span>' : ''}
+                  </div>
+                ` : ''}
+              </div>
             </div>
           </div>
         `).join('')}
       </div>
       
       <!-- 설치 정보 -->
-      <div class="mb-6 pb-6 border-b">
-        <h4 class="font-bold text-lg mb-3 text-gray-800">
+      <div class="mb-4 sm:mb-6 pb-4 sm:pb-6 border-b-2">
+        <h4 class="font-bold text-base sm:text-lg mb-3 text-gray-800">
           <i class="fas fa-calendar-check mr-2 text-blue-600"></i>설치 정보
         </h4>
-        <div class="grid grid-cols-2 gap-4 text-sm">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
           <div><strong>설치 날짜:</strong> ${installDate || '-'}</div>
           <div><strong>설치 시간:</strong> ${installTime || '-'}</div>
-          <div class="col-span-2"><strong>설치 주소:</strong> ${installAddress || '-'}</div>
-          ${notes ? `<div class="col-span-2"><strong>특이사항:</strong> ${notes}</div>` : ''}
+          <div class="sm:col-span-2"><strong>설치 주소:</strong> ${installAddress || '-'}</div>
+          ${notes ? `<div class="sm:col-span-2"><strong>특이사항:</strong> ${notes}</div>` : ''}
         </div>
       </div>
       
       <!-- 자재 리스트 -->
-      <div class="mb-6">
-        <h4 class="font-bold text-lg mb-3 text-gray-800">
+      <div class="mb-4 sm:mb-6 pb-4 sm:pb-6 border-b-2">
+        <h4 class="font-bold text-base sm:text-lg mb-3 text-gray-800">
           <i class="fas fa-clipboard-list mr-2 text-blue-600"></i>시공 자재 점검표
         </h4>
         ${materialsHTML}
       </div>
       
       <!-- 접수/작성자 정보 -->
-      <div class="mt-8">
-        <div class="border-2 border-gray-300 rounded-lg p-4 flex items-center gap-4"> <!-- UPDATED -->
-          <label for="installerName" class="font-bold text-lg whitespace-nowrap">접수 / 작성자:</label> <!-- UPDATED -->
+      <div class="mb-4">
+        <div class="border-2 border-gray-300 rounded-lg p-3 sm:p-4">
+          <label for="installerName" class="block font-bold text-base sm:text-lg mb-2 text-gray-800">
+            <i class="fas fa-user-edit mr-2 text-blue-600"></i>접수 / 작성자
+          </label>
           <input type="text" 
                  id="installerName" 
                  placeholder="홍길동"
-                 class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"> <!-- UPDATED -->
+                 class="w-full px-4 py-2.5 sm:py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
         </div>
       </div>
       
       <!-- 이메일 발송 정보 -->
-      <div class="mt-8 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-        <h4 class="font-bold text-lg mb-3 text-gray-800">
+      <div class="p-3 sm:p-4 bg-gray-50 border-2 border-gray-200 rounded-lg">
+        <h4 class="font-bold text-base sm:text-lg mb-3 text-gray-800">
           <i class="fas fa-envelope mr-2 text-green-600"></i>이메일 발송
         </h4>
-        <div class="flex items-center gap-4">
-          <label for="recipientEmail" class="text-sm font-medium text-gray-700 whitespace-nowrap">
-            받는 사람:
-          </label>
-          <input type="email" 
-                 id="recipientEmail" 
-                 placeholder="example@email.com"
-                 class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                 required />
-        </div>
-        <p class="text-xs text-gray-500 mt-2">
+        <label for="recipientEmail" class="block text-sm font-medium text-gray-700 mb-2">
+          받는 사람
+        </label>
+        <input type="email" 
+               id="recipientEmail" 
+               placeholder="example@email.com"
+               class="w-full px-4 py-2.5 sm:py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 mb-2"
+               required />
+        <p class="text-xs text-gray-500">
           <i class="fas fa-info-circle mr-1"></i>
           시공 확인서가 입력하신 이메일 주소로 발송됩니다.
         </p>
