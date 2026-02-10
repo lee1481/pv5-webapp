@@ -1548,10 +1548,6 @@ function displayReportsList(reports) {
                   class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm">
             <i class="fas fa-eye mr-1"></i>상세보기
           </button>
-          <button onclick="saveReportAsJPG('${reportId}')" 
-                  class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 text-sm">
-            <i class="fas fa-image mr-1"></i>JPG 저장
-          </button>
           <button onclick="loadReport('${reportId}')" 
                   class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm">
             <i class="fas fa-edit mr-1"></i>수정하기
@@ -1578,10 +1574,6 @@ function displayReportsList(reports) {
           <button onclick="showReportPreview('${reportId}')" 
                   class="bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 text-sm font-semibold">
             <i class="fas fa-eye mr-1"></i>상세보기
-          </button>
-          <button onclick="saveReportAsJPG('${reportId}')" 
-                  class="bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 text-sm font-semibold">
-            <i class="fas fa-image mr-1"></i>JPG 저장
           </button>
           <button onclick="loadReport('${reportId}')" 
                   class="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 text-sm font-semibold">
