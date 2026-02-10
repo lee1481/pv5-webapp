@@ -1590,14 +1590,14 @@ app.get('/', (c) => {
                 </div>
 
                 <!-- Step 6: 매출 관리 -->
-                <div id="revenue-section" class="bg-white rounded-lg shadow-lg p-8 mb-8 hidden">
-                    <h2 class="text-2xl font-bold mb-6 text-gray-800">
+                <div id="revenue-section" class="bg-white rounded-lg shadow-lg p-4 sm:p-8 mb-8 hidden">
+                    <h2 class="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800">
                         <i class="fas fa-chart-line text-purple-600 mr-2"></i>
                         6단계: 매출 관리
                     </h2>
                     
                     <!-- 마이그레이션 안내 (처음 진입 시 표시) -->
-                    <div id="migrationAlert" class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+                    <div id="migrationAlert" class="bg-yellow-50 border-l-4 border-yellow-400 p-3 sm:p-4 mb-4 sm:mb-6">
                         <div class="flex">
                             <div class="flex-shrink-0">
                                 <i class="fas fa-exclamation-triangle text-yellow-400 text-xl"></i>
@@ -1613,7 +1613,7 @@ app.get('/', (c) => {
                                     <div class="mt-3">
                                         <button 
                                             onclick="runMigration()" 
-                                            class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded inline-flex items-center"
+                                            class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-6 rounded inline-flex items-center w-full sm:w-auto justify-center text-base"
                                         >
                                             <i class="fas fa-database mr-2"></i>
                                             자동 마이그레이션 실행
@@ -1647,94 +1647,101 @@ app.get('/', (c) => {
                         </div>
                     </div>
                     
-                    <!-- 검색 및 필터 -->
+                    <!-- 검색 및 필터 (모바일 최적화) -->
                     <div class="mb-6">
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                        <div class="space-y-3 sm:space-y-4 mb-4">
+                            <!-- 기간 선택 -->
                             <div>
                                 <label class="block text-sm font-bold text-gray-700 mb-2">
                                     <i class="fas fa-filter mr-2"></i>검색 기간
                                 </label>
                                 <select id="revenuePeriodType" onchange="updateRevenueFilters()"
-                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                        class="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
                                     <option value="custom">직접 선택</option>
                                     <option value="week">이번 주</option>
                                     <option value="month">이번 달</option>
                                     <option value="quarter">이번 분기</option>
                                 </select>
                             </div>
-                            <div>
-                                <label class="block text-sm font-bold text-gray-700 mb-2">
-                                    <i class="fas fa-calendar mr-2"></i>시작 날짜
-                                </label>
-                                <input type="date" id="revenueStartDate"
-                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                            <!-- 날짜 범위 -->
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">
+                                        <i class="fas fa-calendar mr-1"></i>시작
+                                    </label>
+                                    <input type="date" id="revenueStartDate"
+                                           class="w-full px-3 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">
+                                        <i class="fas fa-calendar mr-1"></i>종료
+                                    </label>
+                                    <input type="date" id="revenueEndDate"
+                                           class="w-full px-3 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                </div>
                             </div>
-                            <div>
-                                <label class="block text-sm font-bold text-gray-700 mb-2">
-                                    <i class="fas fa-calendar mr-2"></i>종료 날짜
-                                </label>
-                                <input type="date" id="revenueEndDate"
-                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
-                            </div>
+                            <!-- 고객명 검색 -->
                             <div>
                                 <label class="block text-sm font-bold text-gray-700 mb-2">
                                     <i class="fas fa-search mr-2"></i>고객명 검색
                                 </label>
                                 <input type="text" id="revenueSearchCustomer" placeholder="고객명 입력..."
-                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                       class="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
                             </div>
                         </div>
-                        <div class="flex justify-between items-center">
-                            <div class="flex gap-2">
+                        <!-- 버튼 그룹 (모바일 최적화) -->
+                        <div class="space-y-3">
+                            <div class="grid grid-cols-2 gap-3">
                                 <button onclick="searchRevenue()" 
-                                        class="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700">
+                                        class="bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 font-semibold text-base">
                                     <i class="fas fa-search mr-2"></i>검색
                                 </button>
                                 <button onclick="resetRevenueSearch()" 
-                                        class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600">
+                                        class="bg-gray-500 text-white px-4 py-3 rounded-lg hover:bg-gray-600 font-semibold text-base">
                                     <i class="fas fa-redo mr-2"></i>초기화
                                 </button>
                             </div>
                             <button onclick="exportRevenueToExcel()" 
-                                    class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
+                                    class="w-full bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 font-semibold text-base">
                                 <i class="fas fa-file-excel mr-2"></i>Excel 다운로드
                             </button>
                         </div>
                     </div>
                     
-                    <!-- 통계 대시보드 -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <div class="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-lg shadow-lg">
+                    <!-- 통계 대시보드 (모바일 최적화) -->
+                    <div class="grid grid-cols-1 gap-3 sm:gap-4 mb-6">
+                        <div class="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-5 sm:p-6 rounded-lg shadow-lg">
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <p class="text-blue-100 text-sm mb-1">총 매출액</p>
-                                    <p class="text-3xl font-bold" id="totalRevenue">₩0</p>
+                                    <p class="text-blue-100 text-sm sm:text-base mb-1">총 매출액</p>
+                                    <p class="text-2xl sm:text-3xl font-bold" id="totalRevenue">₩0</p>
                                 </div>
-                                <i class="fas fa-won-sign text-5xl text-blue-200 opacity-50"></i>
+                                <i class="fas fa-won-sign text-4xl sm:text-5xl text-blue-200 opacity-50"></i>
                             </div>
                         </div>
-                        <div class="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-lg shadow-lg">
+                        <div class="bg-gradient-to-br from-green-500 to-green-600 text-white p-5 sm:p-6 rounded-lg shadow-lg">
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <p class="text-green-100 text-sm mb-1">시공 건수</p>
-                                    <p class="text-3xl font-bold" id="totalCount">0건</p>
+                                    <p class="text-green-100 text-sm sm:text-base mb-1">시공 건수</p>
+                                    <p class="text-2xl sm:text-3xl font-bold" id="totalCount">0건</p>
                                 </div>
-                                <i class="fas fa-clipboard-check text-5xl text-green-200 opacity-50"></i>
+                                <i class="fas fa-clipboard-check text-4xl sm:text-5xl text-green-200 opacity-50"></i>
                             </div>
                         </div>
-                        <div class="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-6 rounded-lg shadow-lg">
+                        <div class="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-5 sm:p-6 rounded-lg shadow-lg">
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <p class="text-purple-100 text-sm mb-1">평균 매출</p>
-                                    <p class="text-3xl font-bold" id="averageRevenue">₩0</p>
+                                    <p class="text-purple-100 text-sm sm:text-base mb-1">평균 매출</p>
+                                    <p class="text-2xl sm:text-3xl font-bold" id="averageRevenue">₩0</p>
                                 </div>
-                                <i class="fas fa-chart-bar text-5xl text-purple-200 opacity-50"></i>
+                                <i class="fas fa-chart-bar text-4xl sm:text-5xl text-purple-200 opacity-50"></i>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- 매출 목록 테이블 -->
-                    <div class="overflow-x-auto">
+                    <!-- 매출 목록 (모바일: 카드 / 데스크톱: 테이블) -->
+                    <!-- 데스크톱 테이블 (768px 이상) -->
+                    <div class="hidden md:block overflow-x-auto">
                         <table class="w-full border-collapse">
                             <thead>
                                 <tr class="bg-gray-100">
@@ -1758,9 +1765,17 @@ app.get('/', (c) => {
                         </table>
                     </div>
                     
+                    <!-- 모바일 카드 (768px 미만) -->
+                    <div id="revenueCardList" class="md:hidden space-y-4">
+                        <div class="text-center py-12 text-gray-500">
+                            <i class="fas fa-chart-line text-6xl mb-4 block"></i>
+                            <p>시공 완료된 문서가 없습니다.</p>
+                        </div>
+                    </div>
+                    
                     <div class="mt-6 flex justify-start">
                         <button onclick="prevStep(5)" 
-                                class="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50">
+                                class="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 text-base font-semibold">
                             <i class="fas fa-arrow-left mr-2"></i>이전
                         </button>
                     </div>

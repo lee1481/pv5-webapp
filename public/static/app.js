@@ -2357,6 +2357,7 @@ async function loadRevenueList(filterType = 'all', startDate = null, endDate = n
 function displayRevenueList(reports) {
   // 실제 HTML 구조에 맞게 수정
   const tableBody = document.getElementById('revenueTableBody');
+  const cardList = document.getElementById('revenueCardList');
   const totalRevenueEl = document.getElementById('totalRevenue');
   const totalCountEl = document.getElementById('totalCount');
   const averageRevenueEl = document.getElementById('averageRevenue');
@@ -2367,6 +2368,7 @@ function displayRevenueList(reports) {
   }
   
   if (!reports || reports.length === 0) {
+    // 데스크톱 테이블
     tableBody.innerHTML = `
       <tr>
         <td colspan="7" class="border border-gray-300 px-4 py-12 text-center text-gray-500">
@@ -2376,6 +2378,16 @@ function displayRevenueList(reports) {
         </td>
       </tr>
     `;
+    // 모바일 카드
+    if (cardList) {
+      cardList.innerHTML = `
+        <div class="text-center py-12 text-gray-500">
+          <i class="fas fa-chart-line text-6xl mb-4 block"></i>
+          <p>시공 완료된 문서가 없습니다.</p>
+          <p class="text-sm mt-2">Step 5에서 "시공 완료" 버튼을 클릭하세요.</p>
+        </div>
+      `;
+    }
     if (totalRevenueEl) totalRevenueEl.textContent = '₩0';
     if (totalCountEl) totalCountEl.textContent = '0건';
     if (averageRevenueEl) averageRevenueEl.textContent = '₩0';
@@ -2416,7 +2428,7 @@ function displayRevenueList(reports) {
   if (totalCountEl) totalCountEl.textContent = reports.length + '건';
   if (averageRevenueEl) averageRevenueEl.textContent = '₩' + averageRevenue.toLocaleString();
   
-  // 테이블 목록 업데이트
+  // 데스크톱 테이블 목록 업데이트
   tableBody.innerHTML = revenueDetails.map(report => {
     const customerName = report.customerInfo?.receiverName || '-';
     const installDate = report.installDate || '-';
@@ -2443,6 +2455,65 @@ function displayRevenueList(reports) {
       </tr>
     `;
   }).join('');
+  
+  // 모바일 카드 목록 업데이트
+  if (cardList) {
+    cardList.innerHTML = revenueDetails.map(report => {
+      const customerName = report.customerInfo?.receiverName || '-';
+      const installDate = report.installDate || '-';
+      const installerName = report.installerName || '-';
+      const packages = report.packages || [];
+      const productNames = packages.map(p => p.fullName || p.name).join(', ');
+      const marginRate = report.consumerPrice > 0 
+        ? ((report.revenue / report.consumerPrice) * 100).toFixed(1) 
+        : 0;
+      
+      return `
+        <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+          <!-- 고객명 & 날짜 -->
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-lg font-bold text-gray-800">${customerName}</h3>
+            <span class="text-sm text-gray-500">${installDate}</span>
+          </div>
+          
+          <!-- 제품 정보 -->
+          <div class="mb-3 pb-3 border-b border-gray-200">
+            <p class="text-sm text-gray-600 mb-1">
+              <i class="fas fa-box text-purple-600 mr-1"></i>
+              <span class="font-semibold">제품:</span>
+            </p>
+            <p class="text-sm text-gray-800 pl-5">${productNames || '-'}</p>
+          </div>
+          
+          <!-- 매출 정보 -->
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div class="bg-gray-50 p-3 rounded-lg">
+              <p class="text-xs text-gray-600 mb-1">소비자 가격</p>
+              <p class="text-base font-semibold text-gray-800">₩${report.consumerPrice.toLocaleString()}</p>
+            </div>
+            <div class="bg-blue-50 p-3 rounded-lg">
+              <p class="text-xs text-blue-600 mb-1">매출</p>
+              <p class="text-base font-bold text-blue-600">₩${report.revenue.toLocaleString()}</p>
+            </div>
+          </div>
+          
+          <!-- 마진율 & 시공자 -->
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-gray-600">마진율:</span>
+              <span class="inline-block px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+                ${marginRate}%
+              </span>
+            </div>
+            <div class="flex items-center gap-1 text-sm text-gray-600">
+              <i class="fas fa-user text-gray-400"></i>
+              <span>${installerName}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
 }
 
 // 제품 ID로 매출 데이터 가져오기 (margins.ts 매핑)
