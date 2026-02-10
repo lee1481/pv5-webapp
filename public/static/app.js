@@ -1882,10 +1882,6 @@ async function showReportPreview(reportId) {
                     class="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-100">
               <i class="fas fa-times mr-2"></i>닫기
             </button>
-            <button onclick="saveAsJPG()" 
-                    class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700">
-              <i class="fas fa-image mr-2"></i>JPG로 저장하기
-            </button>
             <button onclick="window.print()" 
                     class="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700">
               <i class="fas fa-print mr-2"></i>인쇄
