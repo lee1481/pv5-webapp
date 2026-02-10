@@ -1772,8 +1772,8 @@ app.get('/', (c) => {
                         </div>
                     </div>
                     
-                    <!-- 통계 대시보드 (모바일 최적화) -->
-                    <div class="grid grid-cols-1 gap-3 sm:gap-4 mb-6">
+                    <!-- 통계 대시보드 (가로 한 줄 배치) -->
+                    <div class="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
                         <div class="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-5 sm:p-6 rounded-lg shadow-lg">
                             <div class="flex items-center justify-between">
                                 <div>
