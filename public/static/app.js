@@ -2890,26 +2890,29 @@ function showDateDetails(dateStr, reports) {
 // 모든 리포트 가져오기 (달력용)
 async function getAllReportsForCalendar() {
   try {
-    // 서버에서 가져오기
-    const response = await axios.get('/api/reports', { timeout: 10000 });
-    if (response.data && Array.isArray(response.data)) {
-      return response.data;
+    // 🔄 서버에서 먼저 불러오기 (Primary)
+    const response = await axios.get('/api/reports/list', { timeout: 10000 });
+    if (response.data.success && response.data.reports && response.data.reports.length > 0) {
+      console.log('✅ Calendar: Loaded from server (D1):', response.data.reports.length, 'reports');
+      return response.data.reports;
     }
   } catch (error) {
-    console.error('Failed to load reports from server:', error);
+    console.warn('⚠️ Calendar: Server load failed, fallback to localStorage:', error);
   }
   
-  // 서버 실패 시 localStorage에서 가져오기
+  // 서버 실패 시 localStorage에서 가져오기 (Fallback)
   const localData = localStorage.getItem('pv5_reports');
   if (localData) {
     try {
       const parsed = JSON.parse(localData);
+      console.log('✅ Calendar: Loaded from localStorage (cache):', parsed.length, 'reports');
       return Array.isArray(parsed) ? parsed : [];
     } catch (e) {
-      console.error('Failed to parse localStorage reports:', e);
+      console.error('❌ Calendar: Failed to parse localStorage reports:', e);
     }
   }
   
+  console.warn('⚠️ Calendar: No reports found');
   return [];
 }
 
