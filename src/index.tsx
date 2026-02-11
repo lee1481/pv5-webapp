@@ -1047,10 +1047,20 @@ app.post('/api/migrate-confirmed-status', async (c) => {
         )
       `).run()
       
-      // Step 2: Copy data from old table
+      // Step 2: Copy data from old table (explicitly specify columns)
       await env.DB.prepare(`
-        INSERT INTO reports_new 
-        SELECT * FROM reports
+        INSERT INTO reports_new (
+          id, report_id, customer_info, packages, package_positions,
+          install_date, install_time, install_address, notes, installer_name,
+          image_key, image_filename, status, created_at, updated_at
+        )
+        SELECT 
+          id, report_id, customer_info, packages, package_positions,
+          install_date, install_time, install_address, notes, installer_name,
+          image_key, image_filename, 
+          COALESCE(status, 'draft') as status,
+          created_at, updated_at
+        FROM reports
       `).run()
       
       // Step 3: Drop old table
