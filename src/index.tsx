@@ -1642,17 +1642,11 @@ app.get('/', (c) => {
                     </h2>
                     
                     <!-- 목록/달력 탭 전환 -->
+                    <!-- 목록 뷰 헤더 (탭 제거) -->
                     <div class="mb-6">
-                        <div class="flex gap-2 border-b-2 border-gray-200">
-                            <button id="listViewTab" onclick="switchManageView('list')" 
-                                    class="px-4 sm:px-6 py-3 font-semibold text-purple-600 border-b-2 border-purple-600 transition">
-                                <i class="fas fa-list mr-2"></i>목록 보기
-                            </button>
-                            <button id="calendarViewTab" onclick="switchManageView('calendar')" 
-                                    class="px-4 sm:px-6 py-3 font-semibold text-gray-500 hover:text-purple-600 transition">
-                                <i class="fas fa-calendar-alt mr-2"></i>달력 보기
-                            </button>
-                        </div>
+                        <h3 class="text-xl font-bold text-gray-800">
+                            <i class="fas fa-list text-purple-600 mr-2"></i>저장 문서 목록
+                        </h3>
                     </div>
                     
                     <!-- 목록 뷰 -->
@@ -1727,53 +1721,6 @@ app.get('/', (c) => {
                     </div>
                     
                     <!-- 달력 뷰 -->
-                    <div id="calendarView" class="hidden">
-                        <!-- 월 선택 헤더 -->
-                        <div class="mb-6 flex items-center justify-between bg-purple-50 p-4 rounded-lg">
-                            <button onclick="changeCalendarMonth(-1)" 
-                                    class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold">
-                                <i class="fas fa-chevron-left"></i>
-                            </button>
-                            <h3 id="calendarMonthYear" class="text-xl sm:text-2xl font-bold text-gray-800">
-                                2026년 2월
-                            </h3>
-                            <button onclick="changeCalendarMonth(1)" 
-                                    class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold">
-                                <i class="fas fa-chevron-right"></i>
-                            </button>
-                        </div>
-                        
-                        <!-- 달력 테이블 -->
-                        <div class="overflow-x-auto">
-                            <table id="calendarTable" class="w-full border-collapse">
-                                <thead>
-                                    <tr class="bg-purple-100">
-                                        <th class="border border-purple-300 px-2 sm:px-4 py-2 sm:py-3 text-red-600 font-bold text-sm sm:text-base">일</th>
-                                        <th class="border border-purple-300 px-2 sm:px-4 py-2 sm:py-3 font-bold text-sm sm:text-base">월</th>
-                                        <th class="border border-purple-300 px-2 sm:px-4 py-2 sm:py-3 font-bold text-sm sm:text-base">화</th>
-                                        <th class="border border-purple-300 px-2 sm:px-4 py-2 sm:py-3 font-bold text-sm sm:text-base">수</th>
-                                        <th class="border border-purple-300 px-2 sm:px-4 py-2 sm:py-3 font-bold text-sm sm:text-base">목</th>
-                                        <th class="border border-purple-300 px-2 sm:px-4 py-2 sm:py-3 font-bold text-sm sm:text-base">금</th>
-                                        <th class="border border-purple-300 px-2 sm:px-4 py-2 sm:py-3 text-blue-600 font-bold text-sm sm:text-base">토</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="calendarBody">
-                                    <!-- 달력 날짜가 여기에 동적으로 생성됩니다 -->
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <!-- 선택된 날짜의 예약 목록 -->
-                        <div id="selectedDateReports" class="mt-6 hidden">
-                            <h4 class="text-lg font-bold text-gray-800 mb-4">
-                                <i class="fas fa-calendar-check text-purple-600 mr-2"></i>
-                                <span id="selectedDateTitle"></span>
-                            </h4>
-                            <div id="selectedDateReportsList" class="space-y-3">
-                                <!-- 선택된 날짜의 예약 목록이 여기에 표시됩니다 -->
-                            </div>
-                        </div>
-                    </div>
                     
                     <div class="mt-6 flex justify-start">
                         <button onclick="prevStep(4)" 
