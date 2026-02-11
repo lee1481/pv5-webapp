@@ -1013,6 +1013,90 @@ app.post('/api/migrate-status-column', async (c) => {
   }
 })
 
+// API: 3단계 상태 마이그레이션 실행 (0003_add_confirmed_status.sql)
+app.post('/api/migrate-confirmed-status', async (c) => {
+  try {
+    const { env } = c
+    
+    if (!env.DB) {
+      return c.json({
+        success: false,
+        message: 'D1 데이터베이스가 연결되지 않았습니다.'
+      }, 500)
+    }
+    
+    try {
+      // Step 1: Create new table with updated CHECK constraint
+      await env.DB.prepare(`
+        CREATE TABLE reports_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          report_id TEXT UNIQUE NOT NULL,
+          customer_info TEXT,
+          packages TEXT,
+          package_positions TEXT,
+          install_date TEXT,
+          install_time TEXT,
+          install_address TEXT,
+          notes TEXT,
+          installer_name TEXT,
+          image_key TEXT,
+          image_filename TEXT,
+          status TEXT DEFAULT 'draft' CHECK(status IN ('draft', 'confirmed', 'completed')),
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `).run()
+      
+      // Step 2: Copy data from old table
+      await env.DB.prepare(`
+        INSERT INTO reports_new 
+        SELECT * FROM reports
+      `).run()
+      
+      // Step 3: Drop old table
+      await env.DB.prepare(`DROP TABLE reports`).run()
+      
+      // Step 4: Rename new table
+      await env.DB.prepare(`ALTER TABLE reports_new RENAME TO reports`).run()
+      
+      console.log('✅ Migration 0003 completed: confirmed status added')
+      
+      return c.json({
+        success: true,
+        message: '✅ 마이그레이션 완료!\n\n3단계 상태 시스템이 활성화되었습니다:\n- 예약 접수 중 (draft)\n- 예약 확정 (confirmed)\n- 시공 완료 (completed)'
+      })
+      
+    } catch (migrationError) {
+      const errorMessage = migrationError instanceof Error ? migrationError.message : String(migrationError)
+      
+      // 이미 마이그레이션이 완료된 경우
+      if (errorMessage.includes('table reports_new already exists')) {
+        return c.json({
+          success: true,
+          message: '✅ 마이그레이션이 이미 완료되었습니다.',
+          alreadyCompleted: true
+        })
+      }
+      
+      // 다른 오류
+      console.error('Migration 0003 error:', errorMessage)
+      return c.json({
+        success: false,
+        message: '❌ 마이그레이션 실패: ' + errorMessage,
+        error: errorMessage
+      }, 500)
+    }
+    
+  } catch (error) {
+    console.error('Migration endpoint error:', error)
+    return c.json({
+      success: false,
+      message: '마이그레이션 처리 중 오류가 발생했습니다.',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 500)
+  }
+})
+
 // API: 시공 완료 목록 조회 (매출 관리용)
 app.get('/api/reports/completed/list', async (c) => {
   try {
@@ -1710,17 +1794,30 @@ app.get('/', (c) => {
                                     <p>매출 관리 기능을 처음 사용하시는 경우, D1 데이터베이스 마이그레이션이 필요합니다.</p>
                                     
                                     <!-- 자동 마이그레이션 버튼 -->
-                                    <div class="mt-3">
+                                    <div class="mt-3 space-y-3">
                                         <button 
                                             onclick="runMigration()" 
                                             class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-6 rounded inline-flex items-center w-full sm:w-auto justify-center text-base"
                                         >
                                             <i class="fas fa-database mr-2"></i>
-                                            자동 마이그레이션 실행
+                                            자동 마이그레이션 실행 (0002)
                                         </button>
                                         <p class="mt-2 text-xs">
                                             <i class="fas fa-info-circle mr-1"></i>
                                             버튼을 클릭하면 D1 데이터베이스에 status 컬럼이 자동으로 추가됩니다.
+                                        </p>
+                                        
+                                        <!-- 3단계 상태 마이그레이션 버튼 (0003) -->
+                                        <button 
+                                            onclick="runConfirmedStatusMigration()" 
+                                            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded inline-flex items-center w-full sm:w-auto justify-center text-base"
+                                        >
+                                            <i class="fas fa-sync-alt mr-2"></i>
+                                            3단계 상태 마이그레이션 (0003)
+                                        </button>
+                                        <p class="mt-2 text-xs text-blue-700">
+                                            <i class="fas fa-info-circle mr-1"></i>
+                                            예약 확정 기능을 사용하려면 이 버튼을 클릭하세요. (draft → confirmed → completed)
                                         </p>
                                     </div>
                                     

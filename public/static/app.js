@@ -2803,6 +2803,43 @@ async function runMigration() {
   }
 }
 
+// 3단계 상태 마이그레이션 (0003_add_confirmed_status.sql)
+async function runConfirmedStatusMigration() {
+  if (!confirm('🔄 3단계 상태 시스템 마이그레이션을 실행하시겠습니까?\n\n예약 접수 중 (draft) → 예약 확정 (confirmed) → 시공 완료 (completed)\n\n진행하시겠습니까?')) {
+    return;
+  }
+  
+  try {
+    const response = await axios.post('/api/migrate-confirmed-status');
+    
+    if (response.data.success) {
+      // 마이그레이션 성공
+      const message = response.data.alreadyCompleted 
+        ? '✅ 마이그레이션이 이미 완료되었습니다.\n\n3단계 상태 시스템을 사용할 수 있습니다.'
+        : '✅ 마이그레이션 완료!\n\n' + response.data.message;
+      
+      alert(message);
+      
+      // 마이그레이션 알림 숨기기
+      const migrationAlert = document.getElementById('migrationAlert');
+      if (migrationAlert) {
+        migrationAlert.style.display = 'none';
+      }
+      
+      // 목록 새로고침
+      loadRevenueList();
+      loadReportsList();
+    } else {
+      // 마이그레이션 실패
+      alert('❌ 마이그레이션 실패\n\n' + (response.data.message || '알 수 없는 오류가 발생했습니다.'));
+    }
+  } catch (error) {
+    console.error('Confirmed status migration error:', error);
+    const errorMsg = error.response?.data?.message || error.message || '알 수 없는 오류';
+    alert('❌ 마이그레이션 실행 중 오류가 발생했습니다.\n\n' + errorMsg);
+  }
+}
+
 // 검색 필터 적용
 function applyRevenueFilter() {
   const filterType = document.getElementById('revenueFilterType')?.value || 'all';
