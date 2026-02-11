@@ -20,9 +20,21 @@
 - **GitHub**: (설정 후 업데이트 예정)
 
 ## 버전 정보
-- **현재 버전**: v2.5
-- **마지막 업데이트**: 2026-02-10
+- **현재 버전**: v2.6
+- **마지막 업데이트**: 2026-02-11
 - **주요 변경사항**:
+  - ✅ **3단계 상태 관리 시스템 완성** (NEW 🔥 v2.6)
+    - 예약 접수 중 (draft) → 예약 확정 (confirmed) → 시공 완료 (completed)
+    - Step 5 목록 카드에서 상태별 배지 표시 (파란/초록/회색)
+    - 예약 확정 버튼 추가 (confirmed 상태로 전환)
+    - 시공 완료 버튼 (completed 상태로 전환 → Step 6 이동)
+    - 완료된 문서는 비활성화된 "시공 완료됨" 버튼
+    - Step 6에서 자동 마이그레이션 버튼 (0003) 추가
+    - Production 데이터베이스 마이그레이션 버튼 클릭으로 즉시 적용
+  - ✅ **Step 5 UI 개선** (v2.6)
+    - 목록 카드에서 JPG 저장 버튼 제거 (상세보기 모달에서만 제공)
+    - 문서 ID 제거 → 설치 주소 및 설치 시간 표시로 변경
+    - 깔끔하고 직관적인 카드 레이아웃
   - ✅ **Step 6 모바일 UI 최적화** (NEW 🔥)
     - 모바일 전용 카드형 레이아웃 (768px 미만)
     - 데스크톱 테이블 / 모바일 카드 자동 전환
@@ -141,18 +153,23 @@
   - 고객명 검색 (oninput 실시간)
   - 날짜 범위 검색 (onchange 실시간)
   - 검색 초기화
+- **3단계 상태 시스템** (NEW v2.6):
+  - 📘 **예약 접수 중** (draft): 파란색 배지, [예약 확정] 버튼
+  - 🟢 **예약 확정** (confirmed): 초록색 배지, [시공 완료] 버튼
+  - ⚪ **시공 완료** (completed): 회색 배지, [시공 완료됨] 비활성화
 - 카드형 목록 UI:
   - 수령자 이름
+  - **상태 배지** (예약 접수 중/예약 확정/시공 완료)
   - 설치 날짜
-  - 저장 시간
-  - 문서 ID
+  - 설치 시간
+  - 설치 주소
   - **3단 선반 설치 위치 배지** (목록 카드)
 - 문서 관리 버튼:
   - **상세보기**: 모달로 확인서 미리보기 (고객용)
     - **3단 선반 설치 위치 표시** (미리보기 모달)
-  - **JPG 저장**: 확인서를 JPG 이미지로 다운로드
   - **수정하기**: 데이터 복원 및 Step 1로 이동
-  - **시공 완료** (NEW): 시공 완료로 표시 → Step 6 매출 관리로 이동
+  - **예약 확정** (NEW v2.6): 예약 확정 상태로 변경
+  - **시공 완료** (v2.1): 시공 완료로 표시 → Step 6 매출 관리로 이동
   - **삭제**: D1 + localStorage에서 삭제
 - **Excel 내보내기**: 
   - 전체 데이터를 Excel 파일로 내보내기
@@ -216,9 +233,11 @@
 | `/api/reports/list` | GET | 저장된 문서 목록 조회 (D1) | - |
 | `/api/reports/:id` | GET | 특정 문서 조회 (D1) | `id`: 문서 ID |
 | `/api/reports/:id` | DELETE | 특정 문서 삭제 (D1) | `id`: 문서 ID |
-| `/api/reports/:id/complete` | PATCH | 시공 완료 처리 (NEW) | `id`: 문서 ID |
-| `/api/reports/completed/list` | GET | 시공 완료 문서 조회 (매출 관리용, NEW) | - |
-| `/api/reports/stats` | GET | 매출 통계 조회 (NEW) | Query: startDate, endDate |
+| `/api/reports/:id/confirm` | PATCH | 예약 확정 처리 (NEW v2.6) | `id`: 문서 ID |
+| `/api/reports/:id/complete` | PATCH | 시공 완료 처리 (v2.1) | `id`: 문서 ID |
+| `/api/reports/completed/list` | GET | 시공 완료 문서 조회 (매출 관리용) | - |
+| `/api/reports/stats` | GET | 매출 통계 조회 | Query: startDate, endDate |
+| `/api/migrate-confirmed-status` | POST | 3단계 상태 마이그레이션 (NEW v2.6) | - |
 
 ### 정적 리소스
 | 경로 | 설명 |
@@ -401,6 +420,7 @@
     installer_name TEXT,
     image_key TEXT,                  -- R2 이미지 키
     image_filename TEXT,
+    status TEXT DEFAULT 'draft' CHECK(status IN ('draft', 'confirmed', 'completed')),  -- v2.6: 3단계 상태
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
@@ -738,7 +758,23 @@ cd /home/user/webapp && git push -f origin main
 
 ## 최근 업데이트 내역
 
-### 2026-02-09 (v2.0) - 최신 🚀
+### 2026-02-11 (v2.6) - 최신 🚀
+- ✅ **3단계 상태 관리 시스템 완성**
+  - 예약 접수 중 (draft) → 예약 확정 (confirmed) → 시공 완료 (completed)
+  - Step 5 목록 카드에서 상태별 배지 표시
+  - 예약 확정 버튼 추가 (PATCH /api/reports/:id/confirm)
+  - 시공 완료 버튼 (PATCH /api/reports/:id/complete)
+  - Step 6 자동 마이그레이션 버튼 (0003) 추가
+- ✅ **Step 5 UI 개선**
+  - 목록 카드에서 JPG 저장 버튼 제거
+  - 문서 ID 제거 → 설치 주소/시간 표시
+  - 상세보기 모달에서만 JPG 저장 제공
+- ✅ **Production 마이그레이션 자동화**
+  - 버튼 클릭으로 즉시 DB 마이그레이션
+  - 컬럼 명시적 지정으로 안정성 향상
+  - 마이그레이션 알림 자동 숨김 해제
+
+### 2026-02-09 (v2.0)
 - ✅ **Cloudflare D1 Database 통합** (SQLite 기반 관계형 데이터베이스)
 - ✅ **Cloudflare R2 Storage 통합** (이미지 파일 저장)
 - ✅ **서버 우선 저장 로직** (D1 + R2 → localStorage 캐시)
@@ -778,16 +814,31 @@ cd /home/user/webapp && git push -f origin main
 - ✅ 실시간 검색 필터링 (고객명, 날짜)
 - ✅ Cloudflare KV 클라우드 백업 활성화
 
-## 매출 관리 기능 활성화 방법 (v2.2+)
+## 매출 관리 기능 활성화 방법 (v2.6+)
 
-**✅ 간편 방법**: Step 6 매출 관리 기능을 사용하려면 **앱 내에서 자동 마이그레이션 실행**을 권장합니다!
+**✅ 최신 버전**: 3단계 상태 시스템을 사용하려면 **두 가지 마이그레이션**이 필요합니다!
 
-### 방법 1: 자동 마이그레이션 실행 (가장 간편! 권장)
+### 필수 마이그레이션 순서
+
+#### 1️⃣ 마이그레이션 0002: status 컬럼 추가 (기본 상태 관리)
+**Step 6 매출 관리 기능을 사용하려면 이 마이그레이션이 먼저 필요합니다.**
+
+**자동 마이그레이션 실행 (가장 간편! 권장):**
 1. https://pv5-webapp.pages.dev 접속
 2. **Step 6 (매출 관리)** 탭 클릭
-3. 노란색 경고 박스에서 **"자동 마이그레이션 실행"** 버튼 클릭
+3. 노란색 경고 박스에서 **"자동 마이그레이션 실행 (0002)"** 버튼 클릭
 4. 확인 대화상자에서 **"확인"** 클릭
-5. ✅ 완료! 마이그레이션 경고 자동 숨김
+5. ✅ 완료! status 컬럼 추가됨 (`draft`, `completed` 지원)
+
+#### 2️⃣ 마이그레이션 0003: 3단계 상태 시스템 추가 (NEW v2.6)
+**예약 확정 기능을 사용하려면 이 마이그레이션이 추가로 필요합니다.**
+
+**자동 마이그레이션 실행 (가장 간편! 권장):**
+1. https://pv5-webapp.pages.dev 접속
+2. **Step 6 (매출 관리)** 탭 클릭
+3. 노란색 경고 박스에서 **"3단계 상태 마이그레이션 (0003)"** 버튼 클릭
+4. 확인 대화상자에서 **"확인"** 클릭
+5. ✅ 완료! 3단계 상태 시스템 활성화 (`draft`, `confirmed`, `completed`)
 
 **장점**: 
 - ✅ Cloudflare Dashboard 접속 불필요
@@ -795,27 +846,60 @@ cd /home/user/webapp && git push -f origin main
 - ✅ 클릭 한 번으로 즉시 완료
 - ✅ 마이그레이션 완료 후 자동으로 alert 숨김
 
-### 방법 2: Cloudflare Dashboard (수동)
-1. [Cloudflare Dashboard](https://dash.cloudflare.com) 접속
-2. **Workers & Pages** → **D1 databases** → **pv5-reports-db** 선택
-3. **Console** 탭 클릭
-4. 다음 SQL 명령 실행:
-   ```sql
-   ALTER TABLE reports ADD COLUMN status TEXT DEFAULT 'draft' CHECK(status IN ('draft', 'completed'));
-   ```
-5. **Execute** 버튼 클릭
+### 수동 마이그레이션 (Cloudflare Dashboard)
 
-### 방법 3: Wrangler CLI (개발자용)
-```bash
-# Production 데이터베이스에 적용
-npx wrangler d1 migrations apply pv5-reports-db --remote
+**마이그레이션 0002:**
+```sql
+ALTER TABLE reports ADD COLUMN status TEXT DEFAULT 'draft' CHECK(status IN ('draft', 'completed'));
+```
 
-# 또는 직접 SQL 실행
-npx wrangler d1 execute pv5-reports-db --command="ALTER TABLE reports ADD COLUMN status TEXT DEFAULT 'draft' CHECK(status IN ('draft', 'completed'));" --remote
+**마이그레이션 0003:**
+```sql
+-- Step 1: Create new table with updated CHECK constraint
+CREATE TABLE reports_new (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  report_id TEXT UNIQUE NOT NULL,
+  customer_info TEXT,
+  packages TEXT,
+  package_positions TEXT,
+  install_date TEXT,
+  install_time TEXT,
+  install_address TEXT,
+  notes TEXT,
+  installer_name TEXT,
+  image_key TEXT,
+  image_filename TEXT,
+  status TEXT DEFAULT 'draft' CHECK(status IN ('draft', 'confirmed', 'completed')),
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Step 2: Copy data from old table
+INSERT INTO reports_new (
+  id, report_id, customer_info, packages, package_positions,
+  install_date, install_time, install_address, notes, installer_name,
+  image_key, image_filename, status, created_at, updated_at
+)
+SELECT 
+  id, report_id, customer_info, packages, package_positions,
+  install_date, install_time, install_address, notes, installer_name,
+  image_key, image_filename, 
+  COALESCE(status, 'draft') as status,
+  created_at, updated_at
+FROM reports;
+
+-- Step 3: Drop old table
+DROP TABLE reports;
+
+-- Step 4: Rename new table
+ALTER TABLE reports_new RENAME TO reports;
 ```
 
 ### 마이그레이션 확인
-- ✅ **앱에서 확인**: Step 6 (매출 관리) 탭 클릭 시 노란색 경고 박스가 표시되지 않으면 성공
+- ✅ **앱에서 확인**: 
+  - Step 5 목록에서 파란색 "예약 접수 중" 배지 표시
+  - [예약 확정] 버튼 클릭 시 초록색 "예약 확정" 배지로 변경
+  - [시공 완료] 버튼 클릭 시 회색 "시공 완료" 배지로 변경
 - ✅ **CLI 확인**: 
   ```bash
   # 테이블 구조 확인
