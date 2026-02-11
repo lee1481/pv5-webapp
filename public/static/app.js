@@ -2492,11 +2492,13 @@ async function loadRevenueList(filterType = 'all', startDate = null, endDate = n
     if (response.data.success) {
       const reports = response.data.reports;
       
-      // ✅ 성공적으로 데이터를 불러왔다면 마이그레이션이 완료된 것이므로 경고 박스 숨김
-      const migrationAlert = document.getElementById('migrationAlert');
-      if (migrationAlert) {
-        migrationAlert.style.display = 'none';
-      }
+      // ⚠️ 마이그레이션 알림은 수동으로만 숨김 (자동 숨김 비활성화)
+      // 이유: 0002 마이그레이션만 완료되어도 API가 성공하지만,
+      //       0003 마이그레이션(confirmed 상태)는 별도로 필요
+      // const migrationAlert = document.getElementById('migrationAlert');
+      // if (migrationAlert) {
+      //   migrationAlert.style.display = 'none';
+      // }
       
       // 날짜 필터링
       let filteredReports = reports;
