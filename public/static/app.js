@@ -2708,7 +2708,7 @@ function displayRevenueList(reports) {
             </div>
           </div>
           
-          <!-- 마진율 & 시공자 -->
+          <!-- 마진율 & 접수/작성자 -->
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
               <span class="text-xs text-gray-600">마진율:</span>

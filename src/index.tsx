@@ -1905,7 +1905,7 @@ app.get('/', (c) => {
                                     <th class="border border-gray-300 px-4 py-3 text-right text-sm font-bold text-gray-700">소비자 가격</th>
                                     <th class="border border-gray-300 px-4 py-3 text-right text-sm font-bold text-gray-700">매출</th>
                                     <th class="border border-gray-300 px-4 py-3 text-center text-sm font-bold text-gray-700">마진율</th>
-                                    <th class="border border-gray-300 px-4 py-3 text-left text-sm font-bold text-gray-700">시공자</th>
+                                    <th class="border border-gray-300 px-4 py-3 text-left text-sm font-bold text-gray-700">접수/작성자</th>
                                 </tr>
                             </thead>
                             <tbody id="revenueTableBody">
