@@ -48,15 +48,9 @@ app.post('/api/ocr', async (c) => {
 
     console.log('OCR request received:', file.name, file.type, file.size);
 
-    // 이미지를 Base64로 변환
-    const arrayBuffer = await file.arrayBuffer()
-    const base64Image = Buffer.from(arrayBuffer).toString('base64')
-    
-    // Google Cloud Vision API 키 확인
-    const GOOGLE_VISION_API_KEY = c.env?.GOOGLE_VISION_API_KEY;
-    
-    if (!GOOGLE_VISION_API_KEY) {
-      console.error('GOOGLE_VISION_API_KEY not found in environment');
+    // Cloudflare AI 바인딩 확인
+    if (!c.env?.AI) {
+      console.error('Cloudflare AI binding not found');
       return c.json({ 
         success: false, 
         data: {
@@ -71,50 +65,39 @@ app.post('/api/ocr', async (c) => {
           aiSuccess: false,
           recognitionSuccess: false
         },
-        message: 'OCR 서비스 설정이 필요합니다. 관리자에게 문의하세요.'
+        message: 'OCR 서비스를 사용할 수 없습니다. 잠시 후 다시 시도해주세요.'
       }, 200)
     }
+
+    console.log('Using Cloudflare AI Workers for OCR...');
+
+    // 이미지를 Array로 변환
+    const arrayBuffer = await file.arrayBuffer()
+    const imageArray = Array.from(new Uint8Array(arrayBuffer))
     
-    console.log('Calling Google Cloud Vision API...');
+    // Cloudflare AI Workers - OCR with Tesseract
+    let ocrText = '';
+    let aiSuccess = false;
     
-    // Google Cloud Vision API 호출
-    const visionResponse = await fetch(
-      `https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_VISION_API_KEY}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          requests: [{
-            image: {
-              content: base64Image
-            },
-            features: [{
-              type: 'DOCUMENT_TEXT_DETECTION', // 문서 OCR에 최적화
-              maxResults: 1
-            }]
-          }]
-        })
-      }
-    );
-    
-    if (!visionResponse.ok) {
-      const errorText = await visionResponse.text();
-      console.error('Google Vision API error:', visionResponse.status, errorText);
-      throw new Error(`Google Vision API error: ${visionResponse.status}`);
+    try {
+      const aiResponse = await c.env.AI.run('@cf/tesseract/tesseract-ocr', {
+        image: imageArray,
+        lang: 'kor+eng' // 한글 + 영어 지원
+      });
+      
+      console.log('Cloudflare AI OCR response:', aiResponse);
+      
+      ocrText = aiResponse?.text || '';
+      aiSuccess = !!ocrText;
+      
+      console.log('Extracted OCR text length:', ocrText.length);
+      console.log('OCR text preview:', ocrText.substring(0, 200));
+    } catch (aiError) {
+      console.error('Cloudflare AI OCR error:', aiError);
+      // AI 실패 시에도 계속 진행 (빈 텍스트로)
+      ocrText = '';
+      aiSuccess = false;
     }
-    
-    const visionData = await visionResponse.json();
-    console.log('Google Vision API response received');
-    
-    // OCR 텍스트 추출
-    const fullTextAnnotation = visionData.responses?.[0]?.fullTextAnnotation;
-    const ocrText = fullTextAnnotation?.text || '';
-    const aiSuccess = !!ocrText; // Vision API 성공 여부
-    
-    console.log('Extracted OCR text length:', ocrText.length);
-    console.log('OCR text preview:', ocrText.substring(0, 200));
     
     if (!ocrText || ocrText.length < 10) {
       console.warn('No text detected in image');
