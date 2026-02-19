@@ -1507,10 +1507,15 @@ function displayReportsList(reports) {
   
   listContainer.innerHTML = sortedReports.map((report, index) => {
     const customerName = report.customerInfo?.receiverName || report.customerName || '-';
-    const installDate = report.installDate || '-';
-    const installTime = report.installTime || '-';
-    const installAddress = report.installAddress || '-';
+    const installDate = report.installDate || report.install_date || '';
+    const installTime = report.installTime || report.install_time || '';
+    const installAddress = report.installAddress || report.install_address || '-';
     const reportId = report.reportId || report.id || `REPORT-${index}`;
+    
+    // 날짜 미정 여부 확인
+    const isDatePending = !installDate || installDate === '-' || installDate === '';
+    const displayDate = isDatePending ? '미정 (조율 중)' : installDate;
+    const displayTime = !installTime || installTime === '-' ? '-' : installTime;
     
     // 제품명 목록 생성
     const packages = report.packages || [];
@@ -1544,7 +1549,9 @@ function displayReportsList(reports) {
           ${positionBadges ? `<div class="mb-2">${positionBadges}</div>` : ''} <!-- UPDATED -->
           <!-- 상태 배지 -->
           <div class="mb-2">
-            ${report.status === 'draft' || !report.status ? 
+            ${isDatePending ? 
+              '<span class="inline-block px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm font-semibold"><i class="fas fa-hourglass-half mr-1"></i>조율 중</span>' :
+              report.status === 'draft' || !report.status ? 
               '<span class="inline-block px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold"><i class="fas fa-clipboard-list mr-1"></i>예약 접수 중</span>' :
               report.status === 'confirmed' ?
               '<span class="inline-block px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold"><i class="fas fa-check-circle mr-1"></i>예약 확정</span>' :
@@ -1552,8 +1559,8 @@ function displayReportsList(reports) {
             }
           </div>
           <div class="text-sm text-gray-600 space-y-1">
-            <div><i class="fas fa-calendar mr-2"></i>설치 날짜: ${installDate}</div>
-            <div><i class="fas fa-clock mr-2"></i>설치 시간: ${installTime}</div>
+            <div><i class="fas fa-calendar mr-2"></i>설치 날짜: ${displayDate}</div>
+            <div><i class="fas fa-clock mr-2"></i>설치 시간: ${displayTime}</div>
             <div><i class="fas fa-map-marker-alt mr-2"></i>설치 주소: ${installAddress}</div>
           </div>
         </div>
@@ -1568,7 +1575,12 @@ function displayReportsList(reports) {
                   class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm">
             <i class="fas fa-edit mr-1"></i>수정하기
           </button>
-          ${report.status === 'completed' ? `
+          ${isDatePending ? `
+            <button onclick="loadReport('${reportId}')" 
+                    class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 text-sm">
+              <i class="fas fa-calendar-plus mr-1"></i>날짜 입력
+            </button>
+          ` : report.status === 'completed' ? `
             <button disabled 
                     class="bg-gray-400 text-white px-4 py-2 rounded-lg text-sm cursor-not-allowed">
               <i class="fas fa-check-double mr-1"></i>완료됨
@@ -1600,7 +1612,12 @@ function displayReportsList(reports) {
                   class="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 text-sm font-semibold">
             <i class="fas fa-edit mr-1"></i>수정하기
           </button>
-          ${report.status === 'completed' ? `
+          ${isDatePending ? `
+            <button onclick="loadReport('${reportId}')" 
+                    class="bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 text-sm font-semibold">
+              <i class="fas fa-calendar-plus mr-1"></i>날짜 입력
+            </button>
+          ` : report.status === 'completed' ? `
             <button disabled 
                     class="bg-gray-400 text-white px-4 py-3 rounded-lg text-sm font-semibold cursor-not-allowed">
               <i class="fas fa-check-double mr-1"></i>완료됨
