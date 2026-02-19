@@ -1279,6 +1279,131 @@ window.addEventListener('afterprint', () => {
 
 // ==================== Step 5: 저장 문서 관리 ====================
 
+// 임시 저장 (Step 3에서 날짜 없이 저장)
+async function saveDraftReport() {
+  try {
+    const installerName = document.getElementById('installerName')?.value || '';
+    const installDate = document.getElementById('installDate')?.value || ''; // 빈 값 허용
+    const installTime = document.getElementById('installTime')?.value || ''; // 빈 값 허용
+    const installAddress = document.getElementById('installAddress')?.value || '';
+    const notes = document.getElementById('notes')?.value || '';
+    
+    // 제품이 선택되지 않았으면 경고
+    if (!selectedPackages || selectedPackages.length === 0) {
+      alert('⚠️ 제품을 먼저 선택해주세요.');
+      return;
+    }
+    
+    // 이미지를 Base64로 변환
+    let imageBase64 = null;
+    let imageFileName = null;
+    
+    if (uploadedImageFile) {
+      const reader = new FileReader();
+      imageBase64 = await new Promise((resolve) => {
+        reader.onload = () => {
+          const base64 = reader.result.split(',')[1];
+          resolve(base64);
+        };
+        reader.readAsDataURL(uploadedImageFile);
+      });
+      imageFileName = uploadedImageFile.name;
+    }
+    
+    const reportData = {
+      reportId: currentReportId || `REPORT-${Date.now()}`,
+      customerInfo: ocrData,
+      packages: selectedPackages,
+      packagePositions,
+      installDate, // 빈 값 가능
+      installTime, // 빈 값 가능
+      installAddress,
+      notes,
+      installerName,
+      attachmentImage: imageBase64,
+      attachmentFileName: imageFileName,
+      status: 'draft', // 임시 저장은 항상 draft 상태
+      createdAt: new Date().toISOString()
+    };
+    
+    // 서버에 저장
+    try {
+      const response = await axios.post('/api/reports/save', reportData, {
+        timeout: 30000
+      });
+      
+      if (response.data.success) {
+        console.log('✅ Draft saved to server');
+        
+        // localStorage 캐시 업데이트
+        try {
+          let savedReports = JSON.parse(localStorage.getItem('pv5_reports') || '[]');
+          const existingIndex = savedReports.findIndex(r => r.reportId === reportData.reportId);
+          
+          if (existingIndex >= 0) {
+            savedReports[existingIndex] = reportData;
+          } else {
+            savedReports.unshift(reportData);
+          }
+          
+          localStorage.setItem('pv5_reports', JSON.stringify(savedReports));
+        } catch (cacheError) {
+          console.warn('⚠️ localStorage cache failed:', cacheError);
+        }
+        
+        currentReportId = reportData.reportId;
+        
+        // 날짜 미정 여부에 따라 다른 메시지
+        if (!installDate || installDate === '') {
+          alert(`✅ 임시 저장되었습니다!\n\n문서 ID: ${reportData.reportId}\n상태: 조율 중 (설치 날짜 미정)\n\nStep 5에서 날짜를 입력할 수 있습니다.`);
+        } else {
+          alert(`✅ 저장되었습니다!\n\n문서 ID: ${reportData.reportId}`);
+        }
+        
+        // Step 5로 이동
+        showStep(5);
+      } else {
+        throw new Error(response.data.message || 'Server save failed');
+      }
+    } catch (serverError) {
+      console.warn('⚠️ Server save failed, fallback to localStorage:', serverError);
+      
+      // localStorage 폴백
+      const reportDataForLocal = {
+        ...reportData,
+        attachmentImage: null,
+        attachmentFileName: reportData.attachmentFileName
+      };
+      
+      let savedReports = [];
+      try {
+        savedReports = JSON.parse(localStorage.getItem('pv5_reports') || '[]');
+      } catch (e) {
+        savedReports = [];
+      }
+      
+      const existingIndex = savedReports.findIndex(r => r.reportId === reportDataForLocal.reportId);
+      
+      if (existingIndex >= 0) {
+        savedReports[existingIndex] = reportDataForLocal;
+      } else {
+        savedReports.unshift(reportDataForLocal);
+      }
+      
+      localStorage.setItem('pv5_reports', JSON.stringify(savedReports));
+      
+      currentReportId = reportDataForLocal.reportId;
+      alert(`✅ 임시 저장되었습니다! (오프라인)\n\n문서 ID: ${reportDataForLocal.reportId}\n\n인터넷 연결 후 다시 저장해주세요.`);
+      
+      // Step 5로 이동
+      showStep(5);
+    }
+  } catch (error) {
+    console.error('Draft save error:', error);
+    alert('❌ 저장 중 오류가 발생했습니다.\n\n' + error.message);
+  }
+}
+
 // 시공 확인서 저장
 async function saveReport() {
   try {

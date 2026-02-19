@@ -1578,15 +1578,21 @@ app.get('/', (c) => {
                                       placeholder="설치 시 주의사항이나 특이사항을 입력하세요"></textarea>
                         </div>
                     </div>
-                    <div class="mt-6 flex justify-end space-x-4">
+                    <div class="mt-6 flex justify-between space-x-4">
                         <button onclick="prevStep(2)" 
                                 class="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50">
                             <i class="fas fa-arrow-left mr-2"></i>이전
                         </button>
-                        <button onclick="nextStep(4)" 
-                                class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700">
-                            다음 <i class="fas fa-arrow-right ml-2"></i>
-                        </button>
+                        <div class="flex space-x-4">
+                            <button onclick="saveDraftReport()" 
+                                    class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700">
+                                <i class="fas fa-save mr-2"></i>임시 저장
+                            </button>
+                            <button onclick="nextStep(4)" 
+                                    class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700">
+                                다음 <i class="fas fa-arrow-right ml-2"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
