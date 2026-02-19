@@ -1498,7 +1498,14 @@ function displayReportsList(reports) {
     return;
   }
   
-  listContainer.innerHTML = reports.map((report, index) => {
+  // 설치 날짜 빠른 순서로 정렬 (오름차순: 빠른 날짜가 위로)
+  const sortedReports = [...reports].sort((a, b) => {
+    const dateA = a.install_date || a.installDate || '9999-12-31';
+    const dateB = b.install_date || b.installDate || '9999-12-31';
+    return dateA.localeCompare(dateB);
+  });
+  
+  listContainer.innerHTML = sortedReports.map((report, index) => {
     const customerName = report.customerInfo?.receiverName || report.customerName || '-';
     const installDate = report.installDate || '-';
     const installTime = report.installTime || '-';
