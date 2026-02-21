@@ -2612,24 +2612,18 @@ app.get('/ocr', (c) => {
     <body class="bg-gray-50">
         <div class="min-h-screen">
             <!-- Header -->
-            <header class="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-4 shadow-lg">
+            <header class="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-6 shadow-lg">
                 <div class="container mx-auto px-4">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-4">
                             <img src="/static/kvan-logo.png" alt="K-VAN" class="h-12 w-auto bg-white px-3 py-1 rounded-lg">
                             <div>
-                                <h1 class="text-2xl font-bold flex items-center">
+                                <h1 class="text-3xl font-bold flex items-center">
                                     <i class="fas fa-clipboard-check mr-3"></i>
                                     PV5 시공(예약) 확인서 시스템
                                 </h1>
-                                <p class="text-blue-100 mt-1 text-sm" id="headerBranchName">접수 목록을 불러오는 중...</p>
+                                <p class="text-blue-100 mt-2">거래명세서 자동 인식 → 제품 선택 → 설치 일정 확정 → PDF/메일 발송</p>
                             </div>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <span id="headerUserInfo" class="text-white/80 text-sm font-semibold hidden"></span>
-                            <button onclick="doLogout()" class="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-semibold transition">
-                                <i class="fas fa-sign-out-alt mr-1"></i>로그아웃
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -3177,27 +3171,7 @@ app.get('/ocr', (c) => {
             </footer>
         </div>
 
-        <script>
-        // 헤더 사용자 정보 초기화
-        (function initHeader() {
-            try {
-                const u = JSON.parse(localStorage.getItem('user') || '{}');
-                const nameEl = document.getElementById('headerBranchName');
-                const infoEl = document.getElementById('headerUserInfo');
-                if (nameEl && u.branchName) nameEl.textContent = u.branchName + ' · 접수 목록';
-                if (infoEl && u.username) { infoEl.textContent = u.username; infoEl.classList.remove('hidden'); }
-            } catch(e) {}
-        })();
-        // 로그아웃
-        async function doLogout() {
-            const token = localStorage.getItem('token');
-            try { await axios.post('/api/auth/logout', {}, { headers: { Authorization: 'Bearer ' + token } }); } catch(e) {}
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = '/static/login';
-        }
-        </script>
-        <script src="/static/app.js?v=20260222"></script>
+        <script src="/static/app.js?v=20260221"></script>
     </body>
     </html>
   `)

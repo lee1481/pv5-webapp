@@ -205,10 +205,7 @@
                     document.getElementById('successMessage').classList.remove('hidden')
                     localStorage.setItem('token', response.data.token)
                     localStorage.setItem('user', JSON.stringify(response.data.user))
-                    // role에 따라 바로 목적지로 이동 (launcher 우회)
-                    const role = response.data.user?.role
-                    const dest = (role === 'head') ? '/static/hq' : '/ocr'
-                    setTimeout(() => { window.location.href = dest }, 600)
+                    setTimeout(() => { window.location.href = '/static/launcher' }, 600)
                 }
             } catch (error) {
                 const status = error.response?.status
@@ -243,12 +240,10 @@
                     timeout: 3000
                 })
                 if (res.data.success) {
-                    // 토큰 유효 → role에 따라 바로 목적지로
+                    // 토큰 유효 → 바로 런처로
                     document.getElementById('successMessage').classList.remove('hidden')
                     document.getElementById('successText').textContent = '이미 로그인되어 있습니다. 이동 중...'
-                    const role = res.data.user?.role
-                    const dest = (role === 'head') ? '/static/hq' : '/ocr'
-                    setTimeout(() => { window.location.href = dest }, 500)
+                    setTimeout(() => { window.location.href = '/static/launcher' }, 500)
                 }
             } catch {
                 // 만료된 토큰 정리
