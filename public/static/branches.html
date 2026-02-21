@@ -21,6 +21,9 @@
                 </div>
                 <div class="flex items-center gap-4">
                     <span id="userInfo" class="text-sm text-gray-600"></span>
+                    <button onclick="openMyPasswordModal()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold">
+                        <i class="fas fa-key mr-2"></i>내 비밀번호 변경
+                    </button>
                     <a href="/static/launcher.html" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">
                         <i class="fas fa-home mr-2"></i>홈으로
                     </a>
@@ -60,7 +63,64 @@
         </div>
     </main>
 
-    <!-- 추가/수정 모달 -->
+    <!-- 본사 자체 비밀번호 변경 모달 -->
+    <div id="myPasswordModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">
+                <i class="fas fa-user-shield mr-2 text-green-600"></i>
+                내 비밀번호 변경
+            </h2>
+            
+            <form id="myPasswordForm" class="space-y-4">
+                <div class="bg-green-50 border-l-4 border-green-500 p-4 mb-4">
+                    <p class="text-sm text-green-700">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        본사 계정의 비밀번호를 변경합니다.
+                    </p>
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">
+                        <i class="fas fa-lock mr-2 text-gray-600"></i>현재 비밀번호
+                    </label>
+                    <input type="password" id="currentPassword" required
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                           placeholder="현재 비밀번호 입력">
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">
+                        <i class="fas fa-lock mr-2 text-green-600"></i>새 비밀번호
+                    </label>
+                    <input type="password" id="myNewPassword" required
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                           placeholder="6자 이상">
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">
+                        <i class="fas fa-lock mr-2 text-green-600"></i>비밀번호 확인
+                    </label>
+                    <input type="password" id="myConfirmPassword" required
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                           placeholder="비밀번호 재입력">
+                </div>
+                
+                <div class="flex gap-3 pt-4">
+                    <button type="submit"
+                            class="flex-1 bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition">
+                        <i class="fas fa-check mr-2"></i>변경하기
+                    </button>
+                    <button type="button" onclick="closeMyPasswordModal()"
+                            class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-300 transition">
+                        <i class="fas fa-times mr-2"></i>취소
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 지사 추가/수정 모달 -->
     <div id="branchModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h2 id="modalTitle" class="text-2xl font-bold text-gray-900 mb-6">
@@ -343,7 +403,65 @@
             }
         }
 
-        // 비밀번호 변경 폼 제출
+        // 본사 자체 비밀번호 변경 모달 열기
+        function openMyPasswordModal() {
+            document.getElementById('currentPassword').value = '';
+            document.getElementById('myNewPassword').value = '';
+            document.getElementById('myConfirmPassword').value = '';
+            document.getElementById('myPasswordModal').classList.remove('hidden');
+        }
+
+        // 본사 자체 비밀번호 변경 모달 닫기
+        function closeMyPasswordModal() {
+            document.getElementById('myPasswordModal').classList.add('hidden');
+        }
+
+        // 본사 자체 비밀번호 변경 제출
+        document.getElementById('myPasswordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('myNewPassword').value;
+            const confirmPassword = document.getElementById('myConfirmPassword').value;
+
+            // 비밀번호 확인
+            if (newPassword !== confirmPassword) {
+                alert('비밀번호가 일치하지 않습니다.');
+                return;
+            }
+
+            if (newPassword.length < 6) {
+                alert('비밀번호는 6자 이상이어야 합니다.');
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('token');
+
+                const response = await axios.put(
+                    `/api/users/my-password`,
+                    { currentPassword, newPassword },
+                    { headers: { 'Authorization': `Bearer ${token}` } }
+                );
+
+                if (response.data.success) {
+                    alert('✅ 비밀번호가 변경되었습니다. 다시 로그인해주세요.');
+                    closeMyPasswordModal();
+                    // 로그아웃
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    location.href = '/static/login.html';
+                } else {
+                    alert('❌ ' + (response.data.error || '비밀번호 변경에 실패했습니다.'));
+                }
+            } catch (error) {
+                console.error('My password change error:', error);
+                const errorMsg = error.response?.data?.error || '비밀번호 변경 중 오류가 발생했습니다.';
+                alert('❌ ' + errorMsg);
+            }
+        });
+
+        // 지사 비밀번호 변경 폼 제출
         document.getElementById('passwordForm').addEventListener('submit', async (e) => {
             e.preventDefault()
 

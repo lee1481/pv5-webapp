@@ -327,17 +327,6 @@
                 inset 0 2px 10px rgba(255, 255, 255, 0.2);
         }
         
-        .branch-card[data-branch="users"] {
-            --glow-color: 16, 185, 129;
-        }
-        .branch-card[data-branch="users"] .branch-icon {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            box-shadow: 
-                0 10px 40px rgba(16, 185, 129, 0.4),
-                inset 0 -2px 10px rgba(0, 0, 0, 0.2),
-                inset 0 2px 10px rgba(255, 255, 255, 0.2);
-        }
-        
         @media (max-width: 1024px) {
             .showcase-grid {
                 grid-template-columns: 1fr;
@@ -525,18 +514,7 @@
                                 <i class="fas fa-cog text-white"></i>
                             </div>
                             <div class="branch-name">지사 관리</div>
-                            <div class="branch-subtitle">Branches</div>
-                        </a>
-                    `
-                    
-                    // 사용자 관리 아이콘 추가
-                    grid.innerHTML += `
-                        <a href="/static/users.html" class="branch-card" data-branch="users">
-                            <div class="branch-icon">
-                                <i class="fas fa-users text-white"></i>
-                            </div>
-                            <div class="branch-name">사용자 관리</div>
-                            <div class="branch-subtitle">Users</div>
+                            <div class="branch-subtitle">Management</div>
                         </a>
                     `
                 }
