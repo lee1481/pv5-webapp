@@ -107,7 +107,7 @@
                 </div>
                 
                 <div class="flex gap-3 pt-4">
-                    <button type="submit"
+                    <button type="button" onclick="submitMyPasswordChange()"
                             class="flex-1 bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition">
                         <i class="fas fa-check mr-2"></i>변경하기
                     </button>
@@ -441,9 +441,7 @@
         }
 
         // 본사 자체 비밀번호 변경 제출
-        document.getElementById('myPasswordForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-
+        async function submitMyPasswordChange() {
             const currentPassword = document.getElementById('currentPassword').value;
             const newPassword = document.getElementById('myNewPassword').value;
             const confirmPassword = document.getElementById('myConfirmPassword').value;
@@ -489,7 +487,7 @@
                 const errorMsg = error.response?.data?.error || '비밀번호 변경 중 오류가 발생했습니다.';
                 alert('❌ ' + errorMsg);
             }
-        });
+        }
 
         // 지사 비밀번호 변경 폼 제출
         document.getElementById('passwordForm').addEventListener('submit', async (e) => {
