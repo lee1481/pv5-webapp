@@ -602,6 +602,9 @@ app.put('/api/users/my-password', async (c) => {
   try {
     const authHeader = c.req.header('Authorization')
     
+    console.log('=== My Password Change API ===')
+    console.log('Authorization header:', authHeader ? 'Present' : 'Missing')
+    
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return c.json({ success: false, error: '인증이 필요합니다.' }, 401)
     }
@@ -618,13 +621,21 @@ app.put('/api/users/my-password', async (c) => {
       return c.json({ success: false, error: '본사 관리자만 사용할 수 있습니다.' }, 403)
     }
 
-    const { currentPassword, newPassword } = await c.req.json()
+    const body = await c.req.json()
+    console.log('Request body:', body)
+    
+    const { currentPassword, newPassword } = body
+    
+    console.log('currentPassword:', currentPassword ? 'Present (length: ' + currentPassword.length + ')' : 'Missing')
+    console.log('newPassword:', newPassword ? 'Present (length: ' + newPassword.length + ')' : 'Missing')
     
     if (!currentPassword || !newPassword) {
+      console.log('Error: Missing password fields')
       return c.json({ success: false, error: '현재 비밀번호와 새 비밀번호를 입력해주세요.' }, 400)
     }
     
     if (newPassword.length < 6) {
+      console.log('Error: New password too short')
       return c.json({ success: false, error: '비밀번호는 6자 이상이어야 합니다.' }, 400)
     }
     
@@ -634,6 +645,11 @@ app.put('/api/users/my-password', async (c) => {
     const user = await env.DB.prepare(
       'SELECT id, password FROM users WHERE username = ?'
     ).bind(decoded.user.username).first()
+    
+    console.log('User found:', user ? 'Yes' : 'No')
+    console.log('DB password:', user?.password)
+    console.log('Input password:', currentPassword)
+    console.log('Passwords match:', user?.password === currentPassword)
     
     if (!user) {
       return c.json({ success: false, error: '사용자를 찾을 수 없습니다.' }, 404)
@@ -648,13 +664,15 @@ app.put('/api/users/my-password', async (c) => {
       'UPDATE users SET password = ? WHERE id = ?'
     ).bind(newPassword, user.id).run()
     
+    console.log('Password changed successfully')
+    
     return c.json({
       success: true,
       message: '비밀번호가 변경되었습니다.'
     })
   } catch (error: any) {
     console.error('My password change error:', error)
-    return c.json({ success: false, error: '비밀번호 변경 중 오류가 발생했습니다.' }, 500)
+    return c.json({ success: false, error: '비밀번호 변경 중 오류가 발생했습니다.', details: error.message }, 500)
   }
 })
 
