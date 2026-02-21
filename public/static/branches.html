@@ -392,6 +392,7 @@
                     alert(`✅ ${username} 계정의 비밀번호가 변경되었습니다.`)
                     document.getElementById('newPassword').value = ''
                     document.getElementById('confirmPassword').value = ''
+                    closeModal()  // 비밀번호 변경 성공 후 모달 닫기
                 } else {
                     alert('❌ ' + (response.data.error || '비밀번호 변경에 실패했습니다.'))
                 }
