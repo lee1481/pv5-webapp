@@ -30,28 +30,23 @@
     </header>
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- 추가 버튼 -->
-        <div class="mb-6 flex justify-between items-center">
+        <!-- 안내 메시지 -->
+        <div class="mb-6">
             <p class="text-gray-600">
-                <i class="fas fa-info-circle mr-2"></i>
-                사용자를 추가, 수정, 삭제하고 비밀번호를 변경할 수 있습니다.
+                <i class="fas fa-info-circle mr-2 text-blue-600"></i>
+                <strong>본사 전용:</strong> 지사 비밀번호를 관리할 수 있습니다. 지사는 비밀번호 변경 권한이 없습니다.
             </p>
-            <button onclick="openAddModal()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-lg">
-                <i class="fas fa-plus mr-2"></i>사용자 추가
-            </button>
         </div>
 
-        <!-- 지사 목록 테이블 -->
+        <!-- 사용자 목록 테이블 -->
         <div class="bg-white rounded-xl shadow-sm overflow-hidden">
             <table class="w-full">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">ID</th>
                         <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">아이디</th>
                         <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">권한</th>
                         <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">소속 지사</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">등록일</th>
-                        <th class="px-6 py-4 text-center text-sm font-semibold text-gray-700">관리</th>
+                        <th class="px-6 py-4 text-center text-sm font-semibold text-gray-700">비밀번호 관리</th>
                     </tr>
                 </thead>
                 <tbody id="userList" class="divide-y divide-gray-200">
@@ -61,36 +56,48 @@
         </div>
     </main>
 
-    <!-- 추가/수정 모달 -->
-    <div id="branchModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <!-- 비밀번호 변경 모달 -->
+    <div id="passwordModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
-            <h2 id="modalTitle" class="text-2xl font-bold text-gray-900 mb-6">
-                <i class="fas fa-building mr-2 text-blue-600"></i>
-                지사 추가
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">
+                <i class="fas fa-key mr-2 text-blue-600"></i>
+                비밀번호 변경
             </h2>
             
-            <form id="branchForm" class="space-y-4">
-                <input type="hidden" id="branchId">
+            <form id="passwordForm" class="space-y-4">
+                <input type="hidden" id="targetUsername">
+                
+                <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4">
+                    <p class="text-sm text-blue-700">
+                        <i class="fas fa-user mr-2"></i>
+                        대상 계정: <strong id="targetUsernameDisplay"></strong>
+                    </p>
+                </div>
                 
                 <div>
                     <label class="block text-gray-700 font-semibold mb-2">
-                        <i class="fas fa-tag mr-2 text-blue-600"></i>지사명
+                        <i class="fas fa-lock mr-2 text-blue-600"></i>새 비밀번호
                     </label>
-                    <input type="text" id="branchName" required
+                    <input type="password" id="newPassword" required
                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                           placeholder="예: 호남지사">
-                    <p class="mt-1 text-sm text-gray-500">
-                        <i class="fas fa-info-circle mr-1"></i>
-                        지사 코드는 자동으로 생성됩니다.
-                    </p>
+                           placeholder="6자 이상">
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">
+                        <i class="fas fa-lock mr-2 text-blue-600"></i>비밀번호 확인
+                    </label>
+                    <input type="password" id="confirmPassword" required
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           placeholder="비밀번호 재입력">
                 </div>
                 
                 <div class="flex gap-3 pt-4">
                     <button type="submit"
                             class="flex-1 bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition">
-                        <i class="fas fa-check mr-2"></i>저장
+                        <i class="fas fa-check mr-2"></i>변경하기
                     </button>
-                    <button type="button" onclick="closeModal()"
+                    <button type="button" onclick="closePasswordModal()"
                             class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-300 transition">
                         <i class="fas fa-times mr-2"></i>취소
                     </button>
@@ -99,194 +106,134 @@
         </div>
     </div>
 
-    <!-- 삭제 확인 모달 -->
-    <div id="deleteModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
-            <h2 class="text-2xl font-bold text-red-600 mb-4">
-                <i class="fas fa-exclamation-triangle mr-2"></i>
-                지사 삭제
-            </h2>
-            <p class="text-gray-700 mb-6">
-                정말로 <strong id="deleteBranchName"></strong>을(를) 삭제하시겠습니까?
-            </p>
-            <p class="text-sm text-red-600 mb-6">
-                <i class="fas fa-info-circle mr-2"></i>
-                이 작업은 되돌릴 수 없습니다.
-            </p>
-            <div class="flex gap-3">
-                <button onclick="confirmDelete()"
-                        class="flex-1 bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition">
-                    <i class="fas fa-trash mr-2"></i>삭제
-                </button>
-                <button onclick="closeDeleteModal()"
-                        class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-300 transition">
-                    <i class="fas fa-times mr-2"></i>취소
-                </button>
-            </div>
-        </div>
-    </div>
-
     <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
     <script>
-        let deleteTargetId = null;
+        let currentUser = null;
 
-        // 페이지 로드 시 로그인 체크 및 권한 확인
+        // 페이지 로드 시
         document.addEventListener('DOMContentLoaded', () => {
-            const token = localStorage.getItem('token')
-            const userStr = localStorage.getItem('user')
-
-            if (!token || !userStr) {
-                window.location.href = '/static/login.html'
-                return
+            // 로그인 체크
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            if (!user.username || user.role !== 'head') {
+                alert('본사 관리자만 접근할 수 있습니다.');
+                location.href = '/static/login.html';
+                return;
             }
 
-            const user = JSON.parse(userStr)
+            currentUser = user;
+            document.getElementById('userInfo').textContent = `👤 ${user.username}`;
 
-            // 본사 관리자만 접근 가능
-            if (user.role !== 'head') {
-                alert('본사 관리자만 접근할 수 있습니다.')
-                window.location.href = '/static/launcher.html'
-                return
-            }
+            // 사용자 목록 로드
+            loadUsers();
+        });
 
-            document.getElementById('userInfo').textContent = `${user.branchName} - ${user.username}`
-            loadBranches()
-        })
-
-        // 지사 목록 불러오기
-        async function loadBranches() {
+        // 사용자 목록 로드
+        async function loadUsers() {
             try {
-                const response = await axios.get('/api/branches/list')
-                if (response.data.success) {
-                    const branches = response.data.branches
-                    const tbody = document.getElementById('branchList')
-                    
-                    if (branches.length === 0) {
-                        tbody.innerHTML = `
-                            <tr>
-                                <td colspan="5" class="px-6 py-8 text-center text-gray-500">
-                                    <i class="fas fa-inbox text-4xl mb-2"></i>
-                                    <p>등록된 지사가 없습니다.</p>
-                                </td>
-                            </tr>
-                        `
-                        return
-                    }
+                const response = await axios.get('/api/users/list');
+                const users = response.data.users || [];
 
-                    tbody.innerHTML = branches.map(branch => `
-                        <tr class="hover:bg-gray-50 transition">
-                            <td class="px-6 py-4 text-sm text-gray-900">${branch.id}</td>
-                            <td class="px-6 py-4 text-sm font-semibold text-gray-900">${branch.name}</td>
-                            <td class="px-6 py-4 text-sm text-gray-600">
-                                <code class="bg-gray-100 px-2 py-1 rounded">${branch.code}</code>
-                            </td>
-                            <td class="px-6 py-4 text-sm text-gray-600">
-                                ${new Date(branch.created_at).toLocaleDateString('ko-KR')}
-                            </td>
-                            <td class="px-6 py-4 text-center">
-                                <button onclick="openEditModal(${branch.id}, '${branch.name}', '${branch.code}')"
-                                        class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition mr-2">
-                                    <i class="fas fa-edit mr-1"></i>수정
-                                </button>
-                                <button onclick="openDeleteModal(${branch.id}, '${branch.name}')"
-                                        class="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition">
-                                    <i class="fas fa-trash mr-1"></i>삭제
-                                </button>
+                const userList = document.getElementById('userList');
+                userList.innerHTML = '';
+
+                users.forEach(user => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-gray-50 transition';
+
+                    const roleBadge = user.role === 'head' 
+                        ? '<span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-semibold"><i class="fas fa-crown mr-1"></i>본사</span>'
+                        : '<span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold"><i class="fas fa-building mr-1"></i>지사</span>';
+
+                    const branchName = user.branch_name || '-';
+
+                    // 본사 계정은 비밀번호 변경 버튼 비활성화
+                    const actionButton = user.role === 'head'
+                        ? '<span class="text-gray-400 text-sm"><i class="fas fa-lock mr-1"></i>변경 불가</span>'
+                        : `<button onclick="openPasswordModal('${user.username}')" 
+                                   class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-semibold">
+                                <i class="fas fa-key mr-1"></i>비밀번호 변경
+                            </button>`;
+
+                    row.innerHTML = `
+                        <td class="px-6 py-4 text-gray-900 font-semibold">${user.username}</td>
+                        <td class="px-6 py-4">${roleBadge}</td>
+                        <td class="px-6 py-4 text-gray-700">${branchName}</td>
+                        <td class="px-6 py-4 text-center">${actionButton}</td>
+                    `;
+
+                    userList.appendChild(row);
+                });
+
+                if (users.length === 0) {
+                    userList.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="px-6 py-8 text-center text-gray-500">
+                                <i class="fas fa-inbox text-4xl mb-3"></i>
+                                <p>등록된 사용자가 없습니다.</p>
                             </td>
                         </tr>
-                    `).join('')
+                    `;
                 }
             } catch (error) {
-                console.error('Branch list error:', error)
-                alert('지사 목록을 불러오는 중 오류가 발생했습니다.')
+                console.error('Failed to load users:', error);
+                alert('사용자 목록을 불러오는데 실패했습니다.');
             }
         }
 
-        // 추가 모달 열기
-        function openAddModal() {
-            document.getElementById('modalTitle').innerHTML = '<i class="fas fa-plus mr-2 text-blue-600"></i>지사 추가'
-            document.getElementById('branchId').value = ''
-            document.getElementById('branchName').value = ''
-            document.getElementById('branchModal').classList.remove('hidden')
+        // 비밀번호 변경 모달 열기
+        function openPasswordModal(username) {
+            document.getElementById('targetUsername').value = username;
+            document.getElementById('targetUsernameDisplay').textContent = username;
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+            document.getElementById('passwordModal').classList.remove('hidden');
         }
 
-        // 수정 모달 열기
-        function openEditModal(id, name, code) {
-            document.getElementById('modalTitle').innerHTML = '<i class="fas fa-edit mr-2 text-blue-600"></i>지사 수정'
-            document.getElementById('branchId').value = id
-            document.getElementById('branchName').value = name
-            document.getElementById('branchModal').classList.remove('hidden')
+        // 비밀번호 변경 모달 닫기
+        function closePasswordModal() {
+            document.getElementById('passwordModal').classList.add('hidden');
         }
 
-        // 모달 닫기
-        function closeModal() {
-            document.getElementById('branchModal').classList.add('hidden')
-        }
+        // 비밀번호 변경 제출
+        document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
 
-        // 삭제 모달 열기
-        function openDeleteModal(id, name) {
-            deleteTargetId = id
-            document.getElementById('deleteBranchName').textContent = name
-            document.getElementById('deleteModal').classList.remove('hidden')
-        }
+            const targetUsername = document.getElementById('targetUsername').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
 
-        // 삭제 모달 닫기
-        function closeDeleteModal() {
-            deleteTargetId = null
-            document.getElementById('deleteModal').classList.add('hidden')
-        }
+            // 비밀번호 확인
+            if (newPassword !== confirmPassword) {
+                alert('비밀번호가 일치하지 않습니다.');
+                return;
+            }
 
-        // 폼 제출
-        document.getElementById('branchForm').addEventListener('submit', async (e) => {
-            e.preventDefault()
-
-            const id = document.getElementById('branchId').value
-            const name = document.getElementById('branchName').value.trim()
-
-            if (!name) {
-                alert('지사명을 입력해주세요.')
-                return
+            if (newPassword.length < 6) {
+                alert('비밀번호는 6자 이상이어야 합니다.');
+                return;
             }
 
             try {
-                let response
-                if (id) {
-                    // 수정
-                    response = await axios.put(`/api/branches/${id}`, { name })
+                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                const token = localStorage.getItem('token');
+
+                const response = await axios.put(
+                    `/api/users/${targetUsername}/password`,
+                    { newPassword },
+                    { headers: { 'Authorization': `Bearer ${token}` } }
+                );
+
+                if (response.data.success) {
+                    alert(`✅ ${targetUsername} 계정의 비밀번호가 변경되었습니다.`);
+                    closePasswordModal();
                 } else {
-                    // 추가
-                    response = await axios.post('/api/branches', { name })
-                }
-
-                if (response.data.success) {
-                    const message = response.data.message + 
-                        (response.data.code ? `\n생성된 코드: ${response.data.code}` : '')
-                    alert(message)
-                    closeModal()
-                    loadBranches()
+                    alert('❌ ' + (response.data.error || '비밀번호 변경에 실패했습니다.'));
                 }
             } catch (error) {
-                console.error('Branch save error:', error)
-                alert(error.response?.data?.error || '저장 중 오류가 발생했습니다.')
+                console.error('Password change error:', error);
+                alert('❌ 비밀번호 변경 중 오류가 발생했습니다.');
             }
-        })
-
-        // 삭제 확인
-        async function confirmDelete() {
-            if (!deleteTargetId) return
-
-            try {
-                const response = await axios.delete(`/api/branches/${deleteTargetId}`)
-                if (response.data.success) {
-                    alert(response.data.message)
-                    closeDeleteModal()
-                    loadBranches()
-                }
-            } catch (error) {
-                console.error('Branch delete error:', error)
-                alert(error.response?.data?.error || '삭제 중 오류가 발생했습니다.')
-            }
-        }
+        });
     </script>
 </body>
 </html>
