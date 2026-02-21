@@ -19,16 +19,9 @@ app.use('/api/*', cors())
 // 정적 파일 서빙
 app.use('/static/*', serveStatic({ root: './public' }))
 
-// 로그인 페이지
-app.get('/login.html', async (c) => {
-  const html = await Bun.file('./public/login.html').text()
-  return c.html(html)
-})
-
-// 본사 페이지
-app.get('/hq.html', async (c) => {
-  const html = await Bun.file('./public/hq.html').text()
-  return c.html(html)
+// 본사 접수 등록 페이지 (리다이렉트)
+app.get('/hq', (c) => {
+  return c.redirect('/static/hq.html')
 })
 
 // API: 모든 제품 패키지 리스트

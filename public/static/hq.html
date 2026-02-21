@@ -22,15 +22,10 @@
                         <p class="text-blue-100 mt-1">고객 접수 등록 및 지사 배정</p>
                     </div>
                 </div>
-                <div class="flex items-center gap-4">
-                    <div class="text-right">
-                        <div class="text-sm text-blue-100">로그인:</div>
-                        <div class="font-bold" id="userInfo">본사 관리자</div>
-                    </div>
-                    <button onclick="logout()" 
-                            class="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 font-semibold">
-                        <i class="fas fa-sign-out-alt mr-2"></i>로그아웃
-                    </button>
+                <div>
+                    <a href="/" class="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 font-semibold">
+                        <i class="fas fa-home mr-2"></i>메인으로
+                    </a>
                 </div>
             </div>
         </header>
@@ -232,21 +227,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
     <script>
-        // 사용자 정보 확인
-        const user = JSON.parse(localStorage.getItem('user') || '{}')
-        if (!user || user.role !== 'head') {
-            alert('본사 관리자만 접근 가능합니다.')
-            window.location.href = '/login.html'
-        }
-
-        document.getElementById('userInfo').textContent = user.username || '본사 관리자'
-
-        // 로그아웃
-        function logout() {
-            localStorage.removeItem('user')
-            window.location.href = '/login.html'
-        }
-
         // 탭 전환
         function showTab(tab) {
             const tabs = ['register', 'list', 'dashboard']
@@ -297,7 +277,7 @@
                 productName: document.getElementById('productName').value || '',
                 branchId: parseInt(document.getElementById('branchId').value),
                 notes: document.getElementById('notes').value || '',
-                assignedBy: user.id
+                assignedBy: 1 // 본사 관리자 (하드코딩)
             }
             
             try {

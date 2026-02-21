@@ -8,10 +8,27 @@ let uploadedImageFile = null; // 업로드된 거래명세서 이미지 파일
 let currentReportId = null; // 현재 편집 중인 리포트 ID
 let allReports = []; // 저장된 모든 리포트 목록
 
+// ===== 멀티테넌트: 지사 모드 체크 =====
+const urlParams = new URLSearchParams(window.location.search);
+const branchCode = urlParams.get('branch'); // 예: ?branch=seoul
+const isBranchMode = !!branchCode; // branch 파라미터가 있으면 지사 모드
+let currentBranchId = null; // 현재 지사 ID
+let currentAssignments = []; // 접수 목록
+
 // 초기화
 document.addEventListener('DOMContentLoaded', async () => {
   await loadPackages();
-  setupFileUpload();
+  
+  // 지사 모드인 경우 접수 목록 로드
+  if (isBranchMode) {
+    await loadBranchInfo();
+    await loadAssignments();
+    showAssignmentListInStep1(); // Step 1에 접수 목록 표시
+  } else {
+    // 기존 OCR 모드
+    setupFileUpload();
+  }
+  
   setupStepNavigation();
   updateStepIndicator();
   
@@ -3011,3 +3028,213 @@ function applyRevenueFilter() {
 // ========================================
 // Step 6: 매출 관리
 // ========================================
+
+// ===== 멀티테넌트: 지사 모드 함수 =====
+
+// 지사 정보 로드
+async function loadBranchInfo() {
+  try {
+    const response = await axios.get('/api/branches');
+    if (response.data.success) {
+      const branch = response.data.branches.find(b => b.code === branchCode);
+      if (branch) {
+        currentBranchId = branch.id;
+        console.log('Branch mode:', branch.name, currentBranchId);
+        
+        // 헤더에 지사명 표시
+        const header = document.querySelector('header h1');
+        if (header) {
+          header.innerHTML = `
+            <i class="fas fa-clipboard-check mr-3"></i>
+            ${branch.name} - PV5 시공확인서 시스템
+          `;
+        }
+      } else {
+        console.error('Branch not found:', branchCode);
+        alert(`지사를 찾을 수 없습니다: ${branchCode}`);
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load branch info:', error);
+  }
+}
+
+// 접수 목록 로드
+async function loadAssignments() {
+  if (!currentBranchId) return;
+  
+  try {
+    const response = await axios.get(`/api/assignments?branchId=${currentBranchId}&status=assigned`);
+    if (response.data.success) {
+      currentAssignments = response.data.assignments;
+      console.log('Loaded assignments:', currentAssignments.length);
+    }
+  } catch (error) {
+    console.error('Failed to load assignments:', error);
+  }
+}
+
+// Step 1에 접수 목록 표시
+function showAssignmentListInStep1() {
+  const step1Section = document.getElementById('step1Section');
+  if (!step1Section) return;
+  
+  // 기존 내용 숨기기
+  const existingContent = step1Section.querySelector('.file-upload-area');
+  if (existingContent) {
+    existingContent.style.display = 'none';
+  }
+  
+  // 접수 목록 HTML 생성
+  const assignmentListHTML = `
+    <div id="assignmentListContainer" class="bg-white rounded-lg shadow-md p-8">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">
+          <i class="fas fa-inbox text-blue-600 mr-2"></i>
+          접수 목록 (${currentAssignments.length}건)
+        </h2>
+        <button onclick="refreshAssignments()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+          <i class="fas fa-sync-alt mr-2"></i>새로고침
+        </button>
+      </div>
+      
+      <div id="assignmentCards" class="space-y-4">
+        ${currentAssignments.length === 0 ? `
+          <div class="text-center py-12 text-gray-500">
+            <i class="fas fa-inbox text-6xl mb-4 block"></i>
+            <p>새로운 접수가 없습니다.</p>
+          </div>
+        ` : currentAssignments.map(assignment => `
+          <div class="border border-gray-200 rounded-lg p-6 hover:shadow-lg transition cursor-pointer"
+               onclick="startFromAssignment('${assignment.assignment_id}')">
+            <div class="flex items-start justify-between">
+              <div class="flex-1">
+                <div class="flex items-center gap-3 mb-3">
+                  <h3 class="text-xl font-bold text-gray-800">${assignment.customer_name}</h3>
+                  <span class="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-sm font-semibold">
+                    신규 접수
+                  </span>
+                </div>
+                <div class="space-y-2 text-sm text-gray-600">
+                  <div><i class="fas fa-phone text-blue-600 mr-2"></i>${assignment.phone}</div>
+                  <div><i class="fas fa-map-marker-alt text-blue-600 mr-2"></i>${assignment.address}</div>
+                  ${assignment.product_name ? `<div><i class="fas fa-box text-blue-600 mr-2"></i>${assignment.product_name} (참고용)</div>` : ''}
+                  ${assignment.notes ? `<div class="mt-2 p-3 bg-gray-50 rounded"><i class="fas fa-sticky-note text-blue-600 mr-2"></i>${assignment.notes}</div>` : ''}
+                  <div class="mt-3 text-xs text-gray-400">
+                    <i class="fas fa-calendar mr-1"></i>${new Date(assignment.assigned_at).toLocaleString('ko-KR')}
+                  </div>
+                </div>
+              </div>
+              <div class="ml-4">
+                <button class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold">
+                  <i class="fas fa-arrow-right mr-2"></i>제품 선택하러 가기
+                </button>
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  
+  // 접수 목록 삽입
+  const container = document.createElement('div');
+  container.innerHTML = assignmentListHTML;
+  step1Section.appendChild(container.firstElementChild);
+}
+
+// 접수 새로고침
+async function refreshAssignments() {
+  await loadAssignments();
+  
+  // 카드 목록만 업데이트
+  const cardsContainer = document.getElementById('assignmentCards');
+  if (cardsContainer) {
+    cardsContainer.innerHTML = currentAssignments.length === 0 ? `
+      <div class="text-center py-12 text-gray-500">
+        <i class="fas fa-inbox text-6xl mb-4 block"></i>
+        <p>새로운 접수가 없습니다.</p>
+      </div>
+    ` : currentAssignments.map(assignment => `
+      <div class="border border-gray-200 rounded-lg p-6 hover:shadow-lg transition cursor-pointer"
+           onclick="startFromAssignment('${assignment.assignment_id}')">
+        <div class="flex items-start justify-between">
+          <div class="flex-1">
+            <div class="flex items-center gap-3 mb-3">
+              <h3 class="text-xl font-bold text-gray-800">${assignment.customer_name}</h3>
+              <span class="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-sm font-semibold">
+                신규 접수
+              </span>
+            </div>
+            <div class="space-y-2 text-sm text-gray-600">
+              <div><i class="fas fa-phone text-blue-600 mr-2"></i>${assignment.phone}</div>
+              <div><i class="fas fa-map-marker-alt text-blue-600 mr-2"></i>${assignment.address}</div>
+              ${assignment.product_name ? `<div><i class="fas fa-box text-blue-600 mr-2"></i>${assignment.product_name} (참고용)</div>` : ''}
+              ${assignment.notes ? `<div class="mt-2 p-3 bg-gray-50 rounded"><i class="fas fa-sticky-note text-blue-600 mr-2"></i>${assignment.notes}</div>` : ''}
+              <div class="mt-3 text-xs text-gray-400">
+                <i class="fas fa-calendar mr-1"></i>${new Date(assignment.assigned_at).toLocaleString('ko-KR')}
+              </div>
+            </div>
+          </div>
+          <div class="ml-4">
+            <button class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold">
+              <i class="fas fa-arrow-right mr-2"></i>제품 선택하러 가기
+            </button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+  
+  // 카운트 업데이트
+  const countElement = document.querySelector('#assignmentListContainer h2');
+  if (countElement) {
+    countElement.innerHTML = `
+      <i class="fas fa-inbox text-blue-600 mr-2"></i>
+      접수 목록 (${currentAssignments.length}건)
+    `;
+  }
+}
+
+// 접수에서 시작하기
+async function startFromAssignment(assignmentId) {
+  const assignment = currentAssignments.find(a => a.assignment_id === assignmentId);
+  if (!assignment) {
+    alert('접수 정보를 찾을 수 없습니다.');
+    return;
+  }
+  
+  // ocrData에 고객 정보 자동 입력
+  ocrData = {
+    customerName: assignment.customer_name,
+    phone: assignment.phone,
+    address: assignment.address,
+    productName: assignment.product_name || '',
+    productCode: '',
+    orderNumber: assignmentId,
+    orderDate: new Date(assignment.assigned_at).toLocaleDateString('ko-KR'),
+    ocrRawText: `[본사 접수]\n고객명: ${assignment.customer_name}\n연락처: ${assignment.phone}\n주소: ${assignment.address}`,
+    aiSuccess: true,
+    recognitionSuccess: true,
+    assignmentId: assignmentId // 접수 ID 저장
+  };
+  
+  console.log('Starting from assignment:', ocrData);
+  
+  // 접수 상태를 'in_progress'로 변경
+  try {
+    await axios.patch(`/api/assignments/${assignmentId}/status`, { status: 'in_progress' });
+  } catch (error) {
+    console.error('Failed to update assignment status:', error);
+  }
+  
+  // Step 2로 이동
+  currentStep = 2;
+  updateStepIndicator();
+  showCurrentSection();
+  
+  // Step 2에 고객 정보 표시
+  displayOCRResultInStep2();
+}
+
+// ===== 끝: 멀티테넌트 함수 =====
