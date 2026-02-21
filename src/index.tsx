@@ -53,6 +53,13 @@ app.get('/api/packages/:id', (c) => {
 // JWT 시크릿 키 (프로덕션에서는 환경변수로 관리)
 const JWT_SECRET = 'kvan-pv5-jwt-secret-2026-secure-key'
 
+// Base64 인코딩 (UTF-8 지원)
+function base64UrlEncode(str: string): string {
+  const bytes = new TextEncoder().encode(str)
+  const base64 = btoa(String.fromCharCode(...bytes))
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+}
+
 // Web Crypto API를 사용한 JWT 생성
 async function generateToken(user: any, branchName: string | null): Promise<string> {
   const header = { alg: 'HS256', typ: 'JWT' }
@@ -65,11 +72,11 @@ async function generateToken(user: any, branchName: string | null): Promise<stri
     exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60) // 24시간
   }
 
-  const encoder = new TextEncoder()
-  const data = encoder.encode(
-    `${btoa(JSON.stringify(header))}.${btoa(JSON.stringify(payload))}`
-  )
+  const headerBase64 = base64UrlEncode(JSON.stringify(header))
+  const payloadBase64 = base64UrlEncode(JSON.stringify(payload))
+  const dataToSign = `${headerBase64}.${payloadBase64}`
   
+  const encoder = new TextEncoder()
   const key = await crypto.subtle.importKey(
     'raw',
     encoder.encode(JWT_SECRET),
@@ -78,10 +85,31 @@ async function generateToken(user: any, branchName: string | null): Promise<stri
     ['sign']
   )
   
-  const signature = await crypto.subtle.sign('HMAC', key, data)
-  const signatureBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
+  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(dataToSign))
+  const signatureBase64 = base64UrlEncode(String.fromCharCode(...new Uint8Array(signature)))
   
-  return `${btoa(JSON.stringify(header))}.${btoa(JSON.stringify(payload))}.${signatureBase64}`
+  return `${dataToSign}.${signatureBase64}`
+}
+
+// Base64 디코딩 (UTF-8 지원)
+function base64UrlDecode(str: string): string {
+  // URL-safe Base64를 일반 Base64로 변환
+  let base64 = str.replace(/-/g, '+').replace(/_/g, '/')
+  // 패딩 추가
+  while (base64.length % 4) {
+    base64 += '='
+  }
+  
+  try {
+    const binaryString = atob(base64)
+    const bytes = new Uint8Array(binaryString.length)
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i)
+    }
+    return new TextDecoder().decode(bytes)
+  } catch (e) {
+    throw new Error('Invalid base64 string')
+  }
 }
 
 // JWT 토큰 검증
@@ -92,7 +120,7 @@ async function verifyToken(token: string) {
       return { success: false, error: 'Invalid token format' }
     }
 
-    const payload = JSON.parse(atob(parts[1]))
+    const payload = JSON.parse(base64UrlDecode(parts[1]))
     
     // 만료 확인
     if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
@@ -168,7 +196,11 @@ app.post('/api/auth/login', async (c) => {
 
   } catch (error: any) {
     console.error('Login error:', error)
-    return c.json({ success: false, error: '로그인 중 오류가 발생했습니다.' }, 500)
+    return c.json({ 
+      success: false, 
+      error: '로그인 중 오류가 발생했습니다.',
+      details: error?.message || String(error)
+    }, 500)
   }
 })
 
