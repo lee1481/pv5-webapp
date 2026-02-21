@@ -378,8 +378,12 @@
                 console.log('Changing password for:', username)
                 console.log('Token:', token)
                 
+                // URL 인코딩 (한글 지원)
+                const encodedUsername = encodeURIComponent(username)
+                console.log('Encoded username:', encodedUsername)
+                
                 const response = await axios.put(
-                    `/api/users/${username}/password`,
+                    `/api/users/${encodedUsername}/password`,
                     { newPassword },
                     { headers: { 'Authorization': `Bearer ${token}` } }
                 )
