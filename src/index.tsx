@@ -247,6 +247,11 @@ function generateBranchCode(name: string): string {
     '서남': 'seonam',
     '동북': 'dongbuk',
     '서북': 'seobuk',
+    '북': 'buk',
+    '남': 'nam',
+    '동': 'dong',
+    '서': 'seo',
+    '중': 'jung',
     
     // 기타
     '도': 'do',
