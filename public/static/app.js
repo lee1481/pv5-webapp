@@ -49,16 +49,15 @@ async function renderStep1AssignmentList() {
   try { userInfo = JSON.parse(localStorage.getItem('user') || '{}'); } catch(e) {}
   console.log('[접수목록] 사용자 role:', userInfo?.role, '| branchId:', userInfo?.branchId);
 
-  // 본사 계정이면 본사 페이지로 안내
+  // 본사 계정이면 본사 페이지로 즉시 리다이렉트
   if (userInfo?.role === 'head') {
-    container.innerHTML = `
-      <div class="text-center py-16 text-gray-400">
-        <i class="fas fa-building text-6xl mb-4 block text-blue-300"></i>
-        <p class="text-lg font-semibold text-gray-700">본사 관리자 계정입니다</p>
-        <p class="text-sm mt-2">본사 접수 관리는 <a href="/static/hq" class="text-blue-600 underline font-semibold">본사 관리 시스템</a>을 이용해주세요.</p>
-      </div>`;
+    window.location.href = '/static/hq';
     return;
   }
+
+  // 헤더 지사명 업데이트
+  const nameEl = document.getElementById('headerBranchName');
+  if (nameEl && userInfo?.branchName) nameEl.textContent = userInfo.branchName + ' · 배정된 접수 목록';
 
   // 로딩 표시
   container.innerHTML = `
