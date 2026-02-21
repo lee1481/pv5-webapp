@@ -440,9 +440,9 @@
 
         // 본사 자체 비밀번호 변경 제출
         async function submitMyPasswordChange() {
-            const currentPassword = document.getElementById('currentPassword').value;
-            const newPassword = document.getElementById('myNewPassword').value;
-            const confirmPassword = document.getElementById('myConfirmPassword').value;
+            const currentPassword = document.getElementById('currentPassword').value.trim();
+            const newPassword = document.getElementById('myNewPassword').value.trim();
+            const confirmPassword = document.getElementById('myConfirmPassword').value.trim();
 
             // 필수 입력 검증
             if (!currentPassword || !newPassword || !confirmPassword) {
