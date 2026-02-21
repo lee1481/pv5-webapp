@@ -83,7 +83,7 @@
                     <label class="block text-gray-700 font-semibold mb-2">
                         <i class="fas fa-lock mr-2 text-gray-600"></i>현재 비밀번호
                     </label>
-                    <input type="password" id="currentPassword" required
+                    <input type="password" id="currentPassword"
                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                            placeholder="현재 비밀번호 입력">
                 </div>
@@ -92,7 +92,7 @@
                     <label class="block text-gray-700 font-semibold mb-2">
                         <i class="fas fa-lock mr-2 text-green-600"></i>새 비밀번호
                     </label>
-                    <input type="password" id="myNewPassword" required
+                    <input type="password" id="myNewPassword"
                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                            placeholder="6자 이상">
                 </div>
@@ -101,7 +101,7 @@
                     <label class="block text-gray-700 font-semibold mb-2">
                         <i class="fas fa-lock mr-2 text-green-600"></i>비밀번호 확인
                     </label>
-                    <input type="password" id="myConfirmPassword" required
+                    <input type="password" id="myConfirmPassword"
                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                            placeholder="비밀번호 재입력">
                 </div>
@@ -137,7 +137,7 @@
                     <label class="block text-gray-700 font-semibold mb-2">
                         <i class="fas fa-tag mr-2 text-blue-600"></i>지사명
                     </label>
-                    <input type="text" id="branchName" required
+                    <input type="text" id="branchName"
                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                            placeholder="예: 호남지사">
                     <p class="mt-1 text-sm text-gray-500">
@@ -434,6 +434,12 @@
             const currentPassword = document.getElementById('currentPassword').value;
             const newPassword = document.getElementById('myNewPassword').value;
             const confirmPassword = document.getElementById('myConfirmPassword').value;
+
+            // 필수 입력 검증
+            if (!currentPassword || !newPassword || !confirmPassword) {
+                alert('모든 필드를 입력해주세요.');
+                return;
+            }
 
             // 비밀번호 확인
             if (newPassword !== confirmPassword) {
