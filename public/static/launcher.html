@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>케이밴 (K-VAN) - PV5 시공관리 시스템</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        .launcher-container {
+            max-width: 1200px;
+            width: 90%;
+            margin: 0 auto;
+        }
+        
+        .app-icon {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-align: center;
+        }
+        
+        .app-icon:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+        
+        .app-icon i {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+        
+        .car-showcase {
+            background: white;
+            border-radius: 30px;
+            padding: 40px;
+            margin-bottom: 50px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        .car-showcase img {
+            width: 100%;
+            height: auto;
+            border-radius: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .app-icon i {
+                font-size: 2rem;
+            }
+            
+            .car-showcase {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="launcher-container">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <h1 class="text-6xl font-bold text-white mb-4">
+                🚐 케이밴 (K-VAN)
+            </h1>
+            <p class="text-2xl text-white opacity-90">
+                PV5 시공관리 시스템
+            </p>
+        </div>
+
+        <!-- Car Showcase -->
+        <div class="car-showcase">
+            <img src="/static/pv5-car.jpg" alt="PV5 Cargo" class="mx-auto">
+            <div class="text-center mt-6">
+                <h2 class="text-3xl font-bold text-gray-800 mb-2">
+                    비즈니스 모빌리티의 새로운 표준
+                </h2>
+                <p class="text-xl text-gray-600">
+                    PV5 카고 솔루션
+                </p>
+                <p class="text-gray-500 mt-2">
+                    더 이상 단순한 운송 수단이 아닙니다.<br>
+                    당신의 비즈니스를 위한 완벽한 파트너입니다.
+                </p>
+            </div>
+        </div>
+
+        <!-- Branch Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+            <!-- 본사 -->
+            <a href="/hq" class="app-icon group">
+                <div class="text-purple-600 group-hover:text-purple-700">
+                    <i class="fas fa-building"></i>
+                </div>
+                <div class="font-bold text-gray-800 text-lg">본사</div>
+                <div class="text-sm text-gray-500">Headquarters</div>
+            </a>
+
+            <!-- 서울지사 -->
+            <a href="/?branch=seoul" class="app-icon group">
+                <div class="text-blue-600 group-hover:text-blue-700">
+                    <i class="fas fa-city"></i>
+                </div>
+                <div class="font-bold text-gray-800 text-lg">서울지사</div>
+                <div class="text-sm text-gray-500">Seoul</div>
+            </a>
+
+            <!-- 경북지사 -->
+            <a href="/?branch=gyeongbuk" class="app-icon group">
+                <div class="text-green-600 group-hover:text-green-700">
+                    <i class="fas fa-mountain"></i>
+                </div>
+                <div class="font-bold text-gray-800 text-lg">경북지사</div>
+                <div class="text-sm text-gray-500">Gyeongbuk</div>
+            </a>
+
+            <!-- 호남지사 -->
+            <a href="/?branch=honam" class="app-icon group">
+                <div class="text-yellow-600 group-hover:text-yellow-700">
+                    <i class="fas fa-sun"></i>
+                </div>
+                <div class="font-bold text-gray-800 text-lg">호남지사</div>
+                <div class="text-sm text-gray-500">Honam</div>
+            </a>
+
+            <!-- 경남지사 -->
+            <a href="/?branch=gyeongnam" class="app-icon group">
+                <div class="text-red-600 group-hover:text-red-700">
+                    <i class="fas fa-anchor"></i>
+                </div>
+                <div class="font-bold text-gray-800 text-lg">경남지사</div>
+                <div class="text-sm text-gray-500">Gyeongnam</div>
+            </a>
+
+            <!-- 제주지사 -->
+            <a href="/?branch=jeju" class="app-icon group">
+                <div class="text-teal-600 group-hover:text-teal-700">
+                    <i class="fas fa-island-tropical"></i>
+                </div>
+                <div class="font-bold text-gray-800 text-lg">제주지사</div>
+                <div class="text-sm text-gray-500">Jeju</div>
+            </a>
+
+            <!-- 대전지사 -->
+            <a href="/?branch=daejeon" class="app-icon group">
+                <div class="text-indigo-600 group-hover:text-indigo-700">
+                    <i class="fas fa-rocket"></i>
+                </div>
+                <div class="font-bold text-gray-800 text-lg">대전지사</div>
+                <div class="text-sm text-gray-500">Daejeon</div>
+            </a>
+
+            <!-- OCR 모드 (기존 기능) -->
+            <a href="/ocr" class="app-icon group">
+                <div class="text-gray-600 group-hover:text-gray-700">
+                    <i class="fas fa-file-upload"></i>
+                </div>
+                <div class="font-bold text-gray-800 text-lg">OCR 모드</div>
+                <div class="text-sm text-gray-500">Upload</div>
+            </a>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center text-white opacity-75">
+            <div class="flex items-center justify-center gap-4 mb-4">
+                <img src="/static/kvan-logo.png" alt="K-VAN" class="h-8 bg-white px-2 py-1 rounded">
+                <span class="text-lg">© 2026 K-VAN. All rights reserved.</span>
+            </div>
+            <p class="text-sm">
+                비즈니스 모빌리티 혁신 파트너
+            </p>
+        </div>
+    </div>
+</body>
+</html>

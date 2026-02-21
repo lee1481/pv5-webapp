@@ -24,6 +24,11 @@ app.get('/hq', (c) => {
   return c.redirect('/static/hq.html')
 })
 
+// 런처 페이지 (메인 - 지사 선택)
+app.get('/launcher', (c) => {
+  return c.redirect('/static/launcher.html')
+})
+
 // API: 모든 제품 패키지 리스트
 app.get('/api/packages', (c) => {
   return c.json({ packages: allPackages })
@@ -1427,8 +1432,19 @@ app.get('/api/reports/stats', async (c) => {
   }
 })
 
-// 메인 페이지
+// 메인 페이지 (런처 - 지사 선택)
 app.get('/', (c) => {
+  // URL에 branch 파라미터가 있으면 OCR 페이지로
+  const branch = c.req.query('branch')
+  if (branch) {
+    return c.redirect(`/ocr?branch=${branch}`)
+  }
+  // 없으면 런처 페이지로
+  return c.redirect('/static/launcher.html')
+})
+
+// OCR 모드 페이지 (기존 메인 기능)
+app.get('/ocr', (c) => {
   return c.html(`
     <!DOCTYPE html>
     <html lang="ko">
