@@ -545,59 +545,12 @@ app.post('/api/users', async (c) => {
 })
 
 // API: 사용자 수정 (본사 전용)
-app.put('/api/users/:id', async (c) => {
-  try {
-    const id = c.req.param('id')
-    const { username, role, branch_id } = await c.req.json()
-    
-    if (!username || !role) {
-      return c.json({ success: false, error: '필수 항목을 입력해주세요.' }, 400)
-    }
-    
-    if (role === 'branch' && !branch_id) {
-      return c.json({ success: false, error: '지사 사용자는 소속 지사를 선택해주세요.' }, 400)
-    }
-    
-    const { env } = c
-    
-    // 사용자 존재 확인
-    const user = await env.DB.prepare(
-      'SELECT id FROM users WHERE id = ?'
-    ).bind(id).first()
-    
-    if (!user) {
-      return c.json({ success: false, error: '존재하지 않는 사용자입니다.' }, 404)
-    }
-    
-    // 중복 아이디 확인 (자기 자신 제외)
-    const existing = await env.DB.prepare(
-      'SELECT id FROM users WHERE username = ? AND id != ?'
-    ).bind(username, id).first()
-    
-    if (existing) {
-      return c.json({ success: false, error: '이미 존재하는 아이디입니다.' }, 400)
-    }
-    
-    // 사용자 수정
-    await env.DB.prepare(
-      'UPDATE users SET username = ?, role = ?, branch_id = ? WHERE id = ?'
-    ).bind(username, role, role === 'branch' ? branch_id : null, id).run()
-    
-    return c.json({
-      success: true,
-      message: '사용자 정보가 수정되었습니다.'
-    })
-  } catch (error: any) {
-    console.error('User update error:', error)
-    return c.json({ success: false, error: '사용자 수정 중 오류가 발생했습니다.' }, 500)
-  }
-})
-
 // ========================================
 // 비밀번호 관리 API (본사 전용)
 // ========================================
 
 // API: 본사 자기 비밀번호 변경
+// ⚠️ 반드시 /api/users/:id 보다 먼저 등록해야 라우팅 충돌 방지!
 app.put('/api/users/my-password', async (c) => {
   try {
     const authHeader = c.req.header('Authorization')
@@ -673,6 +626,55 @@ app.put('/api/users/my-password', async (c) => {
   } catch (error: any) {
     console.error('My password change error:', error)
     return c.json({ success: false, error: '비밀번호 변경 중 오류가 발생했습니다.', details: error.message }, 500)
+  }
+})
+
+// API: 사용자 정보 수정 (⚠️ 반드시 /api/users/my-password 다음에 위치해야 함)
+app.put('/api/users/:id', async (c) => {
+  try {
+    const id = c.req.param('id')
+    const { username, role, branch_id } = await c.req.json()
+    
+    if (!username || !role) {
+      return c.json({ success: false, error: '필수 항목을 입력해주세요.' }, 400)
+    }
+    
+    if (role === 'branch' && !branch_id) {
+      return c.json({ success: false, error: '지사 사용자는 소속 지사를 선택해주세요.' }, 400)
+    }
+    
+    const { env } = c
+    
+    // 사용자 존재 확인
+    const user = await env.DB.prepare(
+      'SELECT id FROM users WHERE id = ?'
+    ).bind(id).first()
+    
+    if (!user) {
+      return c.json({ success: false, error: '존재하지 않는 사용자입니다.' }, 404)
+    }
+    
+    // 중복 아이디 확인 (자기 자신 제외)
+    const existing = await env.DB.prepare(
+      'SELECT id FROM users WHERE username = ? AND id != ?'
+    ).bind(username, id).first()
+    
+    if (existing) {
+      return c.json({ success: false, error: '이미 존재하는 아이디입니다.' }, 400)
+    }
+    
+    // 사용자 수정
+    await env.DB.prepare(
+      'UPDATE users SET username = ?, role = ?, branch_id = ? WHERE id = ?'
+    ).bind(username, role, role === 'branch' ? branch_id : null, id).run()
+    
+    return c.json({
+      success: true,
+      message: '사용자 정보가 수정되었습니다.'
+    })
+  } catch (error: any) {
+    console.error('User update error:', error)
+    return c.json({ success: false, error: '사용자 수정 중 오류가 발생했습니다.' }, 500)
   }
 })
 
