@@ -1760,27 +1760,37 @@ app.post('/api/assignments', async (c) => {
   if (!auth.success) return auth.response
   try {
     const { env } = c
-    const { customerName, phone, address, productName, branchId, notes, assignedBy } = await c.req.json()
-    
+    const user = auth.user as any
+    const { orderDate, customerName, phone, address, productName, branchId, notes } = await c.req.json()
+
+    if (!customerName || !branchId) {
+      return c.json({ success: false, error: '주문자명과 담당 지사는 필수입니다.' }, 400)
+    }
+
     const assignmentId = `ASG-${Date.now()}`
-    
-    const stmt = env.DB.prepare(`
-      INSERT INTO assignments 
-        (assignment_id, customer_name, phone, address, product_name, branch_id, assigned_by, notes, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'assigned')
-    `)
-    
-    await stmt.bind(assignmentId, customerName, phone, address, productName || '', branchId, assignedBy, notes || '').run()
-    
-    return c.json({ 
-      success: true, 
-      message: '접수가 등록되었습니다!',
-      assignmentId 
-    })
-    
-  } catch (error) {
+
+    await env.DB.prepare(`
+      INSERT INTO assignments
+        (assignment_id, customer_name, customer_phone, customer_address,
+         product_name, branch_id, assigned_by, notes, order_date, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'assigned')
+    `).bind(
+      assignmentId,
+      customerName,
+      phone        || '',
+      address      || '',
+      productName  || '',
+      branchId,
+      user?.id     || null,
+      notes        || '',
+      orderDate    || new Date().toISOString().split('T')[0]
+    ).run()
+
+    return c.json({ success: true, message: '접수가 등록되었습니다!', assignmentId })
+
+  } catch (error: any) {
     console.error('Assignment create error:', error)
-    return c.json({ success: false, message: '접수 등록 중 오류가 발생했습니다.' }, 500)
+    return c.json({ success: false, error: '접수 등록 중 오류가 발생했습니다.' }, 500)
   }
 })
 
@@ -1794,7 +1804,11 @@ app.get('/api/assignments', async (c) => {
     const status = c.req.query('status') // assigned, in_progress, completed
     
     let query = `
-      SELECT a.*, b.name as branch_name, u.username as assigned_by_name
+      SELECT a.id, a.assignment_id, a.customer_name, a.customer_phone, a.customer_address,
+             a.product_name, a.order_date, a.branch_id, a.notes, a.status,
+             a.report_id, a.assigned_at,
+             b.name as branch_name, b.code as branch_code,
+             u.username as assigned_by_name
       FROM assignments a
       LEFT JOIN branches b ON a.branch_id = b.id
       LEFT JOIN users u ON a.assigned_by = u.id
@@ -1851,6 +1865,56 @@ app.patch('/api/assignments/:id/status', async (c) => {
   } catch (error) {
     console.error('Assignment status update error:', error)
     return c.json({ success: false, message: '상태 변경 중 오류가 발생했습니다.' }, 500)
+  }
+})
+
+// API: 내 지사 배정 목록 조회 [지사 전용] GET /api/assignments/my
+app.get('/api/assignments/my', async (c) => {
+  const auth = await requireAuth(c)
+  if (!auth.success) return auth.response
+  try {
+    const { env } = c
+    const user = auth.user as any
+
+    // 지사 사용자: 자신의 branch_id 기준 조회
+    // 본사 사용자: 전체 조회 (테스트용)
+    let query = `
+      SELECT a.id, a.assignment_id, a.customer_name, a.customer_phone, a.customer_address,
+             a.product_name, a.order_date, a.branch_id, a.notes, a.status,
+             a.report_id, a.assigned_at,
+             b.name as branch_name, b.code as branch_code
+      FROM assignments a
+      LEFT JOIN branches b ON a.branch_id = b.id
+    `
+    const params: any[] = []
+
+    if (user.role === 'branch' && user.branchId) {
+      query += ' WHERE a.branch_id = ?'
+      params.push(user.branchId)
+    } else if (user.role === 'branch') {
+      // branchId가 없는 지사 계정은 빈 목록
+      return c.json({ success: true, assignments: [] })
+    }
+
+    // 완료된 항목은 마지막으로 정렬
+    query += ` ORDER BY
+      CASE a.status
+        WHEN 'assigned'    THEN 1
+        WHEN 'in_progress' THEN 2
+        WHEN 'completed'   THEN 3
+        ELSE 4
+      END,
+      a.order_date ASC,
+      a.assigned_at ASC`
+
+    const stmt = env.DB.prepare(query)
+    const { results } = params.length > 0 ? await stmt.bind(...params).all() : await stmt.all()
+
+    return c.json({ success: true, assignments: results || [] })
+
+  } catch (error: any) {
+    console.error('My assignments error:', error)
+    return c.json({ success: false, assignments: [], error: '배정 목록 조회 중 오류가 발생했습니다.' }, 500)
   }
 })
 
@@ -2628,6 +2692,26 @@ app.get('/ocr', (c) => {
                         <i class="fas fa-calendar-check text-blue-600 mr-2"></i>
                         3단계: 설치 일정 및 장소 확정
                     </h2>
+                    <!-- 고객 정보 (접수 정보에서 자동 채워짐) -->
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                        <div class="text-sm font-semibold text-blue-700 mb-3">
+                            <i class="fas fa-user-check mr-2"></i>고객 정보 (접수 정보에서 자동 입력됨)
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-600 mb-1">고객명</label>
+                                <input type="text" id="customerName"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-400"
+                                       placeholder="고객명">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-600 mb-1">연락처</label>
+                                <input type="tel" id="customerPhone"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-400"
+                                       placeholder="010-0000-0000">
+                            </div>
+                        </div>
+                    </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label class="block text-sm font-bold text-gray-700 mb-2">

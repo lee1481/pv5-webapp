@@ -1,148 +1,231 @@
+// ── axios 전역 인증 헤더 자동 설정 ──────────────────────────────────────────
+;(function setupAxiosAuth() {
+    const token = localStorage.getItem('token')
+    if (token) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+    }
+})()
+
 // 전역 상태 관리
 let currentStep = 1;
-let ocrData = null;
-let selectedPackages = []; // 단일 선택에서 다중 선택으로 변경
+let selectedPackages = [];
 let allPackages = [];
-let packagePositions = {}; // 패키지별 좌/우 선택 상태 저장
-let uploadedImageFile = null; // 업로드된 거래명세서 이미지 파일
-let currentReportId = null; // 현재 편집 중인 리포트 ID
-let allReports = []; // 저장된 모든 리포트 목록
+let packagePositions = {};
+let currentReportId = null;
+let allReports = [];
 
-// ===== 멀티테넌트: 지사 모드 체크 =====
+// ===== 멀티테넌트: 지사 정보 =====
 const urlParams = new URLSearchParams(window.location.search);
-const branchCode = urlParams.get('branch'); // 예: ?branch=seoul
-const isBranchMode = !!branchCode; // branch 파라미터가 있으면 지사 모드
-let currentBranchId = null; // 현재 지사 ID
-let currentAssignments = []; // 접수 목록
+const branchCode = urlParams.get('branch'); // 예: ?branch=honam
+const isBranchMode = !!branchCode;
+let currentBranchId = null;
+let currentAssignments = [];
+let selectedAssignment = null; // 현재 선택된 접수 건
 
 // 초기화
 document.addEventListener('DOMContentLoaded', async () => {
   await loadPackages();
-  
-  // 지사 모드인 경우 접수 목록 로드
-  if (isBranchMode) {
-    await loadBranchInfo();
-    await loadAssignments();
-    showAssignmentListInStep1(); // Step 1에 접수 목록 표시
-  } else {
-    // 기존 OCR 모드
-    setupFileUpload();
-  }
-  
   setupStepNavigation();
   updateStepIndicator();
-  
-  // 페이지 로드 시 밀워키 패키지 미리 준비 (Step 2 진입 시 즉시 표시)
-  setTimeout(() => {
-    if (allPackages.length > 0) {
-      console.log('Preloading milwaukee packages for faster display');
-    }
-  }, 1000);
+  // 1단계 접수 목록 렌더링 (로그인 토큰 기반)
+  await renderStep1AssignmentList();
 });
 
-// 단계 네비게이션 설정 (상단 메뉴 클릭)
-function setupStepNavigation() {
-  for (let i = 1; i <= 5; i++) {
-    const stepElement = document.getElementById(`step${i}`);
-    if (stepElement) {
-      stepElement.style.cursor = 'pointer';
-      stepElement.addEventListener('click', () => goToStep(i));
-    }
+// ═══════════════════════════════════════════════════════════════
+// STEP 1 — 배정 목록 렌더링 (OCR 완전 대체)
+// ═══════════════════════════════════════════════════════════════
+async function renderStep1AssignmentList() {
+  const container = document.getElementById('upload-section');
+  if (!container) return;
+
+  // 로딩 표시
+  container.innerHTML = `
+    <div class="text-center py-12 text-gray-400">
+      <i class="fas fa-spinner fa-spin text-4xl mb-3 block"></i>
+      <p>배정 목록을 불러오는 중...</p>
+    </div>`;
+
+  try {
+    const res = await axios.get('/api/assignments/my');
+    if (!res.data.success) throw new Error('API 실패');
+
+    currentAssignments = res.data.assignments || [];
+    renderAssignmentCards(container, currentAssignments);
+
+  } catch(e) {
+    console.error('renderStep1 error:', e);
+    container.innerHTML = `
+      <div class="text-center py-12 text-red-400">
+        <i class="fas fa-exclamation-circle text-4xl mb-3 block"></i>
+        <p>배정 목록을 불러오지 못했습니다.</p>
+        <button onclick="renderStep1AssignmentList()" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">다시 시도</button>
+      </div>`;
   }
 }
 
-// 특정 단계로 이동 (클릭 시)
+function renderAssignmentCards(container, list) {
+  const statusLabel = { assigned:'접수됨', in_progress:'진행 중', completed:'완료' };
+  const statusStyle = {
+    assigned:    'bg-blue-100 text-blue-700',
+    in_progress: 'bg-yellow-100 text-yellow-700',
+    completed:   'bg-green-100 text-green-700'
+  };
+
+  // 헤더
+  const token = localStorage.getItem('token');
+  let branchName = '';
+  try { branchName = JSON.parse(localStorage.getItem('user') || '{}').branchName || ''; } catch(e) {}
+
+  const pending   = list.filter(a => a.status !== 'completed');
+  const completed = list.filter(a => a.status === 'completed');
+
+  if (list.length === 0) {
+    container.innerHTML = `
+      <div class="text-center py-16 text-gray-400">
+        <i class="fas fa-inbox text-6xl mb-4 block"></i>
+        <p class="text-lg font-semibold">배정된 접수 건이 없습니다</p>
+        <p class="text-sm mt-1">본사에서 접수를 등록하면 여기에 표시됩니다.</p>
+      </div>`;
+    return;
+  }
+
+  const makeCard = (a) => {
+    const isDone = a.status === 'completed';
+    const btnHtml = isDone
+      ? `<span class="px-4 py-2 bg-gray-100 text-gray-500 rounded-lg text-sm font-semibold"><i class="fas fa-check mr-1"></i>완료됨</span>`
+      : `<button onclick="startAssignment('${a.assignment_id}')" 
+               class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition shadow-sm">
+           <i class="fas fa-play mr-1.5"></i>${a.status === 'in_progress' ? '이어하기' : '시작하기'}
+         </button>`;
+
+    return `
+      <div class="border ${isDone ? 'border-gray-200 bg-gray-50 opacity-70' : 'border-blue-200 bg-white hover:shadow-md'} rounded-xl p-5 transition">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-2 flex-wrap">
+              <span class="font-bold text-gray-800 text-lg">${a.customer_name}</span>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusStyle[a.status] || 'bg-gray-100 text-gray-600'}">
+                ${statusLabel[a.status] || a.status}
+              </span>
+            </div>
+            <div class="space-y-1 text-sm text-gray-600">
+              <div><i class="fas fa-phone w-4 mr-1.5 text-gray-400"></i>${a.customer_phone || '-'}</div>
+              <div><i class="fas fa-map-marker-alt w-4 mr-1.5 text-gray-400"></i>${a.customer_address || '-'}</div>
+              ${a.product_name ? `<div><i class="fas fa-box w-4 mr-1.5 text-gray-400"></i>${a.product_name}</div>` : ''}
+              ${a.notes ? `<div><i class="fas fa-sticky-note w-4 mr-1.5 text-gray-400"></i>${a.notes}</div>` : ''}
+            </div>
+          </div>
+          <div class="flex flex-col items-end gap-2 shrink-0">
+            <span class="text-xs text-gray-400">${a.order_date || (a.assigned_at||'').split('T')[0] || ''}</span>
+            ${btnHtml}
+          </div>
+        </div>
+      </div>`;
+  };
+
+  container.innerHTML = `
+    <div class="mb-4 flex items-center justify-between">
+      <h3 class="font-bold text-gray-700 text-lg">
+        <i class="fas fa-clipboard-list text-blue-500 mr-2"></i>
+        배정된 접수 목록
+        <span class="ml-2 px-2.5 py-0.5 bg-blue-600 text-white rounded-full text-sm">${pending.length}건 대기</span>
+      </h3>
+      <button onclick="renderStep1AssignmentList()" class="text-sm text-gray-400 hover:text-blue-600">
+        <i class="fas fa-sync-alt mr-1"></i>새로고침
+      </button>
+    </div>
+    <div class="space-y-3">
+      ${pending.map(makeCard).join('')}
+      ${completed.length > 0 ? `
+        <details class="mt-4">
+          <summary class="cursor-pointer text-sm text-gray-400 hover:text-gray-600 select-none">
+            <i class="fas fa-chevron-right mr-1"></i>완료된 건 ${completed.length}건 보기
+          </summary>
+          <div class="space-y-3 mt-3">${completed.map(makeCard).join('')}</div>
+        </details>` : ''}
+    </div>`;
+}
+
+// 시작하기 버튼 → 2단계로 이동 + 고객 정보 자동 채우기
+async function startAssignment(assignmentId) {
+  const a = currentAssignments.find(x => x.assignment_id === assignmentId);
+  if (!a) return;
+
+  selectedAssignment = a;
+
+  // 진행중 상태로 변경
+  if (a.status === 'assigned') {
+    try {
+      await axios.patch(`/api/assignments/${assignmentId}/status`, { status: 'in_progress' });
+      a.status = 'in_progress';
+    } catch(e) { console.warn('status update failed:', e); }
+  }
+
+  // 3단계 고객정보 자동 채우기
+  setTimeout(() => {
+    const nameEl    = document.getElementById('customerName');
+    const phoneEl   = document.getElementById('customerPhone');
+    const addressEl = document.getElementById('installAddress');
+    if (nameEl)    nameEl.value    = a.customer_name    || '';
+    if (phoneEl)   phoneEl.value   = a.customer_phone   || '';
+    if (addressEl) addressEl.value = a.customer_address || '';
+  }, 300);
+
+  // 2단계로 이동
+  currentStep = 2;
+  updateStepIndicator();
+  showCurrentSection();
+  setTimeout(() => {
+    if (allPackages.length === 0) loadPackages().then(() => showBrand('milwaukee'));
+    else showBrand('milwaukee');
+  }, 200);
+}
+
+// 단계 네비게이션 설정
+function setupStepNavigation() {
+  for (let i = 1; i <= 6; i++) {
+    const el = document.getElementById(`step${i}`);
+    if (el) { el.style.cursor = 'pointer'; el.addEventListener('click', () => goToStep(i)); }
+  }
+}
+
+// 특정 단계로 이동
 function goToStep(step) {
-  // 이전 단계로만 이동 가능 (완료된 단계)
   if (step < currentStep) {
+    // 1단계로 돌아갈 때 목록 새로고침
+    if (step === 1) renderStep1AssignmentList();
     currentStep = step;
     updateStepIndicator();
     showCurrentSection();
-    
-    // 섹션별 초기화
-    if (step === 2) {
-      setTimeout(() => {
-        if (allPackages.length === 0) {
-          console.error('No packages loaded, retrying...');
-          loadPackages().then(() => {
-            showBrand('milwaukee');
-          });
-        } else {
-          showBrand('milwaukee');
-        }
-      }, 200);
-    }
+    if (step === 2) setTimeout(() => showBrand('milwaukee'), 200);
     return;
   }
-  
-  // 현재 단계는 그냥 머물기
-  if (step === currentStep) {
-    return;
-  }
-  
-  // 다음 단계로 이동 시도
+  if (step === currentStep) return;
+
   if (step === 2) {
-    if (!ocrData) {
-      alert('먼저 거래명세서를 업로드하거나 수동으로 입력해주세요.');
-      return;
-    }
-    currentStep = 2;
-    updateStepIndicator();
-    showCurrentSection();
+    if (!selectedAssignment) { alert('접수 목록에서 항목을 선택해주세요.'); return; }
+    currentStep = 2; updateStepIndicator(); showCurrentSection();
     setTimeout(() => {
-      if (allPackages.length === 0) {
-        console.error('No packages loaded, retrying...');
-        loadPackages().then(() => {
-          showBrand('milwaukee');
-        });
-      } else {
-        showBrand('milwaukee');
-      }
+      if (allPackages.length === 0) loadPackages().then(() => showBrand('milwaukee'));
+      else showBrand('milwaukee');
     }, 200);
   } else if (step === 3) {
-    if (!ocrData) {
-      alert('먼저 거래명세서를 업로드하거나 수동으로 입력해주세요.');
-      return;
-    }
-    if (selectedPackages.length === 0) {
-      alert('제품을 선택해주세요.');
-      return;
-    }
-    currentStep = 3;
-    updateStepIndicator();
-    showCurrentSection();
-    // OCR 데이터로 주소 자동 입력
-    if (ocrData && ocrData.address) {
-      document.getElementById('installAddress').value = ocrData.address;
+    if (!selectedAssignment) { alert('접수 목록에서 항목을 선택해주세요.'); return; }
+    if (selectedPackages.length === 0) { alert('제품을 선택해주세요.'); return; }
+    currentStep = 3; updateStepIndicator(); showCurrentSection();
+    // 주소 자동 채우기
+    if (selectedAssignment?.customer_address) {
+      const el = document.getElementById('installAddress');
+      if (el && !el.value) el.value = selectedAssignment.customer_address;
     }
   } else if (step === 4) {
-    if (!ocrData) {
-      alert('먼저 거래명세서를 업로드하거나 수동으로 입력해주세요.');
-      return;
-    }
-    if (selectedPackages.length === 0) {
-      alert('제품을 선택해주세요.');
-      return;
-    }
+    if (selectedPackages.length === 0) { alert('제품을 선택해주세요.'); return; }
     const installDate = document.getElementById('installDate')?.value;
-    if (!installDate) {
-      alert('설치 날짜를 입력해주세요.');
-      return;
-    }
-    currentStep = 4;
-    updateStepIndicator();
-    showCurrentSection();
+    if (!installDate) { alert('설치 날짜를 입력해주세요.'); return; }
+    currentStep = 4; updateStepIndicator(); showCurrentSection();
     displayFinalPreview();
-  } else if (step === 5) {
-    // Step 5는 언제든지 접근 가능
-    currentStep = 5;
-    updateStepIndicator();
-    showCurrentSection();
-  } else if (step === 6) {
-    // Step 6 매출 관리는 언제든지 접근 가능
-    currentStep = 6;
-    updateStepIndicator();
-    showCurrentSection();
+  } else if (step === 5 || step === 6) {
+    currentStep = step; updateStepIndicator(); showCurrentSection();
   }
 }
 
@@ -158,7 +241,9 @@ async function loadPackages() {
   }
 }
 
-// 파일 업로드 설정
+// ── OCR 관련 함수 제거됨 (본사 → 지사 직접 배정 방식으로 변경) ──────────────
+
+// 파일 업로드 설정 (미사용 - 하위 호환 유지용 stub)
 function setupFileUpload() {
   const fileInput = document.getElementById('fileInput');
   const dropZone = document.getElementById('dropZone');
@@ -780,19 +865,19 @@ function selectPackage(packageId) {
   displayPackages(packages);
 }
 
-// 고객 주소 복사 // UPDATED
-function copyCustomerAddress() { // UPDATED
-  if (!ocrData || !ocrData.receiverAddress) { // UPDATED
-    alert('⚠️ 고객 주소 정보가 없습니다. 먼저 거래명세서를 업로드해주세요.'); // UPDATED
-    return; // UPDATED
-  } // UPDATED
-  // UPDATED
-  const installAddressInput = document.getElementById('installAddress'); // UPDATED
-  if (installAddressInput) { // UPDATED
-    installAddressInput.value = ocrData.receiverAddress; // UPDATED
-    alert('✅ 고객 주소가 복사되었습니다!'); // UPDATED
-  } // UPDATED
-} // UPDATED
+// 고객 주소 복사 (접수 정보에서 가져오기)
+function copyCustomerAddress() {
+  const addr = selectedAssignment?.customer_address;
+  if (!addr) {
+    alert('⚠️ 고객 주소 정보가 없습니다.');
+    return;
+  }
+  const el = document.getElementById('installAddress');
+  if (el) {
+    el.value = addr;
+    alert('✅ 고객 주소가 복사되었습니다!');
+  }
+}
 
 // 설치 시간 선택 - 오전/오후 // UPDATED
 let selectedTimePeriod = ''; // UPDATED
@@ -921,16 +1006,16 @@ function applyCustomTime() { // UPDATED
 // 단계 이동
 function nextStep(step) {
   // 유효성 검사
-  if (step === 2 && !ocrData) {
-    alert('먼저 거래명세서를 업로드해주세요.');
+  if (step === 2 && !selectedAssignment) {
+    alert('접수 목록에서 항목을 선택해주세요.');
     return;
   }
-  
+
   if (step === 3 && selectedPackages.length === 0) {
     alert('제품을 선택해주세요.');
     return;
   }
-  
+
   if (step === 4) {
     const installDate = document.getElementById('installDate').value;
     if (!installDate) {
@@ -938,34 +1023,27 @@ function nextStep(step) {
       return;
     }
   }
-  
+
   currentStep = step;
   updateStepIndicator();
   showCurrentSection();
-  
+
   // 섹션별 초기화
   if (step === 2) {
-    console.log('Moving to step 2, showing milwaukee packages');
-    // 밀워키를 기본으로 표시
     setTimeout(() => {
-      if (allPackages.length === 0) {
-        console.error('No packages loaded, retrying...');
-        loadPackages().then(() => {
-          showBrand('milwaukee');
-        });
-      } else {
-        showBrand('milwaukee');
-      }
+      if (allPackages.length === 0) loadPackages().then(() => showBrand('milwaukee'));
+      else showBrand('milwaukee');
     }, 200);
   }
-  
+
   if (step === 3) {
-    // OCR 데이터로 주소 자동 입력
-    if (ocrData && ocrData.address) {
-      document.getElementById('installAddress').value = ocrData.address;
+    // 접수 정보로 주소 자동 채우기
+    if (selectedAssignment?.customer_address) {
+      const el = document.getElementById('installAddress');
+      if (el && !el.value) el.value = selectedAssignment.customer_address;
     }
   }
-  
+
   if (step === 4) {
     displayFinalPreview();
   }
@@ -1068,12 +1146,12 @@ function displayFinalPreview() {
           <i class="fas fa-user mr-2 text-blue-600"></i>고객 정보
         </h4>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-          <div><strong>출력일자:</strong> ${ocrData?.outputDate || '-'}</div>
-          <div><strong>상품번호:</strong> ${ocrData?.productCode || '-'}</div>
-          <div><strong>고객명:</strong> ${ocrData?.receiverName || '-'}</div>
-          <div><strong>연락처:</strong> ${ocrData?.receiverPhone || '-'}</div>
-          <div class="sm:col-span-2"><strong>주소:</strong> ${ocrData?.receiverAddress || '-'}</div>
-          <div><strong>주문번호:</strong> ${ocrData?.orderNumber || '-'}</div>
+          <div><strong>접수일자:</strong> ${selectedAssignment?.order_date || '-'}</div>
+          <div><strong>상품명:</strong> ${selectedAssignment?.product_name || '-'}</div>
+          <div><strong>고객명:</strong> ${selectedAssignment?.customer_name || document.getElementById('customerName')?.value || '-'}</div>
+          <div><strong>연락처:</strong> ${selectedAssignment?.customer_phone || document.getElementById('customerPhone')?.value || '-'}</div>
+          <div class="sm:col-span-2"><strong>주소:</strong> ${selectedAssignment?.customer_address || document.getElementById('installAddress')?.value || '-'}</div>
+          <div><strong>접수번호:</strong> ${selectedAssignment?.assignment_id || '-'}</div>
         </div>
       </div>
       
@@ -1334,17 +1412,24 @@ async function saveDraftReport() {
     
     const reportData = {
       reportId: currentReportId || `REPORT-${Date.now()}`,
-      customerInfo: ocrData,
+      customerInfo: {
+        receiverName:    selectedAssignment?.customer_name    || document.getElementById('customerName')?.value || '',
+        receiverPhone:   selectedAssignment?.customer_phone   || document.getElementById('customerPhone')?.value || '',
+        receiverAddress: selectedAssignment?.customer_address || installAddress,
+        productName:     selectedAssignment?.product_name     || '',
+        assignmentId:    selectedAssignment?.assignment_id    || ''
+      },
       packages: selectedPackages,
       packagePositions,
-      installDate, // 빈 값 가능
-      installTime, // 빈 값 가능
+      installDate,
+      installTime,
       installAddress,
       notes,
       installerName,
       attachmentImage: imageBase64,
       attachmentFileName: imageFileName,
-      status: 'draft', // 임시 저장은 항상 draft 상태
+      status: 'draft',
+      assignmentId: selectedAssignment?.assignment_id || null,
       createdAt: new Date().toISOString()
     };
     
@@ -1485,9 +1570,15 @@ async function saveReport() {
     
     const reportData = {
       reportId: currentReportId || `REPORT-${Date.now()}`,
-      customerInfo: ocrData,
+      customerInfo: {
+        receiverName:    selectedAssignment?.customer_name    || document.getElementById('customerName')?.value || '',
+        receiverPhone:   selectedAssignment?.customer_phone   || document.getElementById('customerPhone')?.value || '',
+        receiverAddress: selectedAssignment?.customer_address || installAddress,
+        productName:     selectedAssignment?.product_name     || '',
+        assignmentId:    selectedAssignment?.assignment_id    || ''
+      },
       packages: selectedPackages,
-      packagePositions, // UPDATED - 3단 선반 설치 위치 데이터 추가
+      packagePositions,
       installDate,
       installTime,
       installAddress,
@@ -1495,7 +1586,8 @@ async function saveReport() {
       installerName,
       attachmentImage: imageBase64,
       attachmentFileName: imageFileName,
-      createdAt: new Date().toISOString() // 생성 시간 추가
+      assignmentId: selectedAssignment?.assignment_id || null,
+      createdAt: new Date().toISOString()
     };
     
     // 🔍 디버깅: reportData.packages 확인
@@ -1528,7 +1620,16 @@ async function saveReport() {
           console.warn('⚠️ localStorage cache failed (ignored):', cacheError); // UPDATED
         } // UPDATED
         
-        currentReportId = reportData.reportId; // UPDATED
+        currentReportId = reportData.reportId;
+
+        // 접수 상태 → 완료로 변경
+        if (selectedAssignment?.assignment_id) {
+          try {
+            await axios.patch(`/api/assignments/${selectedAssignment.assignment_id}/status`, { status: 'completed' });
+            selectedAssignment.status = 'completed';
+          } catch(e) { console.warn('assignment complete update failed:', e); }
+        }
+
         alert(`✅ 시공 확인서가 저장되었습니다!\n\n문서 ID: ${reportData.reportId}\n\n신규 접수를 시작합니다.`);
         resetForNewReport();
       } else { // UPDATED
@@ -2358,11 +2459,10 @@ async function loadReportData(reportId) {
 // 신규 접수를 위한 초기화
 function resetForNewReport() {
   console.log('Resetting for new report...');
-  
+
   // 1. 전역 변수 초기화
-  ocrData = null;
+  selectedAssignment = null;
   selectedPackages = [];
-  uploadedImageFile = null;
   currentReportId = null;
   packagePositions = {};
   
@@ -2384,49 +2484,13 @@ function resetForNewReport() {
   if (installerName) installerName.value = '';
   if (recipientEmail) recipientEmail.value = '';
   
-  // 4. OCR 결과 숨기기
-  const uploadResult = document.getElementById('uploadResult');
-  if (uploadResult) {
-    uploadResult.classList.add('hidden');
-    uploadResult.style.display = 'none';
-  }
-  
-  // 5. 업로드 영역 초기화
-  const dropZone = document.getElementById('dropZone');
-  if (dropZone) {
-    dropZone.innerHTML = `
-      <i class="fas fa-cloud-upload-alt text-6xl text-gray-400 mb-4"></i>
-      <p class="text-lg text-gray-600 mb-4">거래명세서 이미지를 드래그하거나 클릭하여 업로드</p>
-      <input type="file" id="fileInput" accept="image/*" class="hidden">
-      <div class="flex justify-center space-x-3">
-        <button onclick="document.getElementById('fileInput').click(); event.stopPropagation();" 
-                class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">
-          <i class="fas fa-folder-open mr-2"></i>파일 선택
-        </button>
-        <button onclick="showManualInputForm(); event.stopPropagation();" 
-                class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition">
-          <i class="fas fa-keyboard mr-2"></i>수동 입력
-        </button>
-      </div>
-      <p class="text-xs text-gray-500 mt-4">지원 형식: JPG, PNG, GIF (최대 10MB)</p>
-    `;
-    
-    // 파일 입력 이벤트 재설정
-    setupFileUpload();
-  }
-  
-  // 6. 수동 입력 폼 제거 (있다면)
-  const manualInputForm = document.getElementById('manualInputForm');
-  if (manualInputForm) {
-    manualInputForm.remove();
-  }
-  
-  // 7. Step 1로 이동
+  // 4. Step 1로 이동 + 접수 목록 새로고침
   currentStep = 1;
   updateStepIndicator();
   showCurrentSection();
-  
-  console.log('Reset complete. Ready for new report.');
+  renderStep1AssignmentList();
+
+  console.log('Reset complete. Ready for new assignment.');
 }
 
 // Excel 내보내기

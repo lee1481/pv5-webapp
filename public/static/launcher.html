@@ -441,6 +441,12 @@
 
     <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
     <script>
+        // ── axios 전역 인증 헤더 자동 설정 ──────────────────────────────────────
+        ;(function setupAxiosAuth() {
+            const token = localStorage.getItem('token')
+            if (token) axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+        })()
+
         // ── 토큰 자동 갱신 (5분마다 체크, 만료 30분 전이면 갱신) ──────────────
         async function autoRefreshToken() {
             const token = localStorage.getItem('token')

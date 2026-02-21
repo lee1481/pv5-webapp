@@ -6,9 +6,9 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
-  // "ai": {
-  //   "binding": "AI"
-  // },  // 로컬 개발 시 비활성화 (원격 Cloudflare API 필요로 로컬 서버 실패 원인)
+  "ai": {
+    "binding": "AI"
+  },
   "kv_namespaces": [
     {
       "binding": "REPORTS_KV",

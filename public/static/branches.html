@@ -229,6 +229,12 @@
 
     <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
     <script>
+        // ── axios 전역 인증 헤더 자동 설정 ──────────────────────────────────────
+        ;(function setupAxiosAuth() {
+            const token = localStorage.getItem('token')
+            if (token) axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+        })()
+
         // ── 토큰 자동 갱신 (5분마다 체크, 만료 30분 전이면 갱신) ──────────────
         async function autoRefreshToken() {
             const token = localStorage.getItem('token')
@@ -285,7 +291,10 @@
         // 지사 목록 불러오기
         async function loadBranches() {
             try {
-                const response = await axios.get('/api/branches/list')
+                const token = localStorage.getItem('token')
+                const response = await axios.get('/api/branches/list', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
                 if (response.data.success) {
                     const branches = response.data.branches
                     const tbody = document.getElementById('branchList')
@@ -408,12 +417,14 @@
 
             try {
                 let response
+                const token = localStorage.getItem('token')
+                const authHeader = { headers: { 'Authorization': `Bearer ${token}` } }
                 if (id) {
                     // 수정
-                    response = await axios.put(`/api/branches/${id}`, { name })
+                    response = await axios.put(`/api/branches/${id}`, { name }, authHeader)
                 } else {
                     // 추가
-                    response = await axios.post('/api/branches', { name })
+                    response = await axios.post('/api/branches', { name }, authHeader)
                 }
 
                 if (response.data.success) {
@@ -434,7 +445,10 @@
             if (!deleteTargetId) return
 
             try {
-                const response = await axios.delete(`/api/branches/${deleteTargetId}`)
+                const token = localStorage.getItem('token')
+                const response = await axios.delete(`/api/branches/${deleteTargetId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
                 if (response.data.success) {
                     alert(response.data.message)
                     closeDeleteModal()
