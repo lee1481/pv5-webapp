@@ -1016,13 +1016,7 @@ function nextStep(step) {
     return;
   }
 
-  if (step === 4) {
-    const installDate = document.getElementById('installDate').value;
-    if (!installDate) {
-      alert('설치 날짜를 입력해주세요.');
-      return;
-    }
-  }
+  // step 4: 날짜 없어도 4단계(최종 확인)로 진입 가능 (임시 저장 후 날짜 조율)
 
   currentStep = step;
   updateStepIndicator();
@@ -1308,7 +1302,14 @@ async function sendEmail() {
     
     const emailData = {
       recipientEmail,
-      customerInfo: ocrData,
+      customerInfo: selectedAssignment ? {
+        receiverName:    selectedAssignment.customer_name,
+        receiverPhone:   selectedAssignment.customer_phone,
+        receiverAddress: selectedAssignment.customer_address,
+        productName:     selectedAssignment.product_name,
+        assignmentId:    selectedAssignment.assignment_id,
+        orderDate:       selectedAssignment.order_date
+      } : {},
       packages: selectedPackages,
       installDate,
       installTime,
@@ -1468,7 +1469,9 @@ async function saveDraftReport() {
         }
         
         // Step 5로 이동
-        showStep(5);
+        currentStep = 5;
+        updateStepIndicator();
+        showCurrentSection();
       } else {
         throw new Error(response.data.message || 'Server save failed');
       }
@@ -1503,7 +1506,9 @@ async function saveDraftReport() {
       alert(`✅ 임시 저장되었습니다! (오프라인)\n\n문서 ID: ${reportDataForLocal.reportId}\n\n인터넷 연결 후 다시 저장해주세요.`);
       
       // Step 5로 이동
-      showStep(5);
+      currentStep = 5;
+      updateStepIndicator();
+      showCurrentSection();
     }
   } catch (error) {
     console.error('Draft save error:', error);

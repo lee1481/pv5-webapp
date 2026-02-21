@@ -1507,7 +1507,8 @@ app.post('/api/send-email', async (c) => {
               <div class="info-row"><span class="label">고객명:</span> ${customerInfo?.receiverName || '-'}</div>
               <div class="info-row"><span class="label">연락처:</span> ${customerInfo?.receiverPhone || '-'}</div>
               <div class="info-row"><span class="label">주소:</span> ${customerInfo?.receiverAddress || '-'}</div>
-              <div class="info-row"><span class="label">주문번호:</span> ${customerInfo?.orderNumber || '-'}</div>
+              <div class="info-row"><span class="label">접수일자:</span> ${customerInfo?.orderDate || '-'}</div>
+              <div class="info-row"><span class="label">상품명:</span> ${customerInfo?.productName || '-'}</div>
             </div>
             
             <div class="section">
@@ -1536,6 +1537,7 @@ app.post('/api/send-email', async (c) => {
     const emailPayload: any = {
       from: 'PV5 시공관리 <onboarding@resend.dev>',
       to: [recipientEmail],
+      reply_to: recipientEmail,
       subject: `[PV5 시공(예약) 확인서] ${customerInfo?.receiverName || '고객'}님 시공(예약) 확인서`,
       html: htmlContent
     };
@@ -1563,9 +1565,14 @@ app.post('/api/send-email', async (c) => {
     
     if (!resendResponse.ok) {
       console.error('Resend API Error:', resendData)
+      // Resend 무료 플랜: onboarding@resend.dev 발신 시 자신의 계정 이메일로만 발송 가능
+      const errMsg = resendData?.message || JSON.stringify(resendData)
+      const friendlyMsg = errMsg.includes('You can only send testing emails')
+        ? `이메일 발송 제한: Resend 무료 플랜에서는 Resend 가입 이메일로만 발송 가능합니다.\n현재 받는 주소: ${recipientEmail}\n해결: 도메인 인증 후 발신 주소를 변경하면 모든 주소로 발송 가능합니다.`
+        : `이메일 발송에 실패했습니다: ${errMsg}`
       return c.json({ 
         success: false, 
-        message: '이메일 발송에 실패했습니다. 다시 시도해주세요.',
+        message: friendlyMsg,
         error: resendData
       }, 200)
     }
@@ -2802,7 +2809,7 @@ app.get('/ocr', (c) => {
                             <i class="fas fa-arrow-left mr-2"></i>이전
                         </button>
                         <div class="flex space-x-4">
-                            <button onclick="saveDraftReport()" 
+                            <button id="saveDraftBtn" onclick="saveDraftReport()" 
                                     class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700">
                                 <i class="fas fa-save mr-2"></i>임시 저장
                             </button>
@@ -2826,7 +2833,7 @@ app.get('/ocr', (c) => {
                                 class="px-4 sm:px-6 py-2.5 sm:py-3 border border-gray-300 rounded-lg hover:bg-gray-50 font-semibold">
                             <i class="fas fa-arrow-left mr-2"></i>이전
                         </button>
-                        <button onclick="saveReport()" 
+                        <button id="saveReportBtn" onclick="saveReport()" 
                                 class="bg-blue-600 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg hover:bg-blue-700 font-semibold">
                             <i class="fas fa-save mr-2"></i>저장하기
                         </button>
