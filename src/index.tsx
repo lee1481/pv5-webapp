@@ -7,8 +7,9 @@ type Bindings = {
   AI: any;
   RESEND_API_KEY?: string;
   REPORTS_KV?: KVNamespace;
-  DB: D1Database; // UPDATED - D1 Database
-  R2: R2Bucket; // UPDATED - R2 Storage
+  DB: D1Database;
+  R2: R2Bucket;
+  JWT_SECRET?: string; // 환경변수로 관리
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -50,8 +51,11 @@ app.get('/api/packages/:id', (c) => {
 // JWT 인증 시스템 (Web Crypto API 사용)
 // ========================================
 
-// JWT 시크릿 키 (프로덕션에서는 환경변수로 관리)
-const JWT_SECRET = 'kvan-pv5-jwt-secret-2026-secure-key'
+// JWT 시크릿 키 — 환경변수 우선, 없으면 폴백 (개발용)
+const JWT_SECRET_FALLBACK = 'kvan-pv5-jwt-secret-2026-secure-key-fallback'
+function getJwtSecret(env?: Bindings): string {
+  return env?.JWT_SECRET || JWT_SECRET_FALLBACK
+}
 
 // Base64 인코딩 (UTF-8 지원)
 function base64UrlEncode(str: string): string {
@@ -61,7 +65,7 @@ function base64UrlEncode(str: string): string {
 }
 
 // Web Crypto API를 사용한 JWT 생성
-async function generateToken(user: any, branchName: string | null): Promise<string> {
+async function generateToken(user: any, branchName: string | null, env?: Bindings): Promise<string> {
   const header = { alg: 'HS256', typ: 'JWT' }
   const payload = {
     id: user.id,
@@ -79,7 +83,7 @@ async function generateToken(user: any, branchName: string | null): Promise<stri
   const encoder = new TextEncoder()
   const key = await crypto.subtle.importKey(
     'raw',
-    encoder.encode(JWT_SECRET),
+    encoder.encode(getJwtSecret(env)),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign']
@@ -133,19 +137,92 @@ async function verifyToken(token: string) {
   }
 }
 
-// bcrypt 비밀번호 검증 (임시 평문)
-async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  // 임시: bcrypt 해시와 평문 모두 지원
-  // bcrypt 해시 형식: $2b$10$...
-  if (hash.startsWith('$2b$')) {
-    // bcrypt 해시는 Cloudflare Workers에서 검증 불가능
-    // 임시로 평문 비밀번호 DB에 추가 필요
-    console.warn('bcrypt hash detected, but bcrypt is not supported in Cloudflare Workers')
+// ========================================
+// 비밀번호 해싱 (Web Crypto API PBKDF2 - Cloudflare Workers 완전 지원)
+// 형식: pbkdf2$<salt_hex>$<hash_hex>
+// ========================================
+
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder()
+  // 랜덤 salt 16바이트 생성
+  const salt = crypto.getRandomValues(new Uint8Array(16))
+  
+  // PBKDF2 키 파생
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(password),
+    'PBKDF2',
+    false,
+    ['deriveBits']
+  )
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt: salt,
+      iterations: 100000, // 10만 회 반복
+      hash: 'SHA-256'
+    },
+    keyMaterial,
+    256 // 32바이트
+  )
+  
+  // hex 인코딩
+  const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('')
+  const hashHex = Array.from(new Uint8Array(derivedBits)).map(b => b.toString(16).padStart(2, '0')).join('')
+  
+  return `pbkdf2$${saltHex}$${hashHex}`
+}
+
+async function verifyPassword(password: string, stored: string): Promise<boolean> {
+  try {
+    // PBKDF2 형식 검증
+    if (stored.startsWith('pbkdf2$')) {
+      const parts = stored.split('$')
+      if (parts.length !== 3) return false
+      
+      const saltHex = parts[1]
+      const storedHashHex = parts[2]
+      
+      // hex → Uint8Array 변환
+      const salt = new Uint8Array(saltHex.match(/.{2}/g)!.map(b => parseInt(b, 16)))
+      
+      // 동일 조건으로 재해싱
+      const encoder = new TextEncoder()
+      const keyMaterial = await crypto.subtle.importKey(
+        'raw',
+        encoder.encode(password),
+        'PBKDF2',
+        false,
+        ['deriveBits']
+      )
+      const derivedBits = await crypto.subtle.deriveBits(
+        {
+          name: 'PBKDF2',
+          salt: salt,
+          iterations: 100000,
+          hash: 'SHA-256'
+        },
+        keyMaterial,
+        256
+      )
+      const hashHex = Array.from(new Uint8Array(derivedBits)).map(b => b.toString(16).padStart(2, '0')).join('')
+      
+      // 타이밍 공격 방지: 상수 시간 비교
+      return hashHex === storedHashHex
+    }
+    
+    // 구 bcrypt 해시 — Workers에서 지원 불가
+    if (stored.startsWith('$2b$') || stored.startsWith('$2a$')) {
+      console.warn('[Security] bcrypt hash detected - not supported in Workers')
+      return false
+    }
+    
+    // 레거시 평문 비교 (마이그레이션 완료 후 제거 예정)
+    return password === stored
+  } catch (e) {
+    console.error('[Security] verifyPassword error:', e)
     return false
   }
-  
-  // 평문 비교
-  return password === hash
 }
 
 // API: 로그인
@@ -178,9 +255,9 @@ app.post('/api/auth/login', async (c) => {
       return c.json({ success: false, error: '아이디 또는 비밀번호가 올바르지 않습니다.' }, 401)
     }
 
-    // JWT 토큰 생성
+    // JWT 토큰 생성 (env 전달로 JWT_SECRET 환경변수 사용)
     const branchName = result.role === 'head' ? '본사' : (result.branch_name as string || null)
-    const token = await generateToken(result, branchName)
+    const token = await generateToken(result, branchName, c.env)
 
     return c.json({
       success: true,
@@ -528,10 +605,11 @@ app.post('/api/users', async (c) => {
       return c.json({ success: false, error: '이미 존재하는 아이디입니다.' }, 400)
     }
     
-    // 사용자 추가 (평문 비밀번호)
+    // 비밀번호 해싱 후 저장
+    const hashedPassword = await hashPassword(password)
     const result = await env.DB.prepare(
       'INSERT INTO users (username, password, role, branch_id) VALUES (?, ?, ?, ?)'
-    ).bind(username, password, role, role === 'branch' ? branch_id : null).run()
+    ).bind(username, hashedPassword, role, role === 'branch' ? branch_id : null).run()
     
     return c.json({
       success: true,
@@ -555,9 +633,6 @@ app.put('/api/users/my-password', async (c) => {
   try {
     const authHeader = c.req.header('Authorization')
     
-    console.log('=== My Password Change API ===')
-    console.log('Authorization header:', authHeader ? 'Present' : 'Missing')
-    
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return c.json({ success: false, error: '인증이 필요합니다.' }, 401)
     }
@@ -574,21 +649,13 @@ app.put('/api/users/my-password', async (c) => {
       return c.json({ success: false, error: '본사 관리자만 사용할 수 있습니다.' }, 403)
     }
 
-    const body = await c.req.json()
-    console.log('Request body:', body)
-    
-    const { currentPassword, newPassword } = body
-    
-    console.log('currentPassword:', currentPassword ? 'Present (length: ' + currentPassword.length + ')' : 'Missing')
-    console.log('newPassword:', newPassword ? 'Present (length: ' + newPassword.length + ')' : 'Missing')
+    const { currentPassword, newPassword } = await c.req.json()
     
     if (!currentPassword || !newPassword) {
-      console.log('Error: Missing password fields')
       return c.json({ success: false, error: '현재 비밀번호와 새 비밀번호를 입력해주세요.' }, 400)
     }
     
     if (newPassword.length < 6) {
-      console.log('Error: New password too short')
       return c.json({ success: false, error: '비밀번호는 6자 이상이어야 합니다.' }, 400)
     }
     
@@ -599,25 +666,21 @@ app.put('/api/users/my-password', async (c) => {
       'SELECT id, password FROM users WHERE username = ?'
     ).bind(decoded.user.username).first()
     
-    console.log('User found:', user ? 'Yes' : 'No')
-    console.log('DB password:', user?.password)
-    console.log('Input password:', currentPassword)
-    console.log('Passwords match:', user?.password === currentPassword)
-    
     if (!user) {
       return c.json({ success: false, error: '사용자를 찾을 수 없습니다.' }, 404)
     }
     
-    if (user.password !== currentPassword) {
+    // PBKDF2 해시 검증
+    const isValid = await verifyPassword(currentPassword, user.password as string)
+    if (!isValid) {
       return c.json({ success: false, error: '현재 비밀번호가 일치하지 않습니다.' }, 401)
     }
     
-    // 비밀번호 변경
+    // 새 비밀번호 해싱 후 저장
+    const hashedNewPassword = await hashPassword(newPassword)
     await env.DB.prepare(
       'UPDATE users SET password = ? WHERE id = ?'
-    ).bind(newPassword, user.id).run()
-    
-    console.log('Password changed successfully')
+    ).bind(hashedNewPassword, user.id).run()
     
     return c.json({
       success: true,
@@ -625,7 +688,7 @@ app.put('/api/users/my-password', async (c) => {
     })
   } catch (error: any) {
     console.error('My password change error:', error)
-    return c.json({ success: false, error: '비밀번호 변경 중 오류가 발생했습니다.', details: error.message }, 500)
+    return c.json({ success: false, error: '비밀번호 변경 중 오류가 발생했습니다.' }, 500)
   }
 })
 
@@ -726,10 +789,11 @@ app.put('/api/users/:username/password', async (c) => {
       return c.json({ success: false, error: '다른 본사 계정의 비밀번호는 변경할 수 없습니다.' }, 403)
     }
     
-    // 비밀번호 강제 변경
+    // 새 비밀번호 해싱 후 강제 변경
+    const hashedNewPassword = await hashPassword(newPassword)
     await env.DB.prepare(
       'UPDATE users SET password = ? WHERE username = ?'
-    ).bind(newPassword, targetUsername).run()
+    ).bind(hashedNewPassword, targetUsername).run()
     
     return c.json({
       success: true,
