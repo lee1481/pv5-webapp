@@ -545,6 +545,10 @@
         })
 
         // 지사 목록 로드 및 아이콘 동적 생성
+        function goToBranch() {
+            window.location.href = '/';
+        }
+
         async function loadBranches(user) {
             try {
                 const token = localStorage.getItem('token')
@@ -588,7 +592,7 @@
 
                     if (isVisible) {
                         grid.innerHTML += `
-                            <a href="/" class="branch-card" data-branch="${branch.code}">
+                            <a href="javascript:void(0)" onclick="goToBranch()" class="branch-card" data-branch="${branch.code}">
                                 <div class="branch-icon">
                                     <i class="fas ${icon} text-white"></i>
                                 </div>
@@ -598,17 +602,6 @@
                         `
                     }
                 })
-
-                // OCR 모드 (모두 표시)
-                grid.innerHTML += `
-                    <a href="/ocr" class="branch-card" data-branch="ocr">
-                        <div class="branch-icon">
-                            <i class="fas fa-file-upload text-white"></i>
-                        </div>
-                        <div class="branch-name">OCR 모드</div>
-                        <div class="branch-subtitle">Upload</div>
-                    </a>
-                `
 
             } catch (error) {
                 console.error('Load branches error:', error)
