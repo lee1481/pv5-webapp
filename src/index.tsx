@@ -561,42 +561,130 @@ app.put('/api/users/:id', async (c) => {
   }
 })
 
-// API: 비밀번호 변경
-app.put('/api/users/:id/password', async (c) => {
+// ========================================
+// 비밀번호 관리 API (본사 전용)
+// ========================================
+
+// API: 본사 자기 비밀번호 변경
+app.put('/api/users/my-password', async (c) => {
   try {
-    const id = c.req.param('id')
-    const { password } = await c.req.json()
+    const authHeader = c.req.header('Authorization')
     
-    if (!password) {
-      return c.json({ success: false, error: '새 비밀번호를 입력해주세요.' }, 400)
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ success: false, error: '인증이 필요합니다.' }, 401)
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = await verifyToken(token)
+
+    if (!decoded.success || !decoded.user) {
+      return c.json({ success: false, error: '유효하지 않은 토큰입니다.' }, 401)
+    }
+
+    // 본사 권한 체크
+    if (decoded.user.role !== 'head') {
+      return c.json({ success: false, error: '본사 관리자만 사용할 수 있습니다.' }, 403)
+    }
+
+    const { currentPassword, newPassword } = await c.req.json()
+    
+    if (!currentPassword || !newPassword) {
+      return c.json({ success: false, error: '현재 비밀번호와 새 비밀번호를 입력해주세요.' }, 400)
     }
     
-    if (password.length < 6) {
+    if (newPassword.length < 6) {
       return c.json({ success: false, error: '비밀번호는 6자 이상이어야 합니다.' }, 400)
     }
     
     const { env } = c
     
-    // 사용자 존재 확인
+    // 현재 비밀번호 확인
     const user = await env.DB.prepare(
-      'SELECT id FROM users WHERE id = ?'
-    ).bind(id).first()
+      'SELECT id, password FROM users WHERE username = ?'
+    ).bind(decoded.user.username).first()
     
     if (!user) {
-      return c.json({ success: false, error: '존재하지 않는 사용자입니다.' }, 404)
+      return c.json({ success: false, error: '사용자를 찾을 수 없습니다.' }, 404)
     }
     
-    // 비밀번호 변경 (평문)
+    if (user.password !== currentPassword) {
+      return c.json({ success: false, error: '현재 비밀번호가 일치하지 않습니다.' }, 401)
+    }
+    
+    // 비밀번호 변경
     await env.DB.prepare(
       'UPDATE users SET password = ? WHERE id = ?'
-    ).bind(password, id).run()
+    ).bind(newPassword, user.id).run()
     
     return c.json({
       success: true,
       message: '비밀번호가 변경되었습니다.'
     })
   } catch (error: any) {
-    console.error('Password change error:', error)
+    console.error('My password change error:', error)
+    return c.json({ success: false, error: '비밀번호 변경 중 오류가 발생했습니다.' }, 500)
+  }
+})
+
+// API: 본사 관리자 전용 - 지사 비밀번호 강제 변경
+app.put('/api/users/:username/password', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization')
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ success: false, error: '인증이 필요합니다.' }, 401)
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = await verifyToken(token)
+
+    if (!decoded.success || !decoded.user) {
+      return c.json({ success: false, error: '유효하지 않은 토큰입니다.' }, 401)
+    }
+
+    // 본사 권한 체크
+    if (decoded.user.role !== 'head') {
+      return c.json({ success: false, error: '본사 관리자만 사용할 수 있습니다.' }, 403)
+    }
+
+    const targetUsername = c.req.param('username')
+    const { newPassword } = await c.req.json()
+    
+    if (!newPassword) {
+      return c.json({ success: false, error: '새 비밀번호를 입력해주세요.' }, 400)
+    }
+    
+    if (newPassword.length < 6) {
+      return c.json({ success: false, error: '비밀번호는 6자 이상이어야 합니다.' }, 400)
+    }
+    
+    const { env } = c
+    
+    // 대상 사용자 존재 확인
+    const targetUser = await env.DB.prepare(
+      'SELECT id, role FROM users WHERE username = ?'
+    ).bind(targetUsername).first()
+    
+    if (!targetUser) {
+      return c.json({ success: false, error: '존재하지 않는 사용자입니다.' }, 404)
+    }
+    
+    // 본사 계정 변경 방지
+    if (targetUser.role === 'head') {
+      return c.json({ success: false, error: '다른 본사 계정의 비밀번호는 변경할 수 없습니다.' }, 403)
+    }
+    
+    // 비밀번호 강제 변경
+    await env.DB.prepare(
+      'UPDATE users SET password = ? WHERE username = ?'
+    ).bind(newPassword, targetUsername).run()
+    
+    return c.json({
+      success: true,
+      message: `${targetUsername} 계정의 비밀번호가 변경되었습니다.`
+    })
+  } catch (error: any) {
+    console.error('Force password change error:', error)
     return c.json({ success: false, error: '비밀번호 변경 중 오류가 발생했습니다.' }, 500)
   }
 })
