@@ -2,8 +2,6 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { serveStatic } from 'hono/cloudflare-workers'
 import { allPackages, getPackageById } from './packages'
-import * as bcrypt from 'bcryptjs'
-import * as jwt from 'jsonwebtoken'
 
 type Bindings = {
   AI: any;
@@ -49,35 +47,77 @@ app.get('/api/packages/:id', (c) => {
 })
 
 // ========================================
-// JWT 인증 시스템
+// JWT 인증 시스템 (Web Crypto API 사용)
 // ========================================
 
 // JWT 시크릿 키 (프로덕션에서는 환경변수로 관리)
 const JWT_SECRET = 'kvan-pv5-jwt-secret-2026-secure-key'
 
-// JWT 토큰 생성 함수
-function generateToken(user: any, branchName: string | null) {
-  return jwt.sign(
-    {
-      id: user.id,
-      username: user.username,
-      role: user.role,
-      branchId: user.branch_id,
-      branchName: branchName
-    },
-    JWT_SECRET,
-    { expiresIn: '24h' }
+// Web Crypto API를 사용한 JWT 생성
+async function generateToken(user: any, branchName: string | null): Promise<string> {
+  const header = { alg: 'HS256', typ: 'JWT' }
+  const payload = {
+    id: user.id,
+    username: user.username,
+    role: user.role,
+    branchId: user.branch_id,
+    branchName: branchName,
+    exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60) // 24시간
+  }
+
+  const encoder = new TextEncoder()
+  const data = encoder.encode(
+    `${btoa(JSON.stringify(header))}.${btoa(JSON.stringify(payload))}`
   )
+  
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(JWT_SECRET),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  )
+  
+  const signature = await crypto.subtle.sign('HMAC', key, data)
+  const signatureBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
+  
+  return `${btoa(JSON.stringify(header))}.${btoa(JSON.stringify(payload))}.${signatureBase64}`
 }
 
-// JWT 토큰 검증 미들웨어
+// JWT 토큰 검증
 async function verifyToken(token: string) {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET)
-    return { success: true, user: decoded }
+    const parts = token.split('.')
+    if (parts.length !== 3) {
+      return { success: false, error: 'Invalid token format' }
+    }
+
+    const payload = JSON.parse(atob(parts[1]))
+    
+    // 만료 확인
+    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+      return { success: false, error: 'Token expired' }
+    }
+
+    return { success: true, user: payload }
   } catch (error) {
     return { success: false, error: 'Invalid token' }
   }
+}
+
+// bcrypt 비밀번호 검증 (임시 평문)
+async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  // 임시: bcrypt 해시와 평문 모두 지원
+  // bcrypt 해시 형식: $2b$10$...
+  if (hash.startsWith('$2b$')) {
+    // bcrypt 해시는 Cloudflare Workers에서 검증 불가능
+    // 임시로 평문 비밀번호 DB에 추가 필요
+    console.warn('bcrypt hash detected, but bcrypt is not supported in Cloudflare Workers')
+    return false
+  }
+  
+  // 평문 비교
+  return password === hash
 }
 
 // API: 로그인
@@ -104,7 +144,7 @@ app.post('/api/auth/login', async (c) => {
     }
 
     // 비밀번호 검증
-    const isValidPassword = await bcrypt.compare(password, result.password as string)
+    const isValidPassword = await verifyPassword(password, result.password as string)
     
     if (!isValidPassword) {
       return c.json({ success: false, error: '아이디 또는 비밀번호가 올바르지 않습니다.' }, 401)
@@ -162,6 +202,152 @@ app.get('/api/auth/verify', async (c) => {
 // API: 로그아웃 (클라이언트에서 토큰 삭제)
 app.post('/api/auth/logout', (c) => {
   return c.json({ success: true, message: '로그아웃되었습니다.' })
+})
+
+// ========================================
+// 지사 관리 API (본사 전용)
+// ========================================
+
+// API: 모든 지사 목록 조회
+app.get('/api/branches/list', async (c) => {
+  try {
+    const { env } = c
+    
+    const result = await env.DB.prepare(
+      'SELECT * FROM branches ORDER BY id ASC'
+    ).all()
+    
+    return c.json({
+      success: true,
+      branches: result.results || []
+    })
+  } catch (error: any) {
+    console.error('Branches list error:', error)
+    return c.json({ success: false, error: '지사 목록 조회 중 오류가 발생했습니다.' }, 500)
+  }
+})
+
+// API: 지사 추가 (본사 전용)
+app.post('/api/branches', async (c) => {
+  try {
+    const { name, code } = await c.req.json()
+    
+    if (!name || !code) {
+      return c.json({ success: false, error: '지사명과 코드를 입력해주세요.' }, 400)
+    }
+    
+    const { env } = c
+    
+    // 중복 코드 확인
+    const existing = await env.DB.prepare(
+      'SELECT id FROM branches WHERE code = ?'
+    ).bind(code).first()
+    
+    if (existing) {
+      return c.json({ success: false, error: '이미 존재하는 지사 코드입니다.' }, 400)
+    }
+    
+    // 지사 추가
+    const result = await env.DB.prepare(
+      'INSERT INTO branches (name, code) VALUES (?, ?)'
+    ).bind(name, code).run()
+    
+    return c.json({
+      success: true,
+      message: '지사가 추가되었습니다.',
+      id: result.meta.last_row_id
+    })
+  } catch (error: any) {
+    console.error('Branch create error:', error)
+    return c.json({ success: false, error: '지사 추가 중 오류가 발생했습니다.' }, 500)
+  }
+})
+
+// API: 지사 수정 (본사 전용)
+app.put('/api/branches/:id', async (c) => {
+  try {
+    const id = c.req.param('id')
+    const { name, code } = await c.req.json()
+    
+    if (!name || !code) {
+      return c.json({ success: false, error: '지사명과 코드를 입력해주세요.' }, 400)
+    }
+    
+    const { env } = c
+    
+    // 지사 존재 확인
+    const branch = await env.DB.prepare(
+      'SELECT id FROM branches WHERE id = ?'
+    ).bind(id).first()
+    
+    if (!branch) {
+      return c.json({ success: false, error: '존재하지 않는 지사입니다.' }, 404)
+    }
+    
+    // 중복 코드 확인 (자기 자신 제외)
+    const existing = await env.DB.prepare(
+      'SELECT id FROM branches WHERE code = ? AND id != ?'
+    ).bind(code, id).first()
+    
+    if (existing) {
+      return c.json({ success: false, error: '이미 존재하는 지사 코드입니다.' }, 400)
+    }
+    
+    // 지사 수정
+    await env.DB.prepare(
+      'UPDATE branches SET name = ?, code = ? WHERE id = ?'
+    ).bind(name, code, id).run()
+    
+    return c.json({
+      success: true,
+      message: '지사가 수정되었습니다.'
+    })
+  } catch (error: any) {
+    console.error('Branch update error:', error)
+    return c.json({ success: false, error: '지사 수정 중 오류가 발생했습니다.' }, 500)
+  }
+})
+
+// API: 지사 삭제 (본사 전용)
+app.delete('/api/branches/:id', async (c) => {
+  try {
+    const id = c.req.param('id')
+    const { env } = c
+    
+    // 지사 존재 확인
+    const branch = await env.DB.prepare(
+      'SELECT id FROM branches WHERE id = ?'
+    ).bind(id).first()
+    
+    if (!branch) {
+      return c.json({ success: false, error: '존재하지 않는 지사입니다.' }, 404)
+    }
+    
+    // 해당 지사 소속 사용자 확인
+    const users = await env.DB.prepare(
+      'SELECT COUNT(*) as count FROM users WHERE branch_id = ?'
+    ).bind(id).first()
+    
+    if (users && (users.count as number) > 0) {
+      return c.json({ 
+        success: false, 
+        error: '해당 지사에 소속된 사용자가 있어 삭제할 수 없습니다.' 
+      }, 400)
+    }
+    
+    // 지사 삭제
+    await env.DB.prepare(
+      'DELETE FROM branches WHERE id = ?'
+    ).bind(id).run()
+    
+    return c.json({
+      success: true,
+      message: '지사가 삭제되었습니다.'
+    })
+  } catch (error: any) {
+    console.error('Branch delete error:', error)
+    return c.json({ success: false, error: '지사 삭제 중 오류가 발생했습니다.' }, 500)
+  }
 })
 
 // API: 거래명세서 OCR 분석

@@ -412,78 +412,8 @@
         </div>
 
         <!-- Branch Grid -->
-        <div class="branch-grid">
-            <!-- 본사 -->
-            <a href="/hq" class="branch-card" data-branch="hq">
-                <div class="branch-icon">
-                    <i class="fas fa-building text-white"></i>
-                </div>
-                <div class="branch-name">본사</div>
-                <div class="branch-subtitle">Headquarters</div>
-            </a>
-
-            <!-- 서울지사 -->
-            <a href="/?branch=seoul" class="branch-card" data-branch="seoul">
-                <div class="branch-icon">
-                    <i class="fas fa-city text-white"></i>
-                </div>
-                <div class="branch-name">서울지사</div>
-                <div class="branch-subtitle">Seoul</div>
-            </a>
-
-            <!-- 경북지사 -->
-            <a href="/?branch=gyeongbuk" class="branch-card" data-branch="gyeongbuk">
-                <div class="branch-icon">
-                    <i class="fas fa-mountain text-white"></i>
-                </div>
-                <div class="branch-name">경북지사</div>
-                <div class="branch-subtitle">Gyeongbuk</div>
-            </a>
-
-            <!-- 호남지사 -->
-            <a href="/?branch=honam" class="branch-card" data-branch="honam">
-                <div class="branch-icon">
-                    <i class="fas fa-sun text-white"></i>
-                </div>
-                <div class="branch-name">호남지사</div>
-                <div class="branch-subtitle">Honam</div>
-            </a>
-
-            <!-- 경남지사 -->
-            <a href="/?branch=gyeongnam" class="branch-card" data-branch="gyeongnam">
-                <div class="branch-icon">
-                    <i class="fas fa-anchor text-white"></i>
-                </div>
-                <div class="branch-name">경남지사</div>
-                <div class="branch-subtitle">Gyeongnam</div>
-            </a>
-
-            <!-- 제주지사 -->
-            <a href="/?branch=jeju" class="branch-card" data-branch="jeju">
-                <div class="branch-icon">
-                    <i class="fas fa-umbrella-beach text-white"></i>
-                </div>
-                <div class="branch-name">제주지사</div>
-                <div class="branch-subtitle">Jeju Island</div>
-            </a>
-
-            <!-- 대전지사 -->
-            <a href="/?branch=daejeon" class="branch-card" data-branch="daejeon">
-                <div class="branch-icon">
-                    <i class="fas fa-rocket text-white"></i>
-                </div>
-                <div class="branch-name">대전지사</div>
-                <div class="branch-subtitle">Daejeon</div>
-            </a>
-
-            <!-- OCR 모드 -->
-            <a href="/ocr" class="branch-card" data-branch="ocr">
-                <div class="branch-icon">
-                    <i class="fas fa-file-upload text-white"></i>
-                </div>
-                <div class="branch-name">OCR 모드</div>
-                <div class="branch-subtitle">Upload</div>
-            </a>
+        <div id="branchGrid" class="branch-grid">
+            <!-- 동적으로 생성됩니다 -->
         </div>
 
         <!-- Footer -->
@@ -500,8 +430,18 @@
 
     <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
     <script>
-        // 페이지 로드 시 로그인 체크
-        document.addEventListener('DOMContentLoaded', () => {
+        // 아이콘 매핑 (지사 코드별)
+        const iconMap = {
+            'honam': 'fa-sun',
+            'busan-gyeongnam': 'fa-anchor',
+            'seoul-gyeongbuk': 'fa-city',
+            'gyeonggi-gangwon': 'fa-mountain',
+            'chungbuk-daejeon': 'fa-rocket',
+            'default': 'fa-building'
+        }
+
+        // 페이지 로드 시 로그인 체크 및 지사 로드
+        document.addEventListener('DOMContentLoaded', async () => {
             const token = localStorage.getItem('token')
             const userStr = localStorage.getItem('user')
 
@@ -513,42 +453,8 @@
 
             const user = JSON.parse(userStr)
 
-            // 권한별 UI 분기
-            if (user.role === 'head') {
-                // 본사: 모든 아이콘 표시
-                console.log('본사 관리자 로그인:', user.username)
-            } else if (user.role === 'branch') {
-                // 지사: 자기 지사 아이콘만 표시
-                console.log('지사 로그인:', user.branchName)
-                
-                const allBranches = document.querySelectorAll('[data-branch]')
-                allBranches.forEach(card => {
-                    const branchCode = card.getAttribute('data-branch')
-                    
-                    // 본사 아이콘 숨기기
-                    if (branchCode === 'hq') {
-                        card.style.display = 'none'
-                    }
-                    
-                    // 다른 지사 아이콘 숨기기 (자기 지사와 OCR 제외)
-                    if (branchCode !== 'ocr' && branchCode !== 'hq') {
-                        // branch_id로 확인
-                        const branchMap = {
-                            1: 'seoul',
-                            2: 'gyeongbuk',
-                            3: 'honam',
-                            4: 'gyeongnam',
-                            5: 'jeju',
-                            6: 'daejeon'
-                        }
-                        
-                        const myBranchCode = branchMap[user.branchId]
-                        if (branchCode !== myBranchCode) {
-                            card.style.display = 'none'
-                        }
-                    }
-                })
-            }
+            // 지사 목록 로드 및 아이콘 생성
+            await loadBranches(user)
 
             // 로그아웃 버튼 추가
             const header = document.querySelector('.header-logo')
@@ -568,6 +474,75 @@
             userInfo.innerHTML = `<i class="fas fa-user-circle mr-2"></i>${user.branchName} - ${user.username}`
             header.insertBefore(userInfo, logoutBtn)
         })
+
+        // 지사 목록 로드 및 아이콘 동적 생성
+        async function loadBranches(user) {
+            try {
+                const response = await axios.get('/api/branches/list')
+                if (!response.data.success) return
+
+                const branches = response.data.branches
+                const grid = document.getElementById('branchGrid')
+
+                // 본사 아이콘 (본사 관리자만)
+                if (user.role === 'head') {
+                    grid.innerHTML += `
+                        <a href="/static/hq.html" class="branch-card" data-branch="hq">
+                            <div class="branch-icon">
+                                <i class="fas fa-building text-white"></i>
+                            </div>
+                            <div class="branch-name">본사</div>
+                            <div class="branch-subtitle">Headquarters</div>
+                        </a>
+                    `
+                    
+                    // 지사 관리 아이콘 추가
+                    grid.innerHTML += `
+                        <a href="/static/branches.html" class="branch-card" data-branch="admin">
+                            <div class="branch-icon">
+                                <i class="fas fa-cog text-white"></i>
+                            </div>
+                            <div class="branch-name">지사 관리</div>
+                            <div class="branch-subtitle">Admin</div>
+                        </a>
+                    `
+                }
+
+                // 지사 아이콘 생성
+                branches.forEach(branch => {
+                    const icon = iconMap[branch.code] || iconMap['default']
+                    const isMyBranch = user.role === 'branch' && user.branchId === branch.id
+                    const isVisible = user.role === 'head' || isMyBranch
+
+                    if (isVisible) {
+                        grid.innerHTML += `
+                            <a href="/?branch=${branch.code}" class="branch-card" data-branch="${branch.code}">
+                                <div class="branch-icon">
+                                    <i class="fas ${icon} text-white"></i>
+                                </div>
+                                <div class="branch-name">${branch.name}</div>
+                                <div class="branch-subtitle">${branch.code}</div>
+                            </a>
+                        `
+                    }
+                })
+
+                // OCR 모드 (모두 표시)
+                grid.innerHTML += `
+                    <a href="/ocr" class="branch-card" data-branch="ocr">
+                        <div class="branch-icon">
+                            <i class="fas fa-file-upload text-white"></i>
+                        </div>
+                        <div class="branch-name">OCR 모드</div>
+                        <div class="branch-subtitle">Upload</div>
+                    </a>
+                `
+
+            } catch (error) {
+                console.error('Load branches error:', error)
+                alert('지사 목록을 불러오는 중 오류가 발생했습니다.')
+            }
+        }
     </script>
 </body>
 </html>

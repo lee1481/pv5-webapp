@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>지사 관리 - PV5 시공관리 시스템</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <img src="/static/kvan-logo.png" alt="K-VAN" class="h-10">
+                    <h1 class="text-2xl font-bold text-gray-900">
+                        <i class="fas fa-building mr-2 text-blue-600"></i>
+                        지사 관리
+                    </h1>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span id="userInfo" class="text-sm text-gray-600"></span>
+                    <a href="/static/launcher.html" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">
+                        <i class="fas fa-home mr-2"></i>홈으로
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- 추가 버튼 -->
+        <div class="mb-6 flex justify-between items-center">
+            <p class="text-gray-600">
+                <i class="fas fa-info-circle mr-2"></i>
+                지사를 추가, 수정, 삭제할 수 있습니다.
+            </p>
+            <button onclick="openAddModal()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-lg">
+                <i class="fas fa-plus mr-2"></i>지사 추가
+            </button>
+        </div>
+
+        <!-- 지사 목록 테이블 -->
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            <table class="w-full">
+                <thead class="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">ID</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">지사명</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">코드</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">등록일</th>
+                        <th class="px-6 py-4 text-center text-sm font-semibold text-gray-700">관리</th>
+                    </tr>
+                </thead>
+                <tbody id="branchList" class="divide-y divide-gray-200">
+                    <!-- 동적으로 생성 -->
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- 추가/수정 모달 -->
+    <div id="branchModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+            <h2 id="modalTitle" class="text-2xl font-bold text-gray-900 mb-6">
+                <i class="fas fa-building mr-2 text-blue-600"></i>
+                지사 추가
+            </h2>
+            
+            <form id="branchForm" class="space-y-4">
+                <input type="hidden" id="branchId">
+                
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">
+                        <i class="fas fa-tag mr-2 text-blue-600"></i>지사명
+                    </label>
+                    <input type="text" id="branchName" required
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           placeholder="예: 호남지사">
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">
+                        <i class="fas fa-code mr-2 text-blue-600"></i>코드
+                    </label>
+                    <input type="text" id="branchCode" required
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           placeholder="예: honam (영문소문자, 하이픈 허용)">
+                    <p class="mt-1 text-sm text-gray-500">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        영문 소문자와 하이픈(-)만 사용 가능합니다.
+                    </p>
+                </div>
+                
+                <div class="flex gap-3 pt-4">
+                    <button type="submit"
+                            class="flex-1 bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition">
+                        <i class="fas fa-check mr-2"></i>저장
+                    </button>
+                    <button type="button" onclick="closeModal()"
+                            class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-300 transition">
+                        <i class="fas fa-times mr-2"></i>취소
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 삭제 확인 모달 -->
+    <div id="deleteModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+            <h2 class="text-2xl font-bold text-red-600 mb-4">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                지사 삭제
+            </h2>
+            <p class="text-gray-700 mb-6">
+                정말로 <strong id="deleteBranchName"></strong>을(를) 삭제하시겠습니까?
+            </p>
+            <p class="text-sm text-red-600 mb-6">
+                <i class="fas fa-info-circle mr-2"></i>
+                이 작업은 되돌릴 수 없습니다.
+            </p>
+            <div class="flex gap-3">
+                <button onclick="confirmDelete()"
+                        class="flex-1 bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition">
+                    <i class="fas fa-trash mr-2"></i>삭제
+                </button>
+                <button onclick="closeDeleteModal()"
+                        class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-300 transition">
+                    <i class="fas fa-times mr-2"></i>취소
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    <script>
+        let deleteTargetId = null;
+
+        // 페이지 로드 시 로그인 체크 및 권한 확인
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('token')
+            const userStr = localStorage.getItem('user')
+
+            if (!token || !userStr) {
+                window.location.href = '/static/login.html'
+                return
+            }
+
+            const user = JSON.parse(userStr)
+
+            // 본사 관리자만 접근 가능
+            if (user.role !== 'head') {
+                alert('본사 관리자만 접근할 수 있습니다.')
+                window.location.href = '/static/launcher.html'
+                return
+            }
+
+            document.getElementById('userInfo').textContent = `${user.branchName} - ${user.username}`
+            loadBranches()
+        })
+
+        // 지사 목록 불러오기
+        async function loadBranches() {
+            try {
+                const response = await axios.get('/api/branches/list')
+                if (response.data.success) {
+                    const branches = response.data.branches
+                    const tbody = document.getElementById('branchList')
+                    
+                    if (branches.length === 0) {
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+                                    <i class="fas fa-inbox text-4xl mb-2"></i>
+                                    <p>등록된 지사가 없습니다.</p>
+                                </td>
+                            </tr>
+                        `
+                        return
+                    }
+
+                    tbody.innerHTML = branches.map(branch => `
+                        <tr class="hover:bg-gray-50 transition">
+                            <td class="px-6 py-4 text-sm text-gray-900">${branch.id}</td>
+                            <td class="px-6 py-4 text-sm font-semibold text-gray-900">${branch.name}</td>
+                            <td class="px-6 py-4 text-sm text-gray-600">
+                                <code class="bg-gray-100 px-2 py-1 rounded">${branch.code}</code>
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-600">
+                                ${new Date(branch.created_at).toLocaleDateString('ko-KR')}
+                            </td>
+                            <td class="px-6 py-4 text-center">
+                                <button onclick="openEditModal(${branch.id}, '${branch.name}', '${branch.code}')"
+                                        class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition mr-2">
+                                    <i class="fas fa-edit mr-1"></i>수정
+                                </button>
+                                <button onclick="openDeleteModal(${branch.id}, '${branch.name}')"
+                                        class="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition">
+                                    <i class="fas fa-trash mr-1"></i>삭제
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('')
+                }
+            } catch (error) {
+                console.error('Branch list error:', error)
+                alert('지사 목록을 불러오는 중 오류가 발생했습니다.')
+            }
+        }
+
+        // 추가 모달 열기
+        function openAddModal() {
+            document.getElementById('modalTitle').innerHTML = '<i class="fas fa-plus mr-2 text-blue-600"></i>지사 추가'
+            document.getElementById('branchId').value = ''
+            document.getElementById('branchName').value = ''
+            document.getElementById('branchCode').value = ''
+            document.getElementById('branchModal').classList.remove('hidden')
+        }
+
+        // 수정 모달 열기
+        function openEditModal(id, name, code) {
+            document.getElementById('modalTitle').innerHTML = '<i class="fas fa-edit mr-2 text-blue-600"></i>지사 수정'
+            document.getElementById('branchId').value = id
+            document.getElementById('branchName').value = name
+            document.getElementById('branchCode').value = code
+            document.getElementById('branchModal').classList.remove('hidden')
+        }
+
+        // 모달 닫기
+        function closeModal() {
+            document.getElementById('branchModal').classList.add('hidden')
+        }
+
+        // 삭제 모달 열기
+        function openDeleteModal(id, name) {
+            deleteTargetId = id
+            document.getElementById('deleteBranchName').textContent = name
+            document.getElementById('deleteModal').classList.remove('hidden')
+        }
+
+        // 삭제 모달 닫기
+        function closeDeleteModal() {
+            deleteTargetId = null
+            document.getElementById('deleteModal').classList.add('hidden')
+        }
+
+        // 폼 제출
+        document.getElementById('branchForm').addEventListener('submit', async (e) => {
+            e.preventDefault()
+
+            const id = document.getElementById('branchId').value
+            const name = document.getElementById('branchName').value.trim()
+            const code = document.getElementById('branchCode').value.trim()
+
+            // 코드 검증 (영문 소문자, 하이픈만 허용)
+            if (!/^[a-z-]+$/.test(code)) {
+                alert('코드는 영문 소문자와 하이픈(-)만 사용할 수 있습니다.')
+                return
+            }
+
+            try {
+                let response
+                if (id) {
+                    // 수정
+                    response = await axios.put(`/api/branches/${id}`, { name, code })
+                } else {
+                    // 추가
+                    response = await axios.post('/api/branches', { name, code })
+                }
+
+                if (response.data.success) {
+                    alert(response.data.message)
+                    closeModal()
+                    loadBranches()
+                }
+            } catch (error) {
+                console.error('Branch save error:', error)
+                alert(error.response?.data?.error || '저장 중 오류가 발생했습니다.')
+            }
+        })
+
+        // 삭제 확인
+        async function confirmDelete() {
+            if (!deleteTargetId) return
+
+            try {
+                const response = await axios.delete(`/api/branches/${deleteTargetId}`)
+                if (response.data.success) {
+                    alert(response.data.message)
+                    closeDeleteModal()
+                    loadBranches()
+                }
+            } catch (error) {
+                console.error('Branch delete error:', error)
+                alert(error.response?.data?.error || '삭제 중 오류가 발생했습니다.')
+            }
+        }
+    </script>
+</body>
+</html>
