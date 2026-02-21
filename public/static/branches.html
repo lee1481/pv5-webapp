@@ -368,6 +368,16 @@
 
             try {
                 const token = localStorage.getItem('token')
+                
+                if (!token) {
+                    alert('❌ 로그인이 필요합니다. 다시 로그인해주세요.')
+                    window.location.href = '/static/login.html'
+                    return
+                }
+                
+                console.log('Changing password for:', username)
+                console.log('Token:', token)
+                
                 const response = await axios.put(
                     `/api/users/${username}/password`,
                     { newPassword },
@@ -383,7 +393,14 @@
                 }
             } catch (error) {
                 console.error('Password change error:', error)
-                alert('❌ 비밀번호 변경 중 오류가 발생했습니다.')
+                console.error('Error response:', error.response)
+                
+                const errorMsg = error.response?.data?.error 
+                    || error.response?.data?.message 
+                    || error.message 
+                    || '비밀번호 변경 중 오류가 발생했습니다.'
+                
+                alert(`❌ ${errorMsg}\n\n상세: ${error.response?.status || 'Network Error'}`)
             }
         })
     </script>
