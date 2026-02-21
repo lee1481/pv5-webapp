@@ -1906,10 +1906,11 @@ app.get('/api/assignments/my', async (c) => {
     const params: any[] = []
 
     if (user.role === 'branch' && user.branchId) {
+      // 지사 계정: 반드시 자신의 branch_id 건만 조회
       query += ' WHERE a.branch_id = ?'
-      params.push(user.branchId)
-    } else if (user.role === 'branch') {
-      // branchId가 없는 지사 계정은 빈 목록
+      params.push(Number(user.branchId))
+    } else {
+      // branchId 없는 지사 또는 본사 등 → 무조건 빈 목록 (타 지사 데이터 노출 차단)
       return c.json({ success: true, assignments: [] })
     }
 
