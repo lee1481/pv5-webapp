@@ -251,6 +251,10 @@
             }
 
             document.getElementById('userInfo').textContent = `${user.branchName} - ${user.username}`
+            
+            // 초기 로드 시 지사 폼 필드 비활성화 (브라우저 검증 방지)
+            document.getElementById('branchName').disabled = true
+            
             loadBranches()
         })
 
@@ -313,6 +317,9 @@
             // 비밀번호 변경 섹션 숨기기 (추가 모드)
             document.getElementById('passwordSection').classList.add('hidden')
             
+            // 지사 폼 필드 활성화
+            document.getElementById('branchName').disabled = false
+            
             document.getElementById('branchModal').classList.remove('hidden')
         }
 
@@ -330,6 +337,9 @@
             document.getElementById('newPassword').value = ''
             document.getElementById('confirmPassword').value = ''
             
+            // 지사 폼 필드 활성화
+            document.getElementById('branchName').disabled = false
+            
             document.getElementById('branchModal').classList.remove('hidden')
         }
 
@@ -344,6 +354,9 @@
             document.getElementById('newPassword').value = ''
             document.getElementById('confirmPassword').value = ''
             document.getElementById('passwordSection').classList.add('hidden')
+            
+            // 지사 폼 필드 비활성화 (브라우저 검증 방지)
+            document.getElementById('branchName').disabled = true
         }
 
         // 삭제 모달 열기
