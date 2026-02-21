@@ -336,6 +336,14 @@
         // 모달 닫기
         function closeModal() {
             document.getElementById('branchModal').classList.add('hidden')
+            // 폼 리셋 (required 검증 에러 방지)
+            document.getElementById('branchForm').reset()
+            document.getElementById('branchId').value = ''
+            document.getElementById('branchName').value = ''
+            document.getElementById('branchUsername').value = ''
+            document.getElementById('newPassword').value = ''
+            document.getElementById('confirmPassword').value = ''
+            document.getElementById('passwordSection').classList.add('hidden')
         }
 
         // 삭제 모달 열기
@@ -405,6 +413,9 @@
 
         // 본사 자체 비밀번호 변경 모달 열기
         function openMyPasswordModal() {
+            // 지사 모달이 열려있으면 닫기
+            closeModal();
+            
             document.getElementById('currentPassword').value = '';
             document.getElementById('myNewPassword').value = '';
             document.getElementById('myConfirmPassword').value = '';
