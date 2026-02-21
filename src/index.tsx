@@ -1852,32 +1852,26 @@ app.get('/', (c) => {
                     </div>
                     
                     <!-- 통계 대시보드 (가로 한 줄 배치) -->
-                    <div class="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
-                        <div class="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-5 sm:p-6 rounded-lg shadow-lg">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <p class="text-blue-100 text-sm sm:text-base mb-1">총 매출액</p>
-                                    <p class="text-2xl sm:text-3xl font-bold" id="totalRevenue">₩0</p>
-                                </div>
-                                <i class="fas fa-won-sign text-4xl sm:text-5xl text-blue-200 opacity-50"></i>
+                    <div class="grid grid-cols-3 gap-2 sm:gap-4 mb-6">
+                        <div class="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-3 sm:p-6 rounded-lg shadow-lg">
+                            <div class="text-center">
+                                <i class="fas fa-won-sign text-xl sm:text-3xl text-blue-200 opacity-50 mb-2"></i>
+                                <p class="text-blue-100 text-xs sm:text-base mb-1">총 매출액</p>
+                                <p class="text-lg sm:text-3xl font-bold truncate" id="totalRevenue">₩0</p>
                             </div>
                         </div>
-                        <div class="bg-gradient-to-br from-green-500 to-green-600 text-white p-5 sm:p-6 rounded-lg shadow-lg">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <p class="text-green-100 text-sm sm:text-base mb-1">시공 건수</p>
-                                    <p class="text-2xl sm:text-3xl font-bold" id="totalCount">0건</p>
-                                </div>
-                                <i class="fas fa-clipboard-check text-4xl sm:text-5xl text-green-200 opacity-50"></i>
+                        <div class="bg-gradient-to-br from-green-500 to-green-600 text-white p-3 sm:p-6 rounded-lg shadow-lg">
+                            <div class="text-center">
+                                <i class="fas fa-clipboard-check text-xl sm:text-3xl text-green-200 opacity-50 mb-2"></i>
+                                <p class="text-green-100 text-xs sm:text-base mb-1">시공 건수</p>
+                                <p class="text-lg sm:text-3xl font-bold truncate" id="totalCount">0건</p>
                             </div>
                         </div>
-                        <div class="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-5 sm:p-6 rounded-lg shadow-lg">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <p class="text-purple-100 text-sm sm:text-base mb-1">평균 매출</p>
-                                    <p class="text-2xl sm:text-3xl font-bold" id="averageRevenue">₩0</p>
-                                </div>
-                                <i class="fas fa-chart-bar text-4xl sm:text-5xl text-purple-200 opacity-50"></i>
+                        <div class="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-3 sm:p-6 rounded-lg shadow-lg">
+                            <div class="text-center">
+                                <i class="fas fa-chart-bar text-xl sm:text-3xl text-purple-200 opacity-50 mb-2"></i>
+                                <p class="text-purple-100 text-xs sm:text-base mb-1">평균 매출</p>
+                                <p class="text-lg sm:text-3xl font-bold truncate" id="averageRevenue">₩0</p>
                             </div>
                         </div>
                     </div>
