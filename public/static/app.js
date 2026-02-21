@@ -1,10 +1,4 @@
-// ── axios 전역 인증 헤더 자동 설정 ──────────────────────────────────────────
-;(function setupAxiosAuth() {
-    const token = localStorage.getItem('token')
-    if (token) {
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
-    }
-})()
+// ── axios 전역 인증 헤더 자동 설정 (DOMContentLoaded에서 처리) ──────────────
 
 // 전역 상태 관리
 let currentStep = 1;

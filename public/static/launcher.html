@@ -587,7 +587,8 @@
                 // 지사 아이콘 생성
                 branches.forEach(branch => {
                     const icon = iconMap[branch.code] || iconMap['default']
-                    const isMyBranch = user.role === 'branch' && user.branchId === branch.id
+                    // Number() 변환으로 타입 불일치 방지 (API에서 string으로 올 수 있음)
+                    const isMyBranch = user.role === 'branch' && Number(user.branchId) === Number(branch.id)
                     const isVisible = user.role === 'head' || isMyBranch
 
                     if (isVisible) {

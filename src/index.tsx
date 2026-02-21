@@ -578,13 +578,24 @@ async function requireHeadAuth(c: any): Promise<AuthResult> {
 
 // API: 모든 지사 목록 조회 [본사 전용]
 app.get('/api/branches/list', async (c) => {
-  const auth = await requireHeadAuth(c)
+  // 본사: 전체 지사 목록, 지사: 자신의 지사만 (launcher 카드 표시용)
+  const auth = await requireAuth(c)
   if (!auth.success) return auth.response
   try {
     const { env } = c
-    const result = await env.DB.prepare(
-      'SELECT * FROM branches ORDER BY id ASC'
-    ).all()
+    const user = auth.user as any
+    let result
+    if (user.role === 'head') {
+      // 본사 → 전체 지사 목록
+      result = await env.DB.prepare(
+        'SELECT * FROM branches ORDER BY id ASC'
+      ).all()
+    } else {
+      // 지사 → 자신의 지사만
+      result = await env.DB.prepare(
+        'SELECT * FROM branches WHERE id = ? ORDER BY id ASC'
+      ).bind(user.branchId).all()
+    }
     return c.json({ success: true, branches: result.results || [] })
   } catch (error: any) {
     console.error('Branches list error:', error)
@@ -2501,6 +2512,7 @@ app.get('/ocr', (c) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>PV5 시공(예약) 확인서 시스템</title>
         <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
           .file-upload-area {
@@ -3159,7 +3171,6 @@ app.get('/ocr', (c) => {
             </footer>
         </div>
 
-        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/app.js"></script>
     </body>
     </html>
