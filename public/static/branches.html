@@ -463,12 +463,19 @@
 
             try {
                 const token = localStorage.getItem('token');
+                
+                console.log('=== 본사 비밀번호 변경 요청 ===');
+                console.log('Current Password:', currentPassword ? '입력됨 (길이: ' + currentPassword.length + ')' : '비어있음');
+                console.log('New Password:', newPassword ? '입력됨 (길이: ' + newPassword.length + ')' : '비어있음');
+                console.log('Token:', token ? '있음' : '없음');
 
                 const response = await axios.put(
                     `/api/users/my-password`,
                     { currentPassword, newPassword },
                     { headers: { 'Authorization': `Bearer ${token}` } }
                 );
+                
+                console.log('Response:', response.data);
 
                 if (response.data.success) {
                     alert('✅ 비밀번호가 변경되었습니다. 다시 로그인해주세요.');
@@ -482,8 +489,12 @@
                 }
             } catch (error) {
                 console.error('My password change error:', error);
-                const errorMsg = error.response?.data?.error || '비밀번호 변경 중 오류가 발생했습니다.';
-                alert('❌ ' + errorMsg);
+                console.error('Error response:', error.response);
+                console.error('Error data:', error.response?.data);
+                console.error('Error status:', error.response?.status);
+                
+                const errorMsg = error.response?.data?.error || error.response?.data?.message || '비밀번호 변경 중 오류가 발생했습니다.';
+                alert('❌ ' + errorMsg + '\n\n상태 코드: ' + (error.response?.status || 'N/A'));
             }
         }
 
