@@ -152,7 +152,7 @@ app.post('/api/auth/login', async (c) => {
 
     // JWT 토큰 생성
     const branchName = result.role === 'head' ? '본사' : (result.branch_name as string || null)
-    const token = generateToken(result, branchName)
+    const token = await generateToken(result, branchName)
 
     return c.json({
       success: true,
