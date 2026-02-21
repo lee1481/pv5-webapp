@@ -19,10 +19,19 @@ let selectedAssignment = null; // 현재 선택된 접수 건
 
 // 초기화
 document.addEventListener('DOMContentLoaded', async () => {
+  // 로그인 토큰 없으면 로그인 페이지로
+  const token = localStorage.getItem('token');
+  if (!token) {
+    window.location.href = '/static/login.html';
+    return;
+  }
+  // axios 헤더 재설정 (토큰 보장)
+  axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
   await loadPackages();
   setupStepNavigation();
   updateStepIndicator();
-  // 1단계 접수 목록 렌더링 (로그인 토큰 기반)
+  // 1단계: 토큰 기반으로 해당 지사 배정 목록만 렌더링
   await renderStep1AssignmentList();
 });
 
@@ -42,17 +51,25 @@ async function renderStep1AssignmentList() {
 
   try {
     const res = await axios.get('/api/assignments/my');
-    if (!res.data.success) throw new Error('API 실패');
+    if (!res.data.success) throw new Error(res.data.error || 'API 실패');
 
     currentAssignments = res.data.assignments || [];
     renderAssignmentCards(container, currentAssignments);
 
   } catch(e) {
     console.error('renderStep1 error:', e);
+    // 401 = 토큰 만료 → 로그인으로
+    if (e.response?.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/static/login.html';
+      return;
+    }
     container.innerHTML = `
       <div class="text-center py-12 text-red-400">
         <i class="fas fa-exclamation-circle text-4xl mb-3 block"></i>
         <p>배정 목록을 불러오지 못했습니다.</p>
+        <p class="text-sm mt-1 text-gray-400">${e.message || ''}</p>
         <button onclick="renderStep1AssignmentList()" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">다시 시도</button>
       </div>`;
   }

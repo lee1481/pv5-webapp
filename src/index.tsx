@@ -2649,33 +2649,10 @@ app.get('/ocr', (c) => {
 
                 <!-- Step 1: 파일 업로드 -->
                 <div id="upload-section" class="bg-white rounded-lg shadow-lg p-8 mb-8">
-                    <h2 class="text-2xl font-bold mb-6 text-gray-800">
-                        <i class="fas fa-file-upload text-blue-600 mr-2"></i>
-                        1단계: 거래명세서 업로드
-                    </h2>
-                    <div class="file-upload-area rounded-lg p-12 text-center cursor-pointer" id="dropZone">
-                        <i class="fas fa-cloud-upload-alt text-6xl text-gray-400 mb-4"></i>
-                        <p class="text-lg text-gray-600 mb-4">거래명세서 이미지를 드래그하거나 클릭하여 업로드</p>
-                        <input type="file" id="fileInput" accept="image/*" class="hidden">
-                        <div class="flex justify-center space-x-3">
-                            <button onclick="document.getElementById('fileInput').click(); event.stopPropagation();" 
-                                    class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">
-                                <i class="fas fa-folder-open mr-2"></i>파일 선택
-                            </button>
-                            <button onclick="showManualInputForm(); event.stopPropagation();" 
-                                    class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition">
-                                <i class="fas fa-keyboard mr-2"></i>수동 입력
-                            </button>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-4">지원 형식: JPG, PNG, GIF (최대 10MB)</p>
-                    </div>
-                    <div id="uploadResult" class="mt-6 hidden">
-                        <div class="bg-green-50 border border-green-200 rounded-lg p-4">
-                            <h3 class="font-bold text-green-800 mb-2">
-                                <i class="fas fa-check-circle mr-2"></i>자동 인식 완료
-                            </h3>
-                            <div id="ocrData" class="grid grid-cols-2 gap-4 text-sm"></div>
-                        </div>
+                    <!-- JS(renderStep1AssignmentList)가 이 영역을 배정 목록으로 교체합니다 -->
+                    <div class="text-center py-12 text-gray-400">
+                        <i class="fas fa-spinner fa-spin text-4xl mb-3 block"></i>
+                        <p>배정 목록을 불러오는 중...</p>
                     </div>
                 </div>
 
