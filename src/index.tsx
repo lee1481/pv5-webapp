@@ -1430,41 +1430,6 @@ app.post('/api/reports/save', async (c) => {
 
 // ============ 멀티테넌트 API (신규 추가) ============
 
-// API: 로그인
-app.post('/api/auth/login', async (c) => {
-  try {
-    const { env } = c
-    const { username, password } = await c.req.json()
-    
-    const stmt = env.DB.prepare(`
-      SELECT id, username, role, branch_id, branch_name
-      FROM users
-      WHERE username = ? AND password = ?
-    `)
-    
-    const result = await stmt.bind(username, password).first()
-    
-    if (!result) {
-      return c.json({ success: false, message: '아이디 또는 비밀번호가 올바르지 않습니다.' }, 401)
-    }
-    
-    return c.json({ 
-      success: true, 
-      user: {
-        id: result.id,
-        username: result.username,
-        role: result.role,
-        branchId: result.branch_id,
-        branchName: result.branch_name
-      }
-    })
-    
-  } catch (error) {
-    console.error('Login error:', error)
-    return c.json({ success: false, message: '로그인 중 오류가 발생했습니다.' }, 500)
-  }
-})
-
 // API: 지사 목록 조회 (본사 전용)
 app.get('/api/branches', async (c) => {
   try {
