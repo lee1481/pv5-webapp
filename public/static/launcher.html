@@ -72,6 +72,8 @@
                 0 20px 60px rgba(0, 0, 0, 0.4),
                 inset 0 1px 0 rgba(255, 255, 255, 0.1);
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
         }
         
         .showcase-card:hover {
@@ -86,11 +88,16 @@
             width: 100%;
             height: auto;
             display: block;
+            flex-shrink: 0;
         }
         
         .showcase-info {
-            padding: 40px;
+            padding: 48px 40px;
             background: linear-gradient(to bottom, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.6) 100%);
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
         
         /* Branch Grid */
@@ -336,7 +343,7 @@
             }
             
             .showcase-info {
-                padding: 28px;
+                padding: 32px 28px;
             }
         }
     </style>
@@ -360,13 +367,13 @@
             <div class="showcase-card">
                 <img src="/static/pv5-showcase.jpg" alt="PV5 Cargo Showcase">
                 <div class="showcase-info text-center">
-                    <h2 class="text-2xl font-black text-white mb-2">
-                        비즈니스 모빌리티의 새로운 표준
+                    <h2 class="text-3xl font-black text-white mb-3 leading-tight">
+                        비즈니스 모빌리티의<br>새로운 표준
                     </h2>
-                    <p class="text-lg text-white/70 font-semibold mb-1">
+                    <p class="text-xl text-white/80 font-bold mb-2">
                         PV5 카고 솔루션
                     </p>
-                    <p class="text-sm text-white/50 leading-relaxed">
+                    <p class="text-base text-white/60 leading-relaxed">
                         Pretendard Regular<br>
                         더 이상 단순한 운송 수단이 아닙니다.<br>
                         당신의 비즈니스를 위한 완벽한 파트너입니다.
@@ -378,22 +385,25 @@
             <div class="showcase-card">
                 <img src="/static/pv5-options.jpg" alt="PV5 Interior Options">
                 <div class="showcase-info text-center">
-                    <h2 class="text-2xl font-black text-white mb-3">
-                        당신의 비즈니스 아이덴티티를 담은 디자인
+                    <h2 class="text-3xl font-black text-white mb-6 leading-tight">
+                        당신의 비즈니스<br>아이덴티티를 담은 디자인
                     </h2>
-                    <div class="grid grid-cols-2 gap-4 text-left">
+                    <div class="grid grid-cols-2 gap-6 text-left">
                         <div>
-                            <p class="text-base font-bold text-blue-400 mb-1">Option A: Kia Collection</p>
-                            <p class="text-sm text-white/60 leading-tight">
+                            <p class="text-lg font-black text-blue-400 mb-2">Option A:<br>Kia Collection</p>
+                            <p class="text-sm text-white/70 leading-relaxed">
                                 모던하고 실용한 그레이 톤.<br>
-                                기아 PV5의 순정 인테리어와 완벽한 조화.
+                                기아 PV5의 순정 인테리어와<br>
+                                완벽한 조화.
                             </p>
                         </div>
                         <div>
-                            <p class="text-base font-bold text-red-400 mb-1">Option B: Milwaukee Edition</p>
-                            <p class="text-sm text-white/60 leading-tight">
-                                강렬한 레드 컬러와 다이내믹한 감성.<br>
-                                밀워키 전동공구 시스템과의 완벽한 컬러 매칭.
+                            <p class="text-lg font-black text-red-400 mb-2">Option B:<br>Milwaukee Edition</p>
+                            <p class="text-sm text-white/70 leading-relaxed">
+                                강렬한 레드 컬러와<br>
+                                다이내믹한 감성.<br>
+                                밀워키 전동공구 시스템과의<br>
+                                완벽한 컬러 매칭.
                             </p>
                         </div>
                     </div>
