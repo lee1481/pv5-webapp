@@ -19,6 +19,18 @@ app.use('/api/*', cors())
 // 정적 파일 서빙
 app.use('/static/*', serveStatic({ root: './public' }))
 
+// 로그인 페이지
+app.get('/login.html', async (c) => {
+  const html = await Bun.file('./public/login.html').text()
+  return c.html(html)
+})
+
+// 본사 페이지
+app.get('/hq.html', async (c) => {
+  const html = await Bun.file('./public/hq.html').text()
+  return c.html(html)
+})
+
 // API: 모든 제품 패키지 리스트
 app.get('/api/packages', (c) => {
   return c.json({ packages: allPackages })
@@ -739,6 +751,153 @@ app.post('/api/reports/save', async (c) => {
     }, 500)
   }
 })
+
+// ============ 멀티테넌트 API (신규 추가) ============
+
+// API: 로그인
+app.post('/api/auth/login', async (c) => {
+  try {
+    const { env } = c
+    const { username, password } = await c.req.json()
+    
+    const stmt = env.DB.prepare(`
+      SELECT id, username, role, branch_id, branch_name
+      FROM users
+      WHERE username = ? AND password = ?
+    `)
+    
+    const result = await stmt.bind(username, password).first()
+    
+    if (!result) {
+      return c.json({ success: false, message: '아이디 또는 비밀번호가 올바르지 않습니다.' }, 401)
+    }
+    
+    return c.json({ 
+      success: true, 
+      user: {
+        id: result.id,
+        username: result.username,
+        role: result.role,
+        branchId: result.branch_id,
+        branchName: result.branch_name
+      }
+    })
+    
+  } catch (error) {
+    console.error('Login error:', error)
+    return c.json({ success: false, message: '로그인 중 오류가 발생했습니다.' }, 500)
+  }
+})
+
+// API: 지사 목록 조회 (본사 전용)
+app.get('/api/branches', async (c) => {
+  try {
+    const { env } = c
+    const stmt = env.DB.prepare(`SELECT id, code, name FROM branches ORDER BY code`)
+    const { results } = await stmt.all()
+    
+    return c.json({ success: true, branches: results })
+  } catch (error) {
+    console.error('Branches list error:', error)
+    return c.json({ success: false, branches: [] }, 500)
+  }
+})
+
+// API: 접수 등록 (본사 전용)
+app.post('/api/assignments', async (c) => {
+  try {
+    const { env } = c
+    const { customerName, phone, address, productName, branchId, notes, assignedBy } = await c.req.json()
+    
+    const assignmentId = `ASG-${Date.now()}`
+    
+    const stmt = env.DB.prepare(`
+      INSERT INTO assignments 
+        (assignment_id, customer_name, phone, address, product_name, branch_id, assigned_by, notes, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'assigned')
+    `)
+    
+    await stmt.bind(assignmentId, customerName, phone, address, productName || '', branchId, assignedBy, notes || '').run()
+    
+    return c.json({ 
+      success: true, 
+      message: '접수가 등록되었습니다!',
+      assignmentId 
+    })
+    
+  } catch (error) {
+    console.error('Assignment create error:', error)
+    return c.json({ success: false, message: '접수 등록 중 오류가 발생했습니다.' }, 500)
+  }
+})
+
+// API: 접수 목록 조회 (지사별 필터링)
+app.get('/api/assignments', async (c) => {
+  try {
+    const { env } = c
+    const branchId = c.req.query('branchId')
+    const status = c.req.query('status') // assigned, in_progress, completed
+    
+    let query = `
+      SELECT a.*, b.name as branch_name, u.username as assigned_by_name
+      FROM assignments a
+      LEFT JOIN branches b ON a.branch_id = b.id
+      LEFT JOIN users u ON a.assigned_by = u.id
+    `
+    const conditions = []
+    const params: any[] = []
+    
+    if (branchId) {
+      conditions.push('a.branch_id = ?')
+      params.push(branchId)
+    }
+    
+    if (status) {
+      conditions.push('a.status = ?')
+      params.push(status)
+    }
+    
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ')
+    }
+    
+    query += ' ORDER BY a.assigned_at DESC'
+    
+    const stmt = env.DB.prepare(query)
+    const { results } = params.length > 0 ? await stmt.bind(...params).all() : await stmt.all()
+    
+    return c.json({ success: true, assignments: results })
+    
+  } catch (error) {
+    console.error('Assignments list error:', error)
+    return c.json({ success: false, assignments: [] }, 500)
+  }
+})
+
+// API: 접수 상태 변경
+app.patch('/api/assignments/:id/status', async (c) => {
+  try {
+    const { env } = c
+    const assignmentId = c.req.param('id')
+    const { status } = await c.req.json()
+    
+    const stmt = env.DB.prepare(`
+      UPDATE assignments 
+      SET status = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE assignment_id = ?
+    `)
+    
+    await stmt.bind(status, assignmentId).run()
+    
+    return c.json({ success: true, message: '상태가 변경되었습니다.' })
+    
+  } catch (error) {
+    console.error('Assignment status update error:', error)
+    return c.json({ success: false, message: '상태 변경 중 오류가 발생했습니다.' }, 500)
+  }
+})
+
+// ============ 기존 API ============
 
 // API: 시공 확인서 목록 조회 (D1) // UPDATED
 app.get('/api/reports/list', async (c) => {
