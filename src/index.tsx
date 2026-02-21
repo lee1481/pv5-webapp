@@ -212,34 +212,53 @@ app.post('/api/auth/logout', (c) => {
 function generateBranchCode(name: string): string {
   // 한글 자모 분해 및 로마자 변환 매핑
   const koreanToRoman: { [key: string]: string } = {
-    '호남': 'honam',
-    '부산': 'busan',
-    '경남': 'gyeongnam',
+    // 광역시/도
     '서울': 'seoul',
-    '경북': 'gyeongbuk',
+    '부산': 'busan',
+    '대구': 'daegu',
+    '인천': 'incheon',
+    '광주': 'gwangju',
+    '대전': 'daejeon',
+    '울산': 'ulsan',
+    '세종': 'sejong',
     '경기': 'gyeonggi',
     '강원': 'gangwon',
     '충북': 'chungbuk',
     '충남': 'chungnam',
-    '대전': 'daejeon',
-    '대구': 'daegu',
-    '인천': 'incheon',
-    '광주': 'gwangju',
-    '울산': 'ulsan',
-    '세종': 'sejong',
-    '제주': 'jeju',
     '전북': 'jeonbuk',
     '전남': 'jeonnam',
+    '경북': 'gyeongbuk',
+    '경남': 'gyeongnam',
+    '제주': 'jeju',
+    
+    // 지역 별칭
+    '수도권': 'sudogwon',
+    '호남': 'honam',
+    '영남': 'yeongnam',
+    '충청': 'chungcheong',
+    
+    // 방향/위치
     '북부': 'bukbu',
     '남부': 'nambu',
     '동부': 'dongbu',
-    '서부': 'seobu'
+    '서부': 'seobu',
+    '중부': 'jungbu',
+    '동남': 'dongnam',
+    '서남': 'seonam',
+    '동북': 'dongbuk',
+    '서북': 'seobuk',
+    
+    // 기타
+    '도': 'do',
+    '시': 'si',
+    '군': 'gun',
+    '구': 'gu'
   }
 
   // "지사" 제거
   let processedName = name.replace(/지사$/g, '').trim()
   
-  // 특수문자 제거 (/, 공백 등)
+  // 특수문자를 하이픈으로 변환 (/, 공백 등)
   processedName = processedName.replace(/[\/\s]/g, '-')
   
   // 한글 키워드 추출 및 변환
