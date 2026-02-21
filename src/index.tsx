@@ -208,6 +208,57 @@ app.post('/api/auth/logout', (c) => {
 // 지사 관리 API (본사 전용)
 // ========================================
 
+// 한글 → 영문 코드 자동 생성 함수
+function generateBranchCode(name: string): string {
+  // 한글 자모 분해 및 로마자 변환 매핑
+  const koreanToRoman: { [key: string]: string } = {
+    '호남': 'honam',
+    '부산': 'busan',
+    '경남': 'gyeongnam',
+    '서울': 'seoul',
+    '경북': 'gyeongbuk',
+    '경기': 'gyeonggi',
+    '강원': 'gangwon',
+    '충북': 'chungbuk',
+    '충남': 'chungnam',
+    '대전': 'daejeon',
+    '대구': 'daegu',
+    '인천': 'incheon',
+    '광주': 'gwangju',
+    '울산': 'ulsan',
+    '세종': 'sejong',
+    '제주': 'jeju',
+    '전북': 'jeonbuk',
+    '전남': 'jeonnam',
+    '북부': 'bukbu',
+    '남부': 'nambu',
+    '동부': 'dongbu',
+    '서부': 'seobu'
+  }
+
+  // "지사" 제거
+  let processedName = name.replace(/지사$/g, '').trim()
+  
+  // 특수문자 제거 (/, 공백 등)
+  processedName = processedName.replace(/[\/\s]/g, '-')
+  
+  // 한글 키워드 추출 및 변환
+  let code = processedName
+  
+  for (const [korean, roman] of Object.entries(koreanToRoman)) {
+    code = code.replace(new RegExp(korean, 'g'), roman)
+  }
+  
+  // 남은 한글이 있으면 기본 처리 (간단한 음역)
+  code = code
+    .replace(/[가-힣]/g, 'kr') // 남은 한글은 'kr'로
+    .replace(/--+/g, '-')      // 연속 하이픈 제거
+    .replace(/^-|-$/g, '')     // 앞뒤 하이픈 제거
+    .toLowerCase()
+  
+  return code || 'branch-' + Date.now()
+}
+
 // API: 모든 지사 목록 조회
 app.get('/api/branches/list', async (c) => {
   try {
@@ -230,21 +281,35 @@ app.get('/api/branches/list', async (c) => {
 // API: 지사 추가 (본사 전용)
 app.post('/api/branches', async (c) => {
   try {
-    const { name, code } = await c.req.json()
+    const { name } = await c.req.json()
     
-    if (!name || !code) {
-      return c.json({ success: false, error: '지사명과 코드를 입력해주세요.' }, 400)
+    if (!name) {
+      return c.json({ success: false, error: '지사명을 입력해주세요.' }, 400)
     }
     
     const { env } = c
     
-    // 중복 코드 확인
+    // 코드 자동 생성
+    const code = generateBranchCode(name)
+    
+    // 중복 코드 확인 (자동 생성이지만 혹시 모를 충돌 방지)
     const existing = await env.DB.prepare(
       'SELECT id FROM branches WHERE code = ?'
     ).bind(code).first()
     
     if (existing) {
-      return c.json({ success: false, error: '이미 존재하는 지사 코드입니다.' }, 400)
+      // 충돌 시 타임스탬프 추가
+      const uniqueCode = code + '-' + Date.now()
+      const result = await env.DB.prepare(
+        'INSERT INTO branches (name, code) VALUES (?, ?)'
+      ).bind(name, uniqueCode).run()
+      
+      return c.json({
+        success: true,
+        message: '지사가 추가되었습니다.',
+        id: result.meta.last_row_id,
+        code: uniqueCode
+      })
     }
     
     // 지사 추가
@@ -255,7 +320,8 @@ app.post('/api/branches', async (c) => {
     return c.json({
       success: true,
       message: '지사가 추가되었습니다.',
-      id: result.meta.last_row_id
+      id: result.meta.last_row_id,
+      code: code
     })
   } catch (error: any) {
     console.error('Branch create error:', error)
@@ -267,10 +333,10 @@ app.post('/api/branches', async (c) => {
 app.put('/api/branches/:id', async (c) => {
   try {
     const id = c.req.param('id')
-    const { name, code } = await c.req.json()
+    const { name } = await c.req.json()
     
-    if (!name || !code) {
-      return c.json({ success: false, error: '지사명과 코드를 입력해주세요.' }, 400)
+    if (!name) {
+      return c.json({ success: false, error: '지사명을 입력해주세요.' }, 400)
     }
     
     const { env } = c
@@ -284,23 +350,29 @@ app.put('/api/branches/:id', async (c) => {
       return c.json({ success: false, error: '존재하지 않는 지사입니다.' }, 404)
     }
     
+    // 코드 자동 생성
+    const code = generateBranchCode(name)
+    
     // 중복 코드 확인 (자기 자신 제외)
     const existing = await env.DB.prepare(
       'SELECT id FROM branches WHERE code = ? AND id != ?'
     ).bind(code, id).first()
     
+    let finalCode = code
     if (existing) {
-      return c.json({ success: false, error: '이미 존재하는 지사 코드입니다.' }, 400)
+      // 충돌 시 타임스탬프 추가
+      finalCode = code + '-' + Date.now()
     }
     
     // 지사 수정
     await env.DB.prepare(
       'UPDATE branches SET name = ?, code = ? WHERE id = ?'
-    ).bind(name, code, id).run()
+    ).bind(name, finalCode, id).run()
     
     return c.json({
       success: true,
-      message: '지사가 수정되었습니다.'
+      message: '지사가 수정되었습니다.',
+      code: finalCode
     })
   } catch (error: any) {
     console.error('Branch update error:', error)
@@ -347,6 +419,196 @@ app.delete('/api/branches/:id', async (c) => {
   } catch (error: any) {
     console.error('Branch delete error:', error)
     return c.json({ success: false, error: '지사 삭제 중 오류가 발생했습니다.' }, 500)
+  }
+})
+
+// ========================================
+// 사용자 관리 API (본사 전용)
+// ========================================
+
+// API: 모든 사용자 목록 조회 (본사 전용)
+app.get('/api/users/list', async (c) => {
+  try {
+    const { env } = c
+    
+    const result = await env.DB.prepare(`
+      SELECT u.*, b.name as branch_name 
+      FROM users u
+      LEFT JOIN branches b ON u.branch_id = b.id
+      ORDER BY u.id ASC
+    `).all()
+    
+    return c.json({
+      success: true,
+      users: result.results || []
+    })
+  } catch (error: any) {
+    console.error('Users list error:', error)
+    return c.json({ success: false, error: '사용자 목록 조회 중 오류가 발생했습니다.' }, 500)
+  }
+})
+
+// API: 사용자 추가 (본사 전용)
+app.post('/api/users', async (c) => {
+  try {
+    const { username, password, role, branch_id } = await c.req.json()
+    
+    if (!username || !password || !role) {
+      return c.json({ success: false, error: '필수 항목을 입력해주세요.' }, 400)
+    }
+    
+    if (role === 'branch' && !branch_id) {
+      return c.json({ success: false, error: '지사 사용자는 소속 지사를 선택해주세요.' }, 400)
+    }
+    
+    const { env } = c
+    
+    // 중복 아이디 확인
+    const existing = await env.DB.prepare(
+      'SELECT id FROM users WHERE username = ?'
+    ).bind(username).first()
+    
+    if (existing) {
+      return c.json({ success: false, error: '이미 존재하는 아이디입니다.' }, 400)
+    }
+    
+    // 사용자 추가 (평문 비밀번호)
+    const result = await env.DB.prepare(
+      'INSERT INTO users (username, password, role, branch_id) VALUES (?, ?, ?, ?)'
+    ).bind(username, password, role, role === 'branch' ? branch_id : null).run()
+    
+    return c.json({
+      success: true,
+      message: '사용자가 추가되었습니다.',
+      id: result.meta.last_row_id
+    })
+  } catch (error: any) {
+    console.error('User create error:', error)
+    return c.json({ success: false, error: '사용자 추가 중 오류가 발생했습니다.' }, 500)
+  }
+})
+
+// API: 사용자 수정 (본사 전용)
+app.put('/api/users/:id', async (c) => {
+  try {
+    const id = c.req.param('id')
+    const { username, role, branch_id } = await c.req.json()
+    
+    if (!username || !role) {
+      return c.json({ success: false, error: '필수 항목을 입력해주세요.' }, 400)
+    }
+    
+    if (role === 'branch' && !branch_id) {
+      return c.json({ success: false, error: '지사 사용자는 소속 지사를 선택해주세요.' }, 400)
+    }
+    
+    const { env } = c
+    
+    // 사용자 존재 확인
+    const user = await env.DB.prepare(
+      'SELECT id FROM users WHERE id = ?'
+    ).bind(id).first()
+    
+    if (!user) {
+      return c.json({ success: false, error: '존재하지 않는 사용자입니다.' }, 404)
+    }
+    
+    // 중복 아이디 확인 (자기 자신 제외)
+    const existing = await env.DB.prepare(
+      'SELECT id FROM users WHERE username = ? AND id != ?'
+    ).bind(username, id).first()
+    
+    if (existing) {
+      return c.json({ success: false, error: '이미 존재하는 아이디입니다.' }, 400)
+    }
+    
+    // 사용자 수정
+    await env.DB.prepare(
+      'UPDATE users SET username = ?, role = ?, branch_id = ? WHERE id = ?'
+    ).bind(username, role, role === 'branch' ? branch_id : null, id).run()
+    
+    return c.json({
+      success: true,
+      message: '사용자 정보가 수정되었습니다.'
+    })
+  } catch (error: any) {
+    console.error('User update error:', error)
+    return c.json({ success: false, error: '사용자 수정 중 오류가 발생했습니다.' }, 500)
+  }
+})
+
+// API: 비밀번호 변경
+app.put('/api/users/:id/password', async (c) => {
+  try {
+    const id = c.req.param('id')
+    const { password } = await c.req.json()
+    
+    if (!password) {
+      return c.json({ success: false, error: '새 비밀번호를 입력해주세요.' }, 400)
+    }
+    
+    if (password.length < 6) {
+      return c.json({ success: false, error: '비밀번호는 6자 이상이어야 합니다.' }, 400)
+    }
+    
+    const { env } = c
+    
+    // 사용자 존재 확인
+    const user = await env.DB.prepare(
+      'SELECT id FROM users WHERE id = ?'
+    ).bind(id).first()
+    
+    if (!user) {
+      return c.json({ success: false, error: '존재하지 않는 사용자입니다.' }, 404)
+    }
+    
+    // 비밀번호 변경 (평문)
+    await env.DB.prepare(
+      'UPDATE users SET password = ? WHERE id = ?'
+    ).bind(password, id).run()
+    
+    return c.json({
+      success: true,
+      message: '비밀번호가 변경되었습니다.'
+    })
+  } catch (error: any) {
+    console.error('Password change error:', error)
+    return c.json({ success: false, error: '비밀번호 변경 중 오류가 발생했습니다.' }, 500)
+  }
+})
+
+// API: 사용자 삭제 (본사 전용)
+app.delete('/api/users/:id', async (c) => {
+  try {
+    const id = c.req.param('id')
+    const { env } = c
+    
+    // 사용자 존재 확인
+    const user = await env.DB.prepare(
+      'SELECT id, username FROM users WHERE id = ?'
+    ).bind(id).first()
+    
+    if (!user) {
+      return c.json({ success: false, error: '존재하지 않는 사용자입니다.' }, 404)
+    }
+    
+    // 본사 관리자 삭제 방지 (ID=1)
+    if (Number(id) === 1) {
+      return c.json({ success: false, error: '본사 관리자는 삭제할 수 없습니다.' }, 400)
+    }
+    
+    // 사용자 삭제
+    await env.DB.prepare(
+      'DELETE FROM users WHERE id = ?'
+    ).bind(id).run()
+    
+    return c.json({
+      success: true,
+      message: '사용자가 삭제되었습니다.'
+    })
+  } catch (error: any) {
+    console.error('User delete error:', error)
+    return c.json({ success: false, error: '사용자 삭제 중 오류가 발생했습니다.' }, 500)
   }
 })
 
