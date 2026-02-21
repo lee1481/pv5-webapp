@@ -464,7 +464,7 @@
                     alert('세션이 만료되었습니다. 다시 로그인해주세요.')
                     localStorage.removeItem('token')
                     localStorage.removeItem('user')
-                    window.location.href = '/static/login.html'
+                    window.location.href = '/static/login'
                 }
             }
         }
@@ -485,7 +485,7 @@
             localStorage.removeItem('token')
             localStorage.removeItem('user')
             alert(msg || '세션이 만료되었습니다. 다시 로그인해주세요.')
-            window.location.href = '/static/login.html'
+            window.location.href = '/static/login'
         }
 
         // 페이지 로드 시 토큰 서버 검증 + 로그인 체크
@@ -494,7 +494,7 @@
             const userStr = localStorage.getItem('user')
 
             if (!token || !userStr) {
-                window.location.href = '/static/login.html'
+                window.location.href = '/static/login'
                 return
             }
 
@@ -539,7 +539,7 @@
                 try { await axios.post('/api/auth/logout', {}, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }) } catch {}
                 localStorage.removeItem('token')
                 localStorage.removeItem('user')
-                window.location.href = '/static/login.html'
+                window.location.href = '/static/login'
             }
             header.appendChild(logoutBtn)
         })
@@ -563,7 +563,7 @@
                 // 본사 아이콘 (본사 관리자만)
                 if (user.role === 'head') {
                     grid.innerHTML += `
-                        <a href="/static/hq.html" class="branch-card" data-branch="hq">
+                        <a href="/static/hq" class="branch-card" data-branch="hq">
                             <div class="branch-icon">
                                 <i class="fas fa-building text-white"></i>
                             </div>
@@ -574,7 +574,7 @@
                     
                     // 지사 관리 아이콘 추가
                     grid.innerHTML += `
-                        <a href="/static/branches.html" class="branch-card" data-branch="admin">
+                        <a href="/static/branches" class="branch-card" data-branch="admin">
                             <div class="branch-icon">
                                 <i class="fas fa-cog text-white"></i>
                             </div>

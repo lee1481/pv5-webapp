@@ -24,7 +24,7 @@
                     <button onclick="openMyPasswordModal()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold">
                         <i class="fas fa-key mr-2"></i>내 비밀번호 변경
                     </button>
-                    <a href="/static/launcher.html" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">
+                    <a href="/static/launcher" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">
                         <i class="fas fa-home mr-2"></i>홈으로
                     </a>
                 </div>
@@ -252,7 +252,7 @@
                     alert('세션이 만료되었습니다. 다시 로그인해주세요.')
                     localStorage.removeItem('token')
                     localStorage.removeItem('user')
-                    window.location.href = '/static/login.html'
+                    window.location.href = '/static/login'
                 }
             }
         }
@@ -267,7 +267,7 @@
             const userStr = localStorage.getItem('user')
 
             if (!token || !userStr) {
-                window.location.href = '/static/login.html'
+                window.location.href = '/static/login'
                 return
             }
 
@@ -276,7 +276,7 @@
             // 본사 관리자만 접근 가능
             if (user.role !== 'head') {
                 alert('본사 관리자만 접근할 수 있습니다.')
-                window.location.href = '/static/launcher.html'
+                window.location.href = '/static/launcher'
                 return
             }
 
@@ -524,7 +524,7 @@
                     // 로그아웃
                     localStorage.removeItem('token');
                     localStorage.removeItem('user');
-                    location.href = '/static/login.html';
+                    location.href = '/static/login';
                 } else {
                     alert('❌ ' + (response.data.error || '비밀번호 변경에 실패했습니다.'));
                 }
@@ -565,7 +565,7 @@
                 
                 if (!token) {
                     alert('❌ 로그인이 필요합니다. 다시 로그인해주세요.')
-                    window.location.href = '/static/login.html'
+                    window.location.href = '/static/login'
                     return
                 }
                 

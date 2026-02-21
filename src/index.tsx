@@ -22,12 +22,12 @@ app.use('/static/*', serveStatic({ root: './public' }))
 
 // 본사 접수 등록 페이지 (리다이렉트)
 app.get('/hq', (c) => {
-  return c.redirect('/static/hq.html')
+  return c.redirect('/static/hq')
 })
 
 // 런처 페이지 (메인 - 지사 선택)
 app.get('/launcher', (c) => {
-  return c.redirect('/static/launcher.html')
+  return c.redirect('/static/launcher')
 })
 
 // API: 모든 제품 패키지 리스트
@@ -2499,7 +2499,7 @@ app.get('/', (c) => {
     return c.redirect(`/ocr?branch=${branch}`)
   }
   // 없으면 런처 페이지로
-  return c.redirect('/static/launcher.html')
+  return c.redirect('/static/launcher')
 })
 
 // OCR 모드 페이지 (기존 메인 기능)

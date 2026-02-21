@@ -205,7 +205,7 @@
                     document.getElementById('successMessage').classList.remove('hidden')
                     localStorage.setItem('token', response.data.token)
                     localStorage.setItem('user', JSON.stringify(response.data.user))
-                    setTimeout(() => { window.location.href = '/static/launcher.html' }, 600)
+                    setTimeout(() => { window.location.href = '/static/launcher' }, 600)
                 }
             } catch (error) {
                 const status = error.response?.status
@@ -243,7 +243,7 @@
                     // 토큰 유효 → 바로 런처로
                     document.getElementById('successMessage').classList.remove('hidden')
                     document.getElementById('successText').textContent = '이미 로그인되어 있습니다. 이동 중...'
-                    setTimeout(() => { window.location.href = '/static/launcher.html' }, 500)
+                    setTimeout(() => { window.location.href = '/static/launcher' }, 500)
                 }
             } catch {
                 // 만료된 토큰 정리

@@ -28,7 +28,7 @@
             </div>
             <div class="flex items-center gap-3">
                 <span id="userInfo" class="text-blue-200 text-sm"></span>
-                <a href="/static/launcher.html" class="bg-white text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-50 font-semibold text-sm">
+                <a href="/static/launcher" class="bg-white text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-50 font-semibold text-sm">
                     <i class="fas fa-home mr-1"></i>메인
                 </a>
             </div>
@@ -248,7 +248,7 @@
     // ── axios 전역 인증 헤더 ──────────────────────────────────────────────────
     ;(function setupAxiosAuth() {
         const token = localStorage.getItem('token')
-        if (!token) { window.location.href = '/static/login.html'; return }
+        if (!token) { window.location.href = '/static/login'; return }
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
         // 유저 정보 표시
         try {

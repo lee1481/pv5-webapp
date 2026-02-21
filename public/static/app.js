@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 로그인 토큰 없으면 로그인 페이지로
   const token = localStorage.getItem('token');
   if (!token) {
-    window.location.href = '/static/login.html';
+    window.location.href = '/static/login';
     return;
   }
   // axios 헤더 재설정 (토큰 보장)
@@ -56,7 +56,7 @@ async function renderStep1AssignmentList() {
     if (e.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/static/login.html';
+      window.location.href = '/static/login';
       return;
     }
     container.innerHTML = `
