@@ -441,6 +441,29 @@
 
     <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
     <script>
+        // ── 토큰 자동 갱신 (5분마다 체크, 만료 30분 전이면 갱신) ──────────────
+        async function autoRefreshToken() {
+            const token = localStorage.getItem('token')
+            if (!token) return
+            try {
+                const res = await axios.post('/api/auth/refresh', {}, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+                if (res.data.success && res.data.refreshed && res.data.token) {
+                    localStorage.setItem('token', res.data.token)
+                    console.log('[Auth] 토큰 자동 갱신 완료')
+                }
+            } catch (err) {
+                if (err.response?.status === 401) {
+                    alert('세션이 만료되었습니다. 다시 로그인해주세요.')
+                    localStorage.removeItem('token')
+                    localStorage.removeItem('user')
+                    window.location.href = '/static/login.html'
+                }
+            }
+        }
+        setInterval(autoRefreshToken, 5 * 60 * 1000)
+
         // 아이콘 매핑 (지사 코드별)
         const iconMap = {
             'honam': 'fa-sun',

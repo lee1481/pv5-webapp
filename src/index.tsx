@@ -225,10 +225,67 @@ async function verifyPassword(password: string, stored: string): Promise<boolean
   }
 }
 
+// ========================================
+// 브루트포스 방어 헬퍼 (Cloudflare KV 기반)
+// KV 키 형식: login_fail:<username>  값: { count, lockedUntil }
+// ========================================
+const MAX_LOGIN_ATTEMPTS = 5       // 최대 실패 횟수
+const LOCK_DURATION_SEC = 15 * 60  // 잠금 시간: 15분
+const FAIL_WINDOW_SEC   = 30 * 60  // 실패 카운트 유효 시간: 30분
+
+async function checkLoginLock(kv: KVNamespace | undefined, username: string): Promise<{ locked: boolean; remainMin?: number }> {
+  if (!kv) return { locked: false }
+  try {
+    const raw = await kv.get(`login_fail:${username}`)
+    if (!raw) return { locked: false }
+    const data = JSON.parse(raw) as { count: number; lockedUntil?: number }
+    const now = Math.floor(Date.now() / 1000)
+    if (data.lockedUntil && data.lockedUntil > now) {
+      const remainMin = Math.ceil((data.lockedUntil - now) / 60)
+      return { locked: true, remainMin }
+    }
+    return { locked: false }
+  } catch {
+    return { locked: false }
+  }
+}
+
+async function recordLoginFail(kv: KVNamespace | undefined, username: string): Promise<void> {
+  if (!kv) return
+  try {
+    const raw = await kv.get(`login_fail:${username}`)
+    const now = Math.floor(Date.now() / 1000)
+    let data: { count: number; lockedUntil?: number } = raw ? JSON.parse(raw) : { count: 0 }
+
+    // 이미 잠금 해제된 상태면 카운트 초기화
+    if (data.lockedUntil && data.lockedUntil <= now) {
+      data = { count: 0 }
+    }
+
+    data.count += 1
+
+    if (data.count >= MAX_LOGIN_ATTEMPTS) {
+      data.lockedUntil = now + LOCK_DURATION_SEC
+    }
+
+    await kv.put(`login_fail:${username}`, JSON.stringify(data), { expirationTtl: FAIL_WINDOW_SEC })
+  } catch (e) {
+    console.error('[Security] recordLoginFail error:', e)
+  }
+}
+
+async function clearLoginFail(kv: KVNamespace | undefined, username: string): Promise<void> {
+  if (!kv) return
+  try {
+    await kv.delete(`login_fail:${username}`)
+  } catch {}
+}
+
 // API: 로그인
 app.post('/api/auth/login', async (c) => {
   try {
-    const { username, password } = await c.req.json()
+    const body = await c.req.json().catch(() => ({}))
+    const { username, password } = body as { username?: string; password?: string }
     
     if (!username || !password) {
       return c.json({ success: false, error: '아이디와 비밀번호를 입력해주세요.' }, 400)
@@ -236,7 +293,16 @@ app.post('/api/auth/login', async (c) => {
 
     const { env } = c
 
-    // DB에서 사용자 조회 (branches 테이블 조인)
+    // ── 1. 잠금 여부 확인 ──────────────────────────
+    const lockStatus = await checkLoginLock(env.REPORTS_KV, username)
+    if (lockStatus.locked) {
+      return c.json({
+        success: false,
+        error: `로그인 시도 횟수를 초과했습니다. ${lockStatus.remainMin}분 후 다시 시도해주세요.`
+      }, 429)
+    }
+
+    // ── 2. DB 사용자 조회 ──────────────────────────
     const result = await env.DB.prepare(`
       SELECT u.*, b.name as branch_name 
       FROM users u
@@ -245,17 +311,33 @@ app.post('/api/auth/login', async (c) => {
     `).bind(username).first()
 
     if (!result) {
+      // 존재하지 않는 사용자도 실패 기록 (열거 공격 방어)
+      await recordLoginFail(env.REPORTS_KV, username)
       return c.json({ success: false, error: '아이디 또는 비밀번호가 올바르지 않습니다.' }, 401)
     }
 
-    // 비밀번호 검증
+    // ── 3. 비밀번호 검증 ───────────────────────────
     const isValidPassword = await verifyPassword(password, result.password as string)
     
     if (!isValidPassword) {
-      return c.json({ success: false, error: '아이디 또는 비밀번호가 올바르지 않습니다.' }, 401)
+      await recordLoginFail(env.REPORTS_KV, username)
+
+      // 남은 시도 횟수 안내
+      const raw = await env.REPORTS_KV?.get(`login_fail:${username}`)
+      const failCount = raw ? (JSON.parse(raw) as { count: number }).count : 0
+      const remaining = Math.max(0, MAX_LOGIN_ATTEMPTS - failCount)
+
+      const msg = remaining > 0
+        ? `아이디 또는 비밀번호가 올바르지 않습니다. (남은 시도: ${remaining}회)`
+        : `로그인 시도 횟수를 초과했습니다. ${LOCK_DURATION_SEC / 60}분 후 다시 시도해주세요.`
+
+      return c.json({ success: false, error: msg }, 401)
     }
 
-    // JWT 토큰 생성 (env 전달로 JWT_SECRET 환경변수 사용)
+    // ── 4. 로그인 성공 → 실패 기록 초기화 ──────────
+    await clearLoginFail(env.REPORTS_KV, username)
+
+    // ── 5. JWT 토큰 생성 ───────────────────────────
     const branchName = result.role === 'head' ? '본사' : (result.branch_name as string || null)
     const token = await generateToken(result, branchName, c.env)
 
@@ -272,11 +354,10 @@ app.post('/api/auth/login', async (c) => {
     })
 
   } catch (error: any) {
-    console.error('Login error:', error)
+    console.error('[Login] Internal error:', error)
     return c.json({ 
       success: false, 
-      error: '로그인 중 오류가 발생했습니다.',
-      details: error?.message || String(error)
+      error: '로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
     }, 500)
   }
 })
@@ -287,14 +368,14 @@ app.get('/api/auth/verify', async (c) => {
     const authHeader = c.req.header('Authorization')
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return c.json({ success: false, error: 'No token provided' }, 401)
+      return c.json({ success: false, error: '인증 토큰이 없습니다.' }, 401)
     }
 
     const token = authHeader.substring(7)
     const result = await verifyToken(token)
 
     if (!result.success) {
-      return c.json({ success: false, error: result.error }, 401)
+      return c.json({ success: false, error: '유효하지 않은 토큰입니다. 다시 로그인해주세요.' }, 401)
     }
 
     return c.json({
@@ -303,8 +384,66 @@ app.get('/api/auth/verify', async (c) => {
     })
 
   } catch (error: any) {
-    console.error('Token verification error:', error)
-    return c.json({ success: false, error: 'Token verification failed' }, 500)
+    console.error('[Auth] verify error:', error)
+    return c.json({ success: false, error: '인증 확인 중 오류가 발생했습니다.' }, 500)
+  }
+})
+
+// API: 토큰 자동 갱신 (만료 30분 전부터 갱신 허용)
+app.post('/api/auth/refresh', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ success: false, error: '인증 토큰이 없습니다.' }, 401)
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = await verifyToken(token)
+
+    if (!decoded.success || !decoded.user) {
+      return c.json({ success: false, error: '유효하지 않은 토큰입니다. 다시 로그인해주세요.' }, 401)
+    }
+
+    const user = decoded.user as any
+    const now = Math.floor(Date.now() / 1000)
+    const expireIn = (user.exp || 0) - now   // 남은 초
+
+    // 만료까지 30분 이상 남아있으면 갱신 불필요
+    if (expireIn > 30 * 60) {
+      return c.json({
+        success: true,
+        refreshed: false,
+        message: '토큰이 아직 유효합니다.',
+        expiresIn: expireIn
+      })
+    }
+
+    // DB에서 최신 사용자 정보 재조회 (권한 변경 반영)
+    const { env } = c
+    const dbUser = await env.DB.prepare(`
+      SELECT u.*, b.name as branch_name
+      FROM users u
+      LEFT JOIN branches b ON u.branch_id = b.id
+      WHERE u.id = ?
+    `).bind(user.id).first()
+
+    if (!dbUser) {
+      return c.json({ success: false, error: '사용자를 찾을 수 없습니다.' }, 401)
+    }
+
+    const branchName = dbUser.role === 'head' ? '본사' : (dbUser.branch_name as string || null)
+    const newToken = await generateToken(dbUser, branchName, env)
+
+    return c.json({
+      success: true,
+      refreshed: true,
+      token: newToken,
+      message: '토큰이 갱신되었습니다.'
+    })
+
+  } catch (error: any) {
+    console.error('[Auth] refresh error:', error)
+    return c.json({ success: false, error: '토큰 갱신 중 오류가 발생했습니다.' }, 500)
   }
 })
 
@@ -392,27 +531,71 @@ function generateBranchCode(name: string): string {
   return code || 'branch-' + Date.now()
 }
 
-// API: 모든 지사 목록 조회
+// ========================================
+// 인증 미들웨어 헬퍼 함수
+// ========================================
+
+type AuthResult =
+  | { success: true; user: { id: number; username: string; role: string; branchId: number | null } }
+  | { success: false; response: Response }
+
+// 공통 인증 체크 — 모든 로그인 사용자 허용
+async function requireAuth(c: any): Promise<AuthResult> {
+  const authHeader = c.req.header('Authorization')
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return {
+      success: false,
+      response: c.json({ success: false, error: '로그인이 필요합니다.' }, 401)
+    }
+  }
+  const token = authHeader.substring(7)
+  const decoded = await verifyToken(token)
+  if (!decoded.success || !decoded.user) {
+    return {
+      success: false,
+      response: c.json({ success: false, error: '유효하지 않은 인증 토큰입니다. 다시 로그인해주세요.' }, 401)
+    }
+  }
+  return { success: true, user: decoded.user }
+}
+
+// 본사 전용 인증 체크 — head 역할만 허용
+async function requireHeadAuth(c: any): Promise<AuthResult> {
+  const auth = await requireAuth(c)
+  if (!auth.success) return auth
+  if (auth.user.role !== 'head') {
+    return {
+      success: false,
+      response: c.json({ success: false, error: '본사 관리자 권한이 필요합니다.' }, 403)
+    }
+  }
+  return auth
+}
+
+// ========================================
+// 지사 관리 API
+// ========================================
+
+// API: 모든 지사 목록 조회 [본사 전용]
 app.get('/api/branches/list', async (c) => {
+  const auth = await requireHeadAuth(c)
+  if (!auth.success) return auth.response
   try {
     const { env } = c
-    
     const result = await env.DB.prepare(
       'SELECT * FROM branches ORDER BY id ASC'
     ).all()
-    
-    return c.json({
-      success: true,
-      branches: result.results || []
-    })
+    return c.json({ success: true, branches: result.results || [] })
   } catch (error: any) {
     console.error('Branches list error:', error)
     return c.json({ success: false, error: '지사 목록 조회 중 오류가 발생했습니다.' }, 500)
   }
 })
 
-// API: 지사 추가 (본사 전용)
+// API: 지사 추가 [본사 전용]
 app.post('/api/branches', async (c) => {
+  const auth = await requireHeadAuth(c)
+  if (!auth.success) return auth.response
   try {
     const { name } = await c.req.json()
     
@@ -462,8 +645,10 @@ app.post('/api/branches', async (c) => {
   }
 })
 
-// API: 지사 수정 (본사 전용)
+// API: 지사 수정 [본사 전용]
 app.put('/api/branches/:id', async (c) => {
+  const auth = await requireHeadAuth(c)
+  if (!auth.success) return auth.response
   try {
     const id = c.req.param('id')
     const { name } = await c.req.json()
@@ -513,8 +698,10 @@ app.put('/api/branches/:id', async (c) => {
   }
 })
 
-// API: 지사 삭제 (본사 전용)
+// API: 지사 삭제 [본사 전용]
 app.delete('/api/branches/:id', async (c) => {
+  const auth = await requireHeadAuth(c)
+  if (!auth.success) return auth.response
   try {
     const id = c.req.param('id')
     const { env } = c
@@ -559,30 +746,29 @@ app.delete('/api/branches/:id', async (c) => {
 // 사용자 관리 API (본사 전용)
 // ========================================
 
-// API: 모든 사용자 목록 조회 (본사 전용)
+// API: 모든 사용자 목록 조회 [본사 전용]
 app.get('/api/users/list', async (c) => {
+  const auth = await requireHeadAuth(c)
+  if (!auth.success) return auth.response
   try {
     const { env } = c
-    
     const result = await env.DB.prepare(`
-      SELECT u.*, b.name as branch_name 
+      SELECT u.id, u.username, u.role, u.branch_id, u.created_at, b.name as branch_name 
       FROM users u
       LEFT JOIN branches b ON u.branch_id = b.id
       ORDER BY u.id ASC
     `).all()
-    
-    return c.json({
-      success: true,
-      users: result.results || []
-    })
+    return c.json({ success: true, users: result.results || [] })
   } catch (error: any) {
     console.error('Users list error:', error)
     return c.json({ success: false, error: '사용자 목록 조회 중 오류가 발생했습니다.' }, 500)
   }
 })
 
-// API: 사용자 추가 (본사 전용)
+// API: 사용자 추가 [본사 전용]
 app.post('/api/users', async (c) => {
+  const auth = await requireHeadAuth(c)
+  if (!auth.success) return auth.response
   try {
     const { username, password, role, branch_id } = await c.req.json()
     
@@ -692,8 +878,10 @@ app.put('/api/users/my-password', async (c) => {
   }
 })
 
-// API: 사용자 정보 수정 (⚠️ 반드시 /api/users/my-password 다음에 위치해야 함)
+// API: 사용자 정보 수정 [본사 전용] (⚠️ 반드시 /api/users/my-password 다음에 위치)
 app.put('/api/users/:id', async (c) => {
+  const auth = await requireHeadAuth(c)
+  if (!auth.success) return auth.response
   try {
     const id = c.req.param('id')
     const { username, role, branch_id } = await c.req.json()
@@ -805,8 +993,10 @@ app.put('/api/users/:username/password', async (c) => {
   }
 })
 
-// API: 사용자 삭제 (본사 전용)
+// API: 사용자 삭제 [본사 전용]
 app.delete('/api/users/:id', async (c) => {
+  const auth = await requireHeadAuth(c)
+  if (!auth.success) return auth.response
   try {
     const id = c.req.param('id')
     const { env } = c
@@ -840,8 +1030,10 @@ app.delete('/api/users/:id', async (c) => {
   }
 })
 
-// API: 거래명세서 OCR 분석
+// API: 거래명세서 OCR 분석 [로그인 필요]
 app.post('/api/ocr', async (c) => {
+  const auth = await requireAuth(c)
+  if (!auth.success) return auth.response
   try {
     const body = await c.req.parseBody()
     const file = body['file'] as File
@@ -1194,17 +1386,19 @@ app.post('/api/ocr', async (c) => {
     
     return c.json({ success: true, data: resultData })
   } catch (error) {
-    console.error('OCR Error:', error)
+    console.error('[OCR] processing error:', error)
     return c.json({ 
-      error: 'OCR processing failed', 
-      message: error instanceof Error ? error.message : 'Unknown error',
+      success: false,
+      error: 'OCR 처리 중 오류가 발생했습니다.',
       suggestion: '수동으로 입력해주세요.'
     }, 500)
   }
 })
 
-// API: 시공 확인서 생성 (PDF용 데이터)
+// API: 시공 확인서 생성 (PDF용 데이터) [로그인 필요]
 app.post('/api/generate-report', async (c) => {
+  const auth = await requireAuth(c)
+  if (!auth.success) return auth.response
   try {
     const body = await c.req.json()
     
@@ -1388,16 +1582,17 @@ app.post('/api/send-email', async (c) => {
     return c.json({ 
       success: false, 
       message: '이메일 발송 중 오류가 발생했습니다.',
-      error: error instanceof Error ? error.message : 'Unknown error'
     }, 500)
   }
 })
 
 // API: 시공 확인서 저장
-// API: 이미지 업로드 (R2) // UPDATED
-app.post('/api/upload-image', async (c) => { // UPDATED
-  try { // UPDATED
-    const { env } = c // UPDATED
+// API: 이미지 업로드 (R2) [로그인 필요]
+app.post('/api/upload-image', async (c) => {
+  const auth = await requireAuth(c)
+  if (!auth.success) return auth.response
+  try {
+    const { env } = c
     const formData = await c.req.formData() // UPDATED
     const file = formData.get('image') as File // UPDATED
     
@@ -1419,13 +1614,14 @@ app.post('/api/upload-image', async (c) => { // UPDATED
     return c.json({ // UPDATED
       success: false, // UPDATED
       message: '이미지 업로드 실패', // UPDATED
-      error: error instanceof Error ? error.message : 'Unknown error' // UPDATED
     }, 500) // UPDATED
   } // UPDATED
 }) // UPDATED
 
-// API: 시공 확인서 저장 (D1 + R2) // UPDATED
+// API: 시공 확인서 저장 (D1 + R2) [로그인 필요]
 app.post('/api/reports/save', async (c) => {
+  const auth = await requireAuth(c)
+  if (!auth.success) return auth.response
   try {
     const { env } = c
     
@@ -1532,22 +1728,20 @@ app.post('/api/reports/save', async (c) => {
     })
     
   } catch (error) {
-    console.error('Report save error:', error) // UPDATED - FIX
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack') // UPDATED - FIX
-    console.error('Error details:', JSON.stringify(error, null, 2)) // UPDATED - FIX
+    console.error('[Report] save error:', error)
     return c.json({ 
       success: false, 
-      message: '저장 중 오류가 발생했습니다.',
-      error: error instanceof Error ? error.message : 'Unknown error',
-      errorStack: error instanceof Error ? error.stack : undefined // UPDATED - FIX
+      message: '저장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
     }, 500)
   }
 })
 
 // ============ 멀티테넌트 API (신규 추가) ============
 
-// API: 지사 목록 조회 (본사 전용)
+// API: 지사 목록 조회 [로그인 필요]
 app.get('/api/branches', async (c) => {
+  const auth = await requireAuth(c)
+  if (!auth.success) return auth.response
   try {
     const { env } = c
     const stmt = env.DB.prepare(`SELECT id, code, name FROM branches ORDER BY code`)
@@ -1560,8 +1754,10 @@ app.get('/api/branches', async (c) => {
   }
 })
 
-// API: 접수 등록 (본사 전용)
+// API: 접수 등록 [본사 전용]
 app.post('/api/assignments', async (c) => {
+  const auth = await requireHeadAuth(c)
+  if (!auth.success) return auth.response
   try {
     const { env } = c
     const { customerName, phone, address, productName, branchId, notes, assignedBy } = await c.req.json()
@@ -1588,8 +1784,10 @@ app.post('/api/assignments', async (c) => {
   }
 })
 
-// API: 접수 목록 조회 (지사별 필터링)
+// API: 접수 목록 조회 [로그인 필요]
 app.get('/api/assignments', async (c) => {
+  const auth = await requireAuth(c)
+  if (!auth.success) return auth.response
   try {
     const { env } = c
     const branchId = c.req.query('branchId')
@@ -1631,8 +1829,10 @@ app.get('/api/assignments', async (c) => {
   }
 })
 
-// API: 접수 상태 변경
+// API: 접수 상태 변경 [로그인 필요]
 app.patch('/api/assignments/:id/status', async (c) => {
+  const auth = await requireAuth(c)
+  if (!auth.success) return auth.response
   try {
     const { env } = c
     const assignmentId = c.req.param('id')
@@ -1656,8 +1856,10 @@ app.patch('/api/assignments/:id/status', async (c) => {
 
 // ============ 기존 API ============
 
-// API: 시공 확인서 목록 조회 (D1) // UPDATED
+// API: 시공 확인서 목록 조회 [로그인 필요]
 app.get('/api/reports/list', async (c) => {
+  const auth = await requireAuth(c)
+  if (!auth.success) return auth.response
   try {
     const { env } = c
     
@@ -1704,13 +1906,14 @@ app.get('/api/reports/list', async (c) => {
     return c.json({ 
       success: false, 
       reports: [],
-      error: error instanceof Error ? error.message : 'Unknown error'
     }, 500)
   }
 })
 
-// API: 시공 확인서 불러오기 (D1) // UPDATED
+// API: 시공 확인서 불러오기 [로그인 필요]
 app.get('/api/reports/:id', async (c) => {
+  const auth = await requireAuth(c)
+  if (!auth.success) return auth.response
   try {
     const { env } = c
     const reportId = c.req.param('id')
@@ -1762,13 +1965,14 @@ app.get('/api/reports/:id', async (c) => {
     return c.json({ 
       success: false, 
       message: '불러오기 중 오류가 발생했습니다.',
-      error: error instanceof Error ? error.message : 'Unknown error'
     }, 500)
   }
 })
 
-// API: 예약 확정 상태 변경
+// API: 예약 확정 상태 변경 [본사 전용]
 app.patch('/api/reports/:id/confirm', async (c) => {
+  const auth = await requireHeadAuth(c)
+  if (!auth.success) return auth.response
   try {
     const { env } = c
     const reportId = c.req.param('id')
@@ -1798,13 +2002,14 @@ app.patch('/api/reports/:id/confirm', async (c) => {
     return c.json({
       success: false,
       message: '예약 확정 중 오류가 발생했습니다.',
-      error: error instanceof Error ? error.message : 'Unknown error'
     }, 500)
   }
 })
 
-// API: 시공 완료 상태 변경
+// API: 시공 완료 상태 변경 [본사 전용]
 app.patch('/api/reports/:id/complete', async (c) => {
+  const auth = await requireHeadAuth(c)
+  if (!auth.success) return auth.response
   try {
     const { env } = c
     const reportId = c.req.param('id')
@@ -1851,14 +2056,14 @@ app.patch('/api/reports/:id/complete', async (c) => {
     return c.json({
       success: false,
       message: '시공 완료 처리 중 오류가 발생했습니다.',
-      error: error instanceof Error ? error.message : 'Unknown error',
       needsMigration: false
     }, 500)
   }
 })
 
-// API: D1 마이그레이션 실행 (status 컬럼 추가)
+// API: D1 마이그레이션 (비활성화 — 이미 적용 완료, 보안상 제거)
 app.post('/api/migrate-status-column', async (c) => {
+  return c.json({ success: false, error: '이 API는 더 이상 사용되지 않습니다.' }, 410)
   try {
     const { env } = c
     
@@ -1907,13 +2112,13 @@ app.post('/api/migrate-status-column', async (c) => {
     return c.json({
       success: false,
       message: '마이그레이션 처리 중 오류가 발생했습니다.',
-      error: error instanceof Error ? error.message : 'Unknown error'
     }, 500)
   }
 })
 
-// API: 3단계 상태 마이그레이션 실행 (0003_add_confirmed_status.sql)
+// API: 3단계 상태 마이그레이션 (비활성화 — 이미 적용 완료, 보안상 제거)
 app.post('/api/migrate-confirmed-status', async (c) => {
+  return c.json({ success: false, error: '이 API는 더 이상 사용되지 않습니다.' }, 410)
   try {
     const { env } = c
     
@@ -2001,13 +2206,14 @@ app.post('/api/migrate-confirmed-status', async (c) => {
     return c.json({
       success: false,
       message: '마이그레이션 처리 중 오류가 발생했습니다.',
-      error: error instanceof Error ? error.message : 'Unknown error'
     }, 500)
   }
 })
 
-// API: 시공 완료 목록 조회 (매출 관리용)
+// API: 시공 완료 목록 조회 [로그인 필요]
 app.get('/api/reports/completed/list', async (c) => {
+  const auth = await requireAuth(c)
+  if (!auth.success) return auth.response
   try {
     const { env } = c
     
@@ -2075,13 +2281,14 @@ app.get('/api/reports/completed/list', async (c) => {
     return c.json({
       success: false,
       reports: [],
-      error: error instanceof Error ? error.message : 'Unknown error'
     }, 500)
   }
 })
 
-// API: 시공 확인서 삭제 (D1) // UPDATED
+// API: 시공 확인서 삭제 [본사 전용]
 app.delete('/api/reports/:id', async (c) => {
+  const auth = await requireHeadAuth(c)
+  if (!auth.success) return auth.response
   try {
     const { env } = c
     const reportId = c.req.param('id')
@@ -2124,13 +2331,14 @@ app.delete('/api/reports/:id', async (c) => {
     return c.json({ 
       success: false, 
       message: '삭제 중 오류가 발생했습니다.',
-      error: error instanceof Error ? error.message : 'Unknown error'
     }, 500)
   }
 })
 
-// API: 매출 통계 조회 (Step 6용) // NEW
+// API: 매출 통계 조회 [로그인 필요]
 app.get('/api/reports/stats', async (c) => {
+  const auth = await requireAuth(c)
+  if (!auth.success) return auth.response
   try {
     const { env } = c
     const { startDate, endDate } = c.req.query()
@@ -2186,7 +2394,6 @@ app.get('/api/reports/stats', async (c) => {
     return c.json({
       success: false,
       message: '통계 조회 중 오류가 발생했습니다.',
-      error: error instanceof Error ? error.message : 'Unknown error'
     }, 500)
   }
 })
