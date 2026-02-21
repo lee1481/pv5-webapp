@@ -2775,44 +2775,60 @@ app.get('/ocr', (c) => {
                     <!-- 목록 뷰 -->
                     <div id="listView">
                         <!-- 검색 및 필터 -->
-                        <div class="mb-6">
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="mb-6 bg-gray-50 border border-gray-200 rounded-xl p-4">
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
                                 <div>
-                                    <label class="block text-sm font-bold text-gray-700 mb-2">
-                                        <i class="fas fa-calendar mr-2"></i>시작 날짜
+                                    <label class="block text-xs font-bold text-gray-600 mb-1">
+                                        <i class="fas fa-calendar mr-1"></i>시작 날짜
                                     </label>
                                     <input type="date" id="searchStartDate" 
                                            onchange="searchReports()"
-                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm">
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-bold text-gray-700 mb-2">
-                                        <i class="fas fa-calendar mr-2"></i>종료 날짜
+                                    <label class="block text-xs font-bold text-gray-600 mb-1">
+                                        <i class="fas fa-calendar mr-1"></i>종료 날짜
                                     </label>
                                     <input type="date" id="searchEndDate" 
                                            onchange="searchReports()"
-                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm">
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-bold text-gray-700 mb-2">
-                                        <i class="fas fa-search mr-2"></i>고객명 검색
+                                    <label class="block text-xs font-bold text-gray-600 mb-1">
+                                        <i class="fas fa-search mr-1"></i>통합 검색
                                     </label>
                                     <input type="text" id="searchCustomerName" 
-                                           placeholder="고객명 입력..."
+                                           placeholder="고객명·주소·시공자..."
                                            oninput="searchReports()"
-                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-600 mb-1">
+                                        <i class="fas fa-filter mr-1"></i>상태 필터
+                                    </label>
+                                    <select id="searchStatus" onchange="searchReports()"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm bg-white">
+                                        <option value="">전체</option>
+                                        <option value="draft">예약 접수 중</option>
+                                        <option value="confirmed">예약 확정</option>
+                                        <option value="completed">시공 완료</option>
+                                    </select>
                                 </div>
                             </div>
-                            <div class="mt-4 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
-                                <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                                    <button onclick="searchReports()" 
-                                            class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 font-semibold">
-                                        <i class="fas fa-search mr-2"></i>검색
-                                    </button>
-                                    <button onclick="resetSearch()" 
-                                            class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 font-semibold">
-                                        <i class="fas fa-redo mr-2"></i>초기화
-                                    </button>
+                            <div class="mt-3 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex gap-2">
+                                        <button onclick="searchReports()" 
+                                                class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 font-semibold text-sm">
+                                            <i class="fas fa-search mr-1"></i>검색
+                                        </button>
+                                        <button onclick="resetSearch()" 
+                                                class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 font-semibold text-sm">
+                                            <i class="fas fa-redo mr-1"></i>초기화
+                                        </button>
+                                    </div>
+                                    <!-- 검색 결과 카운트 -->
+                                    <span id="searchResultCount" class="text-sm text-gray-500 font-medium"></span>
                                 </div>
                                 <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
                                     <button onclick="exportToExcel()" 

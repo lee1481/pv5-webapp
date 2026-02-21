@@ -474,45 +474,77 @@
             'default': 'fa-building'
         }
 
-        // 페이지 로드 시 로그인 체크 및 지사 로드
+        // ── 세션 만료 공통 처리 ──────────────────────────────
+        function handleSessionExpired(msg) {
+            localStorage.removeItem('token')
+            localStorage.removeItem('user')
+            alert(msg || '세션이 만료되었습니다. 다시 로그인해주세요.')
+            window.location.href = '/static/login.html'
+        }
+
+        // 페이지 로드 시 토큰 서버 검증 + 로그인 체크
         document.addEventListener('DOMContentLoaded', async () => {
-            const token = localStorage.getItem('token')
+            const token   = localStorage.getItem('token')
             const userStr = localStorage.getItem('user')
 
-            // 로그인 체크
             if (!token || !userStr) {
                 window.location.href = '/static/login.html'
                 return
             }
 
-            const user = JSON.parse(userStr)
+            // 서버 토큰 검증 (만료/위변조 방어)
+            try {
+                const verifyRes = await axios.get('/api/auth/verify', {
+                    headers: { Authorization: `Bearer ${token}` },
+                    timeout: 5000
+                })
+                if (!verifyRes.data.success) {
+                    handleSessionExpired()
+                    return
+                }
+                // 최신 사용자 정보 반영
+                localStorage.setItem('user', JSON.stringify(verifyRes.data.user))
+            } catch (err) {
+                if (err.response?.status === 401) {
+                    handleSessionExpired()
+                    return
+                }
+                // 네트워크 오류 시 로컬 캐시로 폴백 (오프라인 허용)
+                console.warn('[Auth] 서버 검증 실패, 로컬 캐시 사용:', err.message)
+            }
+
+            const user = JSON.parse(localStorage.getItem('user'))
 
             // 지사 목록 로드 및 아이콘 생성
             await loadBranches(user)
 
-            // 로그아웃 버튼 추가
+            // 헤더 우측: 사용자 정보 + 로그아웃 버튼
             const header = document.querySelector('.header-logo')
+
+            const userInfo = document.createElement('div')
+            userInfo.className = 'text-white text-sm font-semibold'
+            userInfo.innerHTML = `<i class="fas fa-user-circle mr-2"></i>${user.branchName} - ${user.username}`
+            header.appendChild(userInfo)
+
             const logoutBtn = document.createElement('button')
             logoutBtn.innerHTML = '<i class="fas fa-sign-out-alt mr-2"></i>로그아웃'
-            logoutBtn.className = 'ml-auto bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-lg font-bold transition'
-            logoutBtn.onclick = () => {
+            logoutBtn.className = 'bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-lg font-bold transition'
+            logoutBtn.onclick = async () => {
+                try { await axios.post('/api/auth/logout', {}, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }) } catch {}
                 localStorage.removeItem('token')
                 localStorage.removeItem('user')
                 window.location.href = '/static/login.html'
             }
             header.appendChild(logoutBtn)
-
-            // 사용자 정보 표시
-            const userInfo = document.createElement('div')
-            userInfo.className = 'text-white text-sm font-semibold'
-            userInfo.innerHTML = `<i class="fas fa-user-circle mr-2"></i>${user.branchName} - ${user.username}`
-            header.insertBefore(userInfo, logoutBtn)
         })
 
         // 지사 목록 로드 및 아이콘 동적 생성
         async function loadBranches(user) {
             try {
-                const response = await axios.get('/api/branches/list')
+                const token = localStorage.getItem('token')
+                const response = await axios.get('/api/branches/list', {
+                    headers: { Authorization: `Bearer ${token}` }
+                })
                 if (!response.data.success) return
 
                 const branches = response.data.branches

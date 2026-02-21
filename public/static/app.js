@@ -1297,7 +1297,12 @@ window.addEventListener('afterprint', () => {
 // ==================== Step 5: 저장 문서 관리 ====================
 
 // 임시 저장 (Step 3에서 날짜 없이 저장)
+let isSavingDraft = false;
+
 async function saveDraftReport() {
+  if (isSavingDraft) return;
+  isSavingDraft = true;
+  setBtnLoading('saveDraftBtn', true);
   try {
     const installerName = document.getElementById('installerName')?.value || '';
     const installDate = document.getElementById('installDate')?.value || ''; // 빈 값 허용
@@ -1418,11 +1423,32 @@ async function saveDraftReport() {
   } catch (error) {
     console.error('Draft save error:', error);
     alert('❌ 저장 중 오류가 발생했습니다.\n\n' + error.message);
+  } finally {
+    isSavingDraft = false;
+    setBtnLoading('saveDraftBtn', false);
   }
 }
 
 // 시공 확인서 저장
+// ── 버튼 로딩 헬퍼 (이중클릭 방지 공통) ─────────────────────────
+function setBtnLoading(btnId, on, defaultHtml) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  btn.disabled = on;
+  if (on) {
+    btn.dataset.origHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>처리 중...';
+  } else {
+    btn.innerHTML = defaultHtml || btn.dataset.origHtml || btn.innerHTML;
+  }
+}
+
+let isSavingReport = false;
+
 async function saveReport() {
+  if (isSavingReport) return;
+  isSavingReport = true;
+  setBtnLoading('saveReportBtn', true);
   try {
     const installerName = document.getElementById('installerName')?.value || '';
     const installDate = document.getElementById('installDate')?.value || '';
@@ -1558,6 +1584,9 @@ async function saveReport() {
   } catch (error) {
     console.error('Save error:', error);
     alert(error.message || '❌ 저장 중 오류가 발생했습니다.');
+  } finally {
+    isSavingReport = false;
+    setBtnLoading('saveReportBtn', false);
   }
 }
 
@@ -1580,6 +1609,8 @@ async function loadReportsList() {
         } // UPDATED
         
         displayReportsList(allReports); // UPDATED
+        const countEl = document.getElementById('searchResultCount');
+        if (countEl) countEl.textContent = `전체 ${allReports.length}건`;
         return; // UPDATED
       } // UPDATED
     } catch (serverError) { // UPDATED
@@ -1885,45 +1916,56 @@ async function deleteReport(reportId) {
   }
 }
 
-// 문서 검색
+// ── 문서 검색 (상태 필터 추가 + 실시간 검색 결과 카운트) ──────────
 function searchReports() {
-  const startDate = document.getElementById('searchStartDate').value;
-  const endDate = document.getElementById('searchEndDate').value;
-  const customerName = document.getElementById('searchCustomerName').value.toLowerCase();
-  
+  const startDate    = document.getElementById('searchStartDate')?.value || '';
+  const endDate      = document.getElementById('searchEndDate')?.value || '';
+  const customerName = (document.getElementById('searchCustomerName')?.value || '').toLowerCase().trim();
+  const statusFilter = document.getElementById('searchStatus')?.value || '';
+
   let filtered = [...allReports];
-  
+
   // 날짜 필터
   if (startDate) {
-    filtered = filtered.filter(r => {
-      const installDate = r.installDate || '';
-      return installDate >= startDate;
-    });
+    filtered = filtered.filter(r => (r.installDate || '') >= startDate);
   }
-  
   if (endDate) {
-    filtered = filtered.filter(r => {
-      const installDate = r.installDate || '';
-      return installDate <= endDate;
-    });
+    filtered = filtered.filter(r => (r.installDate || '') <= endDate);
   }
-  
-  // 고객명 필터
+
+  // 고객명/주소/시공자 통합 키워드 검색
   if (customerName) {
     filtered = filtered.filter(r => {
-      const name = (r.customerInfo?.receiverName || r.customerName || '').toLowerCase();
-      return name.includes(customerName);
+      const name    = (r.customerInfo?.receiverName || r.customerName || '').toLowerCase();
+      const address = (r.installAddress || '').toLowerCase();
+      const worker  = (r.installerName || '').toLowerCase();
+      return name.includes(customerName) || address.includes(customerName) || worker.includes(customerName);
     });
   }
-  
+
+  // 상태 필터
+  if (statusFilter) {
+    filtered = filtered.filter(r => (r.status || 'draft') === statusFilter);
+  }
+
+  // 결과 건수 표시
+  const countEl = document.getElementById('searchResultCount');
+  if (countEl) {
+    const total = allReports.length;
+    countEl.textContent = customerName || startDate || endDate || statusFilter
+      ? `${filtered.length} / ${total}건`
+      : `전체 ${total}건`;
+  }
+
   displayReportsList(filtered);
 }
 
 // 검색 초기화
 function resetSearch() {
-  document.getElementById('searchStartDate').value = '';
-  document.getElementById('searchEndDate').value = '';
-  document.getElementById('searchCustomerName').value = '';
+  const ids = ['searchStartDate','searchEndDate','searchCustomerName','searchStatus'];
+  ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const countEl = document.getElementById('searchResultCount');
+  if (countEl) countEl.textContent = `전체 ${allReports.length}건`;
   displayReportsList(allReports);
 }
 
@@ -2569,19 +2611,21 @@ function confirmDataReset() {
 
 // ========== Step 6: 매출 관리 기능 ==========
 
-// 예약 확정 처리
+// 예약 확정 처리 (이중클릭 방지)
+const confirmingSet = new Set();
 async function confirmReport(reportId) {
-  if (!confirm('이 예약을 확정하시겠습니까?\n\n예약 확정 후 시공 완료 처리가 가능합니다.')) {
-    return;
-  }
-  
+  if (confirmingSet.has(reportId)) return;
+  if (!confirm('이 예약을 확정하시겠습니까?\n\n예약 확정 후 시공 완료 처리가 가능합니다.')) return;
+
+  confirmingSet.add(reportId);
   try {
-    const response = await axios.patch(`/api/reports/${reportId}/confirm`);
+    const token = localStorage.getItem('token');
+    const response = await axios.patch(`/api/reports/${reportId}/confirm`, {}, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
     
     if (response.data.success) {
       alert('✅ 예약이 확정되었습니다!');
-      
-      // 목록 새로고침
       loadReportsList();
     } else {
       alert('❌ 예약 확정 실패: ' + (response.data.message || '알 수 없는 오류'));
@@ -2589,17 +2633,23 @@ async function confirmReport(reportId) {
   } catch (error) {
     console.error('Confirm report error:', error);
     alert('❌ 예약 확정 중 오류가 발생했습니다.');
+  } finally {
+    confirmingSet.delete(reportId);
   }
 }
 
-// 시공 완료 처리
+// 시공 완료 처리 (이중클릭 방지)
+const completingSet = new Set();
 async function completeReport(reportId) {
-  if (!confirm('이 문서를 시공 완료로 표시하시겠습니까?\n\n시공 완료된 문서는 "매출 관리" 탭에서 확인할 수 있습니다.')) {
-    return;
-  }
-  
+  if (completingSet.has(reportId)) return;
+  if (!confirm('이 문서를 시공 완료로 표시하시겠습니까?\n\n시공 완료된 문서는 "매출 관리" 탭에서 확인할 수 있습니다.')) return;
+
+  completingSet.add(reportId);
   try {
-    const response = await axios.patch(`/api/reports/${reportId}/complete`);
+    const token = localStorage.getItem('token');
+    const response = await axios.patch(`/api/reports/${reportId}/complete`, {}, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
     
     if (response.data.success) {
       alert('✅ 시공이 완료되었습니다!');
@@ -2647,6 +2697,8 @@ async function completeReport(reportId) {
     } else {
       alert('❌ 시공 완료 처리 중 오류가 발생했습니다.\n\n' + errorMsg);
     }
+  } finally {
+    completingSet.delete(reportId);
   }
 }
 
