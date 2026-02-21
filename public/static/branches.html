@@ -147,7 +147,7 @@
                 </div>
                 
                 <div class="flex gap-3 pt-4">
-                    <button type="submit"
+                    <button type="button" onclick="submitBranchForm()"
                             class="flex-1 bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition">
                         <i class="fas fa-check mr-2"></i>저장
                     </button>
@@ -191,7 +191,7 @@
                                placeholder="비밀번호 재입력">
                     </div>
 
-                    <button type="submit"
+                    <button type="button" onclick="submitPasswordChange()"
                             class="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition">
                         <i class="fas fa-key mr-2"></i>비밀번호 변경
                     </button>
@@ -372,10 +372,8 @@
             document.getElementById('deleteModal').classList.add('hidden')
         }
 
-        // 폼 제출
-        document.getElementById('branchForm').addEventListener('submit', async (e) => {
-            e.preventDefault()
-
+        // 지사 폼 제출
+        async function submitBranchForm() {
             const id = document.getElementById('branchId').value
             const name = document.getElementById('branchName').value.trim()
 
@@ -405,7 +403,7 @@
                 console.error('Branch save error:', error)
                 alert(error.response?.data?.error || '저장 중 오류가 발생했습니다.')
             }
-        })
+        }
 
         // 삭제 확인
         async function confirmDelete() {
@@ -489,10 +487,8 @@
             }
         }
 
-        // 지사 비밀번호 변경 폼 제출
-        document.getElementById('passwordForm').addEventListener('submit', async (e) => {
-            e.preventDefault()
-
+        // 지사 비밀번호 변경 제출
+        async function submitPasswordChange() {
             const username = document.getElementById('branchUsername').value
             const newPassword = document.getElementById('newPassword').value
             const confirmPassword = document.getElementById('confirmPassword').value
@@ -553,7 +549,7 @@
                 
                 alert(`❌ ${errorMsg}\n\n상세: ${error.response?.status || 'Network Error'}`)
             }
-        })
+        }
     </script>
 </body>
 </html>
