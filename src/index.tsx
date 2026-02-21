@@ -1770,8 +1770,18 @@ app.post('/api/assignments', async (c) => {
     const user = auth.user as any
     const { orderDate, customerName, phone, address, productName, branchId, notes } = await c.req.json()
 
-    if (!customerName || !branchId) {
+    // branchId 정수 변환 및 유효성 검사 (NaN·0·미선택 완전 차단)
+    const parsedBranchId = parseInt(String(branchId), 10)
+    if (!customerName || !parsedBranchId || isNaN(parsedBranchId) || parsedBranchId <= 0) {
       return c.json({ success: false, error: '주문자명과 담당 지사는 필수입니다.' }, 400)
+    }
+
+    // 선택한 지사가 실제로 DB에 존재하는지 검증
+    const branchExists = await env.DB.prepare(
+      'SELECT id FROM branches WHERE id = ?'
+    ).bind(parsedBranchId).first()
+    if (!branchExists) {
+      return c.json({ success: false, error: '존재하지 않는 지사입니다.' }, 400)
     }
 
     const assignmentId = `ASG-${Date.now()}`
@@ -1787,7 +1797,7 @@ app.post('/api/assignments', async (c) => {
       phone        || '',
       address      || '',
       productName  || '',
-      branchId,
+      parsedBranchId,          // 검증된 정수값만 사용
       user?.id     || null,
       notes        || '',
       orderDate    || new Date().toISOString().split('T')[0]
