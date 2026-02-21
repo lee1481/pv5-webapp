@@ -18,7 +18,9 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.19.9",
-    "hono": "^4.11.7"
+    "bcryptjs": "^3.0.3",
+    "hono": "^4.11.7",
+    "jsonwebtoken": "^9.0.3"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "4.20250705.0",

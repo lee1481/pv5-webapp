@@ -2,10 +2,10 @@ module.exports = {
   apps: [
     {
       name: 'webapp',
-      script: 'node',
-      args: 'server.js',
+      script: 'npx',
+      args: 'wrangler pages dev dist --d1=pv5-reports-db --local --ip 0.0.0.0 --port 3000',
       env: {
-        NODE_ENV: 'production',
+        NODE_ENV: 'development',
         PORT: 3000
       },
       watch: false,

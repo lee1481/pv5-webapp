@@ -2,6 +2,8 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { serveStatic } from 'hono/cloudflare-workers'
 import { allPackages, getPackageById } from './packages'
+import * as bcrypt from 'bcryptjs'
+import * as jwt from 'jsonwebtoken'
 
 type Bindings = {
   AI: any;
@@ -44,6 +46,122 @@ app.get('/api/packages/:id', (c) => {
   }
   
   return c.json({ package: pkg })
+})
+
+// ========================================
+// JWT 인증 시스템
+// ========================================
+
+// JWT 시크릿 키 (프로덕션에서는 환경변수로 관리)
+const JWT_SECRET = 'kvan-pv5-jwt-secret-2026-secure-key'
+
+// JWT 토큰 생성 함수
+function generateToken(user: any, branchName: string | null) {
+  return jwt.sign(
+    {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      branchId: user.branch_id,
+      branchName: branchName
+    },
+    JWT_SECRET,
+    { expiresIn: '24h' }
+  )
+}
+
+// JWT 토큰 검증 미들웨어
+async function verifyToken(token: string) {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET)
+    return { success: true, user: decoded }
+  } catch (error) {
+    return { success: false, error: 'Invalid token' }
+  }
+}
+
+// API: 로그인
+app.post('/api/auth/login', async (c) => {
+  try {
+    const { username, password } = await c.req.json()
+    
+    if (!username || !password) {
+      return c.json({ success: false, error: '아이디와 비밀번호를 입력해주세요.' }, 400)
+    }
+
+    const { env } = c
+
+    // DB에서 사용자 조회 (branches 테이블 조인)
+    const result = await env.DB.prepare(`
+      SELECT u.*, b.name as branch_name 
+      FROM users u
+      LEFT JOIN branches b ON u.branch_id = b.id
+      WHERE u.username = ?
+    `).bind(username).first()
+
+    if (!result) {
+      return c.json({ success: false, error: '아이디 또는 비밀번호가 올바르지 않습니다.' }, 401)
+    }
+
+    // 비밀번호 검증
+    const isValidPassword = await bcrypt.compare(password, result.password as string)
+    
+    if (!isValidPassword) {
+      return c.json({ success: false, error: '아이디 또는 비밀번호가 올바르지 않습니다.' }, 401)
+    }
+
+    // JWT 토큰 생성
+    const branchName = result.role === 'head' ? '본사' : (result.branch_name as string || null)
+    const token = generateToken(result, branchName)
+
+    return c.json({
+      success: true,
+      token,
+      user: {
+        id: result.id,
+        username: result.username,
+        role: result.role,
+        branchId: result.branch_id,
+        branchName: branchName
+      }
+    })
+
+  } catch (error: any) {
+    console.error('Login error:', error)
+    return c.json({ success: false, error: '로그인 중 오류가 발생했습니다.' }, 500)
+  }
+})
+
+// API: 토큰 검증
+app.get('/api/auth/verify', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization')
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ success: false, error: 'No token provided' }, 401)
+    }
+
+    const token = authHeader.substring(7)
+    const result = await verifyToken(token)
+
+    if (!result.success) {
+      return c.json({ success: false, error: result.error }, 401)
+    }
+
+    return c.json({
+      success: true,
+      user: result.user
+    })
+
+  } catch (error: any) {
+    console.error('Token verification error:', error)
+    return c.json({ success: false, error: 'Token verification failed' }, 500)
+  }
+})
+
+// API: 로그아웃 (클라이언트에서 토큰 삭제)
+app.post('/api/auth/logout', (c) => {
+  return c.json({ success: true, message: '로그아웃되었습니다.' })
 })
 
 // API: 거래명세서 OCR 분석

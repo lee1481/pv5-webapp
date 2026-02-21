@@ -57,9 +57,10 @@
                 <i class="fas fa-info-circle mr-2"></i>테스트 계정
             </div>
             <div class="space-y-1 text-blue-700">
-                <div><strong>본사:</strong> admin / admin123</div>
-                <div><strong>서울지사:</strong> seoul / seoul123</div>
-                <div><strong>경북지사:</strong> gyeongbuk / gyeongbuk123</div>
+                <div><strong>본사:</strong> admin / admin2026!</div>
+                <div><strong>서울지사:</strong> seoul / seoul2026!</div>
+                <div><strong>경북지사:</strong> gyeongbuk / gyeongbuk2026!</div>
+                <div><strong>호남지사:</strong> honam / honam2026!</div>
             </div>
         </div>
     </div>
@@ -69,8 +70,11 @@
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault()
             
-            const username = document.getElementById('username').value
-            const password = document.getElementById('password').value
+            const username = document.getElementById('username').value.trim()
+            const password = document.getElementById('password').value.trim()
+
+            // 에러 메시지 숨기기
+            document.getElementById('errorMessage').classList.add('hidden')
             
             try {
                 const response = await axios.post('/api/auth/login', {
@@ -79,20 +83,18 @@
                 })
                 
                 if (response.data.success) {
-                    // 사용자 정보 저장
+                    // JWT 토큰 및 사용자 정보 저장
+                    localStorage.setItem('token', response.data.token)
                     localStorage.setItem('user', JSON.stringify(response.data.user))
                     
-                    // 역할에 따라 페이지 이동
-                    if (response.data.user.role === 'head') {
-                        window.location.href = '/hq.html' // 본사 페이지
-                    } else {
-                        window.location.href = '/' // 지사 페이지 (기존 메인)
-                    }
+                    // 런처 페이지로 이동 (권한별 UI 분기는 런처에서 처리)
+                    window.location.href = '/static/launcher.html'
                 }
             } catch (error) {
+                console.error('Login error:', error)
                 document.getElementById('errorMessage').classList.remove('hidden')
                 document.getElementById('errorText').textContent = 
-                    error.response?.data?.message || '로그인 중 오류가 발생했습니다.'
+                    error.response?.data?.error || '로그인 중 오류가 발생했습니다.'
             }
         })
     </script>
