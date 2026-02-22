@@ -3194,7 +3194,7 @@ app.get('/ocr', (c) => {
             </footer>
         </div>
 
-        <script src="/static/app.js?v=20260222c"></script>
+        <script src="/static/app.js?v=20260222d"></script>
     </body>
     </html>
   `)

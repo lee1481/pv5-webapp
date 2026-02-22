@@ -30,35 +30,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// STEP 1 — 배정 목록 렌더링 (OCR 완전 대체)
+// STEP 1 — 배정 목록 렌더링
+// ★ localStorage의 user를 믿지 않고, 서버 verify로 role을 직접 확인
 // ═══════════════════════════════════════════════════════════════
 async function renderStep1AssignmentList() {
   const container = document.getElementById('upload-section');
   if (!container) return;
 
-  // 토큰 재확인 및 헤더 강제 설정
+  // 토큰 확인
   const token = localStorage.getItem('token');
   if (!token) {
     window.location.href = '/static/login';
     return;
   }
   axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
-  // 현재 로그인 사용자 role 확인
-  let userInfo = null;
-  try { userInfo = JSON.parse(localStorage.getItem('user') || '{}'); } catch(e) {}
-  console.log('[접수목록] 사용자 role:', userInfo?.role, '| branchId:', userInfo?.branchId);
-
-  // 본사 계정이면 본사 페이지로 안내
-  if (userInfo?.role === 'head') {
-    container.innerHTML = `
-      <div class="text-center py-16 text-gray-400">
-        <i class="fas fa-building text-6xl mb-4 block text-blue-300"></i>
-        <p class="text-lg font-semibold text-gray-700">본사 관리자 계정입니다</p>
-        <p class="text-sm mt-2">본사 접수 관리는 <a href="/static/hq" class="text-blue-600 underline font-semibold">본사 관리 시스템</a>을 이용해주세요.</p>
-      </div>`;
-    return;
-  }
 
   // 로딩 표시
   container.innerHTML = `
@@ -68,6 +53,33 @@ async function renderStep1AssignmentList() {
     </div>`;
 
   try {
+    // ★ 핵심: 서버에서 토큰을 직접 검증하여 실제 role/branchId 확인
+    //   localStorage.user는 이전 세션 데이터일 수 있으므로 절대 신뢰하지 않음
+    const verifyRes = await axios.get('/api/auth/verify');
+    if (!verifyRes.data.success) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/static/login';
+      return;
+    }
+
+    // 서버에서 확인된 실제 사용자 정보로 localStorage 갱신
+    const serverUser = verifyRes.data.user;
+    localStorage.setItem('user', JSON.stringify(serverUser));
+    console.log('[접수목록] 서버 검증 role:', serverUser.role, '| branchId:', serverUser.branchId);
+
+    // 서버 검증된 role 기준으로 판단
+    if (serverUser.role === 'head') {
+      container.innerHTML = `
+        <div class="text-center py-16 text-gray-400">
+          <i class="fas fa-building text-6xl mb-4 block text-blue-300"></i>
+          <p class="text-lg font-semibold text-gray-700">본사 관리자 계정입니다</p>
+          <p class="text-sm mt-2">본사 접수 관리는 <a href="/static/hq" class="text-blue-600 underline font-semibold">본사 관리 시스템</a>을 이용해주세요.</p>
+        </div>`;
+      return;
+    }
+
+    // 지사 계정: 접수 목록 조회
     const res = await axios.get('/api/assignments/my');
     console.log('[접수목록] API 응답:', res.data.assignments?.length, '건');
     if (!res.data.success) throw new Error(res.data.error || 'API 실패');
@@ -77,7 +89,6 @@ async function renderStep1AssignmentList() {
 
   } catch(e) {
     console.error('renderStep1 error:', e);
-    // 401 = 토큰 만료 → 로그인으로
     if (e.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
