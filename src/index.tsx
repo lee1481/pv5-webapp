@@ -1626,7 +1626,27 @@ app.post('/api/reports/save', async (c) => {
     // branch_id: 지사 계정이면 자기 branchId, 본사면 null
     const branchId = (auth.user.role === 'branch' && auth.user.branchId) ? auth.user.branchId : null
     const finalStatus = status || 'draft'
-    const finalAssignmentId = assignmentId || null
+
+    // assignmentId: 요청값 → customerInfo.assignmentId → 기존 DB값 순으로 우선순위 적용
+    // (수정 저장 시 빈 문자열로 기존 연결을 덮어쓰는 버그 방지)
+    let finalAssignmentId = (assignmentId && assignmentId !== '') ? assignmentId
+      : (customerInfo?.assignmentId && customerInfo.assignmentId !== '') ? customerInfo.assignmentId
+      : null
+
+    // 기존 report가 있으면 DB의 assignment_id 보존 (빈 값으로 덮어쓰기 방지)
+    if (!finalAssignmentId) {
+      try {
+        const { results: existing } = await env.DB.prepare(
+          `SELECT assignment_id FROM reports WHERE report_id = ?`
+        ).bind(finalReportId).all()
+        if (existing.length > 0 && existing[0].assignment_id) {
+          finalAssignmentId = existing[0].assignment_id as string
+          console.log('[Save] Preserved existing assignment_id:', finalAssignmentId)
+        }
+      } catch (e) {
+        console.warn('[Save] Could not fetch existing assignment_id:', e)
+      }
+    }
 
     const insertSQL = `INSERT OR REPLACE INTO reports (
       report_id, customer_info, packages, package_positions,
