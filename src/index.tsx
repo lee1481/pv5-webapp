@@ -1654,6 +1654,18 @@ app.post('/api/reports/save', async (c) => {
     ]
 
     await env.DB.prepare(insertSQL).bind(...bindValues).run()
+
+    // assignment_id가 있으면 assignments 상태를 in_progress로 동기화
+    if (finalAssignmentId) {
+      try {
+        await env.DB.prepare(`
+          UPDATE assignments SET status = 'in_progress' WHERE assignment_id = ? AND status = 'assigned'
+        `).bind(finalAssignmentId).run()
+        console.log('Assignment synced to in_progress on report save:', finalAssignmentId)
+      } catch (syncErr) {
+        console.warn('Assignment sync warning (save):', syncErr)
+      }
+    }
     
     console.log('Report saved to D1:', finalReportId) // UPDATED
     return c.json({ 
@@ -2088,12 +2100,27 @@ app.patch('/api/reports/:id/confirm', async (c) => {
       }
     }
 
-    // D1에서 상태 업데이트
+    // D1에서 reports 상태 업데이트
     await env.DB.prepare(`
       UPDATE reports 
       SET status = 'confirmed', updated_at = datetime('now')
       WHERE report_id = ?
     `).bind(reportId).run()
+
+    // reports에 연결된 assignment_id로 assignments 상태도 동기화 (in_progress)
+    try {
+      const { results: reportRow } = await env.DB.prepare(
+        `SELECT assignment_id FROM reports WHERE report_id = ?`
+      ).bind(reportId).all()
+      if (reportRow.length > 0 && reportRow[0].assignment_id) {
+        await env.DB.prepare(`
+          UPDATE assignments SET status = 'in_progress' WHERE assignment_id = ?
+        `).bind(reportRow[0].assignment_id).run()
+        console.log('Assignment synced to in_progress:', reportRow[0].assignment_id)
+      }
+    } catch (syncErr) {
+      console.warn('Assignment sync warning (confirmed):', syncErr)
+    }
     
     console.log('Report confirmed:', reportId)
     
@@ -2133,6 +2160,21 @@ app.patch('/api/reports/:id/complete', async (c) => {
         SET status = 'completed', updated_at = datetime('now')
         WHERE report_id = ?
       `).bind(reportId).run()
+
+      // reports에 연결된 assignment_id로 assignments 상태도 동기화 (completed)
+      try {
+        const { results: reportRow } = await env.DB.prepare(
+          `SELECT assignment_id FROM reports WHERE report_id = ?`
+        ).bind(reportId).all()
+        if (reportRow.length > 0 && reportRow[0].assignment_id) {
+          await env.DB.prepare(`
+            UPDATE assignments SET status = 'completed' WHERE assignment_id = ?
+          `).bind(reportRow[0].assignment_id).run()
+          console.log('Assignment synced to completed:', reportRow[0].assignment_id)
+        }
+      } catch (syncErr) {
+        console.warn('Assignment sync warning (completed):', syncErr)
+      }
       
       console.log('Report marked as completed:', reportId)
       
@@ -2985,11 +3027,13 @@ app.get('/ocr', (c) => {
                                         <i class="fas fa-file-excel mr-2"></i>Excel 내보내기
                                     </button>
                                     <button onclick="document.getElementById('excelFileInput').click()" 
-                                            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-semibold">
+                                            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-semibold"
+                                            id="btnImportData">
                                         <i class="fas fa-upload mr-2"></i>데이터 가져오기
                                     </button>
                                     <button onclick="confirmDataReset()" 
-                                            class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-semibold">
+                                            class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-semibold"
+                                            id="btnResetData">
                                         <i class="fas fa-trash mr-2"></i>데이터 초기화
                                     </button>
                                 </div>

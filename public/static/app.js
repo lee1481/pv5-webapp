@@ -59,6 +59,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadPackages();
   setupStepNavigation();
   updateStepIndicator();
+
+  // 지사 계정이면 데이터 가져오기 + 데이터 초기화 버튼 숨김
+  try {
+    const _userObj = JSON.parse(localStorage.getItem('user') || '{}');
+    if (_userObj.role === 'branch') {
+      const _btnImport = document.getElementById('btnImportData');
+      const _btnReset = document.getElementById('btnResetData');
+      if (_btnImport) _btnImport.style.display = 'none';
+      if (_btnReset) _btnReset.style.display = 'none';
+    }
+  } catch(e) {}
+
   // 1단계: 토큰 기반으로 해당 지사 배정 목록만 렌더링
   await renderStep1AssignmentList();
 });
