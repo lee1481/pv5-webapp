@@ -29,7 +29,8 @@
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-blue-500 to-purple-600 min-h-screen flex items-center justify-center px-4">
+<body class="min-h-screen flex items-center justify-center px-4" style="background: linear-gradient(to bottom, #0a1628 0%, #0f172a 30%, #1e293b 100%);">
+
     <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
         <!-- Logo -->
         <div class="text-center mb-8">
@@ -203,6 +204,8 @@
                 if (response.data.success) {
                     // 성공 피드백
                     document.getElementById('successMessage').classList.remove('hidden')
+                    // 이전 지사의 캐시 데이터 완전 초기화 (지사 간 데이터 혼재 방지)
+                    localStorage.removeItem('pv5_reports')
                     localStorage.setItem('token', response.data.token)
                     localStorage.setItem('user', JSON.stringify(response.data.user))
                     setTimeout(() => { window.location.href = '/static/launcher' }, 600)

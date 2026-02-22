@@ -225,62 +225,6 @@ async function verifyPassword(password: string, stored: string): Promise<boolean
   }
 }
 
-// ========================================
-// 브루트포스 방어 헬퍼 (Cloudflare KV 기반)
-// KV 키 형식: login_fail:<username>  값: { count, lockedUntil }
-// ========================================
-const MAX_LOGIN_ATTEMPTS = 5       // 최대 실패 횟수
-const LOCK_DURATION_SEC = 15 * 60  // 잠금 시간: 15분
-const FAIL_WINDOW_SEC   = 30 * 60  // 실패 카운트 유효 시간: 30분
-
-async function checkLoginLock(kv: KVNamespace | undefined, username: string): Promise<{ locked: boolean; remainMin?: number }> {
-  if (!kv) return { locked: false }
-  try {
-    const raw = await kv.get(`login_fail:${username}`)
-    if (!raw) return { locked: false }
-    const data = JSON.parse(raw) as { count: number; lockedUntil?: number }
-    const now = Math.floor(Date.now() / 1000)
-    if (data.lockedUntil && data.lockedUntil > now) {
-      const remainMin = Math.ceil((data.lockedUntil - now) / 60)
-      return { locked: true, remainMin }
-    }
-    return { locked: false }
-  } catch {
-    return { locked: false }
-  }
-}
-
-async function recordLoginFail(kv: KVNamespace | undefined, username: string): Promise<void> {
-  if (!kv) return
-  try {
-    const raw = await kv.get(`login_fail:${username}`)
-    const now = Math.floor(Date.now() / 1000)
-    let data: { count: number; lockedUntil?: number } = raw ? JSON.parse(raw) : { count: 0 }
-
-    // 이미 잠금 해제된 상태면 카운트 초기화
-    if (data.lockedUntil && data.lockedUntil <= now) {
-      data = { count: 0 }
-    }
-
-    data.count += 1
-
-    if (data.count >= MAX_LOGIN_ATTEMPTS) {
-      data.lockedUntil = now + LOCK_DURATION_SEC
-    }
-
-    await kv.put(`login_fail:${username}`, JSON.stringify(data), { expirationTtl: FAIL_WINDOW_SEC })
-  } catch (e) {
-    console.error('[Security] recordLoginFail error:', e)
-  }
-}
-
-async function clearLoginFail(kv: KVNamespace | undefined, username: string): Promise<void> {
-  if (!kv) return
-  try {
-    await kv.delete(`login_fail:${username}`)
-  } catch {}
-}
-
 // API: 로그인
 app.post('/api/auth/login', async (c) => {
   try {
@@ -293,16 +237,7 @@ app.post('/api/auth/login', async (c) => {
 
     const { env } = c
 
-    // ── 1. 잠금 여부 확인 ──────────────────────────
-    const lockStatus = await checkLoginLock(env.REPORTS_KV, username)
-    if (lockStatus.locked) {
-      return c.json({
-        success: false,
-        error: `로그인 시도 횟수를 초과했습니다. ${lockStatus.remainMin}분 후 다시 시도해주세요.`
-      }, 429)
-    }
-
-    // ── 2. DB 사용자 조회 ──────────────────────────
+    // ── 1. DB 사용자 조회 ──────────────────────────
     const result = await env.DB.prepare(`
       SELECT u.*, b.name as branch_name 
       FROM users u
@@ -311,33 +246,17 @@ app.post('/api/auth/login', async (c) => {
     `).bind(username).first()
 
     if (!result) {
-      // 존재하지 않는 사용자도 실패 기록 (열거 공격 방어)
-      await recordLoginFail(env.REPORTS_KV, username)
       return c.json({ success: false, error: '아이디 또는 비밀번호가 올바르지 않습니다.' }, 401)
     }
 
-    // ── 3. 비밀번호 검증 ───────────────────────────
+    // ── 2. 비밀번호 검증 ───────────────────────────
     const isValidPassword = await verifyPassword(password, result.password as string)
     
     if (!isValidPassword) {
-      await recordLoginFail(env.REPORTS_KV, username)
-
-      // 남은 시도 횟수 안내
-      const raw = await env.REPORTS_KV?.get(`login_fail:${username}`)
-      const failCount = raw ? (JSON.parse(raw) as { count: number }).count : 0
-      const remaining = Math.max(0, MAX_LOGIN_ATTEMPTS - failCount)
-
-      const msg = remaining > 0
-        ? `아이디 또는 비밀번호가 올바르지 않습니다. (남은 시도: ${remaining}회)`
-        : `로그인 시도 횟수를 초과했습니다. ${LOCK_DURATION_SEC / 60}분 후 다시 시도해주세요.`
-
-      return c.json({ success: false, error: msg }, 401)
+      return c.json({ success: false, error: '아이디 또는 비밀번호가 올바르지 않습니다.' }, 401)
     }
 
-    // ── 4. 로그인 성공 → 실패 기록 초기화 ──────────
-    await clearLoginFail(env.REPORTS_KV, username)
-
-    // ── 5. JWT 토큰 생성 ───────────────────────────
+    // ── 3. JWT 토큰 생성 ───────────────────────────
     const branchName = result.role === 'head' ? '본사' : (result.branch_name as string || null)
     const token = await generateToken(result, branchName, c.env)
 
@@ -450,21 +369,6 @@ app.post('/api/auth/refresh', async (c) => {
 // API: 로그아웃 (클라이언트에서 토큰 삭제)
 app.post('/api/auth/logout', (c) => {
   return c.json({ success: true, message: '로그아웃되었습니다.' })
-})
-
-// API: 로그인 잠금 해제 [본사 전용]
-app.post('/api/auth/unlock', async (c) => {
-  const auth = await requireHeadAuth(c)
-  if (!auth.success) return auth.response
-  try {
-    const { username } = await c.req.json()
-    if (!username) return c.json({ success: false, error: '사용자명을 입력해주세요.' }, 400)
-    const { env } = c
-    await clearLoginFail(env.REPORTS_KV, username)
-    return c.json({ success: true, message: `${username} 계정의 로그인 잠금이 해제되었습니다.` })
-  } catch (error: any) {
-    return c.json({ success: false, error: '잠금 해제 중 오류가 발생했습니다.' }, 500)
-  }
 })
 
 // ========================================
@@ -1674,14 +1578,16 @@ app.post('/api/reports/save', async (c) => {
       reportId,
       customerInfo,
       packages,
-      packagePositions, // UPDATED - 3단 선반 위치
+      packagePositions,
       installDate,
       installTime,
       installAddress,
       notes,
       installerName,
       attachmentImage,
-      attachmentFileName
+      attachmentFileName,
+      status,
+      assignmentId
     } = body
     
     // finalReportId 생성 및 특수문자 제거 (SQL 안전성 보장)
@@ -1717,23 +1623,19 @@ app.post('/api/reports/save', async (c) => {
     console.log('env.DB:', env.DB)
     console.log('finalReportId:', finalReportId)
     
-    // SQL 쿼리를 상수로 분리
+    // branch_id: 지사 계정이면 자기 branchId, 본사면 null
+    const branchId = (auth.user.role === 'branch' && auth.user.branchId) ? auth.user.branchId : null
+    const finalStatus = status || 'draft'
+    const finalAssignmentId = assignmentId || null
+
     const insertSQL = `INSERT OR REPLACE INTO reports (
       report_id, customer_info, packages, package_positions,
       install_date, install_time, install_address, notes,
       installer_name, image_key, image_filename,
+      status, branch_id, assignment_id,
       created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
-    
-    console.log('SQL Query:', insertSQL)
-    console.log('Calling env.DB.prepare()...')
-    
-    const stmt = env.DB.prepare(insertSQL)
-    
-    console.log('Statement prepared successfully')
-    console.log('Binding values...')
-    
-    // 바인딩할 값들 준비
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+
     const bindValues = [
       finalReportId,
       JSON.stringify(customerInfo || {}),
@@ -1745,13 +1647,13 @@ app.post('/api/reports/save', async (c) => {
       notes || null,
       installerName || null,
       imageKey || null,
-      attachmentFileName || null
+      attachmentFileName || null,
+      finalStatus,
+      branchId,
+      finalAssignmentId
     ]
-    
-    console.log('Bind values count:', bindValues.length)
-    console.log('Bind values:', JSON.stringify(bindValues, null, 2))
-    
-    await stmt.bind(...bindValues).run()
+
+    await env.DB.prepare(insertSQL).bind(...bindValues).run()
     
     console.log('Report saved to D1:', finalReportId) // UPDATED
     return c.json({ 
@@ -1897,7 +1799,7 @@ app.patch('/api/assignments/:id/status', async (c) => {
     
     const stmt = env.DB.prepare(`
       UPDATE assignments 
-      SET status = ?, updated_at = CURRENT_TIMESTAMP
+      SET status = ?
       WHERE assignment_id = ?
     `)
     
@@ -1908,6 +1810,54 @@ app.patch('/api/assignments/:id/status', async (c) => {
   } catch (error) {
     console.error('Assignment status update error:', error)
     return c.json({ success: false, message: '상태 변경 중 오류가 발생했습니다.' }, 500)
+  }
+})
+
+// API: 접수 수정 [로그인만 되면 누구나 가능] PUT /api/assignments/:id
+app.put('/api/assignments/:id', async (c) => {
+  const auth = await requireAuth(c)
+  if (!auth.success) return auth.response
+  try {
+    const { env } = c
+    const assignmentId = c.req.param('id')
+    const { orderDate, customerName, phone, address, productName, branchId, notes } = await c.req.json()
+
+    if (!customerName || !branchId) {
+      return c.json({ success: false, error: '주문자명과 담당 지사는 필수입니다.' }, 400)
+    }
+
+    await env.DB.prepare(`
+      UPDATE assignments
+      SET order_date = ?, customer_name = ?, customer_phone = ?,
+          customer_address = ?, product_name = ?, branch_id = ?, notes = ?
+      WHERE assignment_id = ?
+    `).bind(orderDate || null, customerName, phone || null, address || null,
+            productName || null, parseInt(String(branchId), 10), notes || null,
+            assignmentId).run()
+
+    return c.json({ success: true, message: '접수 정보가 수정되었습니다.' })
+  } catch (error) {
+    console.error('Assignment update error:', error)
+    return c.json({ success: false, error: '접수 수정 중 오류가 발생했습니다.' }, 500)
+  }
+})
+
+// API: 접수 삭제 [본사 전용] DELETE /api/assignments/:id
+app.delete('/api/assignments/:id', async (c) => {
+  const auth = await requireHeadAuth(c)
+  if (!auth.success) return auth.response
+  try {
+    const { env } = c
+    const assignmentId = c.req.param('id')
+
+    await env.DB.prepare(
+      'DELETE FROM assignments WHERE assignment_id = ?'
+    ).bind(assignmentId).run()
+
+    return c.json({ success: true, message: '접수가 삭제되었습니다.' })
+  } catch (error) {
+    console.error('Assignment delete error:', error)
+    return c.json({ success: false, error: '접수 삭제 중 오류가 발생했습니다.' }, 500)
   }
 })
 
@@ -1970,18 +1920,52 @@ app.get('/api/reports/list', async (c) => {
   if (!auth.success) return auth.response
   try {
     const { env } = c
-    
-    // D1에서 조회 // UPDATED
-    const stmt = env.DB.prepare(`
-      SELECT 
-        id, report_id, customer_info, packages, package_positions,
-        install_date, install_time, install_address, notes,
-        installer_name, image_key, image_filename,
-        created_at, updated_at, status
-      FROM reports
-      ORDER BY created_at DESC
-      LIMIT 100
-    `);
+    const user = auth.user as any
+    // 본사가 특정 지사를 대리 접속할 때 launcher에서 viewBranchId 전달
+    const viewBranchId = c.req.query('viewBranchId')
+
+    // 지사 계정: 자기 branch_id 문서만
+    // 본사 + viewBranchId 있음: 해당 지사 문서만
+    // 본사 + viewBranchId 없음: 전체 조회
+    let stmt
+    if (user.role === 'branch' && user.branchId) {
+      stmt = env.DB.prepare(`
+        SELECT 
+          id, report_id, customer_info, packages, package_positions,
+          install_date, install_time, install_address, notes,
+          installer_name, image_key, image_filename,
+          created_at, updated_at, status
+        FROM reports
+        WHERE branch_id = ?
+        ORDER BY created_at DESC
+        LIMIT 100
+      `).bind(Number(user.branchId))
+    } else if (user.role === 'head' && viewBranchId) {
+      // 본사가 특정 지사를 대리 접속 → 해당 지사 데이터만 표시
+      stmt = env.DB.prepare(`
+        SELECT 
+          id, report_id, customer_info, packages, package_positions,
+          install_date, install_time, install_address, notes,
+          installer_name, image_key, image_filename,
+          created_at, updated_at, status
+        FROM reports
+        WHERE branch_id = ?
+        ORDER BY created_at DESC
+        LIMIT 100
+      `).bind(Number(viewBranchId))
+    } else {
+      // 본사(head) 직접 접속 → 전체 조회
+      stmt = env.DB.prepare(`
+        SELECT 
+          id, report_id, customer_info, packages, package_positions,
+          install_date, install_time, install_address, notes,
+          installer_name, image_key, image_filename,
+          created_at, updated_at, status
+        FROM reports
+        ORDER BY created_at DESC
+        LIMIT 100
+      `)
+    }
     
     const { results } = await stmt.all(); // UPDATED
     
@@ -2077,21 +2061,33 @@ app.get('/api/reports/:id', async (c) => {
   }
 })
 
-// API: 예약 확정 상태 변경 [본사 전용]
+// API: 예약 확정 상태 변경 [로그인 필요 - 지사는 자기 데이터만]
 app.patch('/api/reports/:id/confirm', async (c) => {
-  const auth = await requireHeadAuth(c)
+  const auth = await requireAuth(c)
   if (!auth.success) return auth.response
   try {
     const { env } = c
     const reportId = c.req.param('id')
-    
+    const user = auth.user as any
+
     if (!env.DB) {
       return c.json({
         success: false,
         message: 'D1 데이터베이스가 연결되지 않았습니다.'
       }, 500)
     }
-    
+
+    // 지사 계정은 자기 branch_id 문서만 변경 가능
+    if (user.role === 'branch' && user.branchId) {
+      const { results: existing } = await env.DB.prepare(
+        `SELECT branch_id FROM reports WHERE report_id = ?`
+      ).bind(reportId).all()
+      if (existing.length === 0) return c.json({ success: false, message: '문서를 찾을 수 없습니다.' }, 404)
+      if (Number(existing[0].branch_id) !== Number(user.branchId)) {
+        return c.json({ success: false, message: '다른 지사의 문서는 변경할 수 없습니다.' }, 403)
+      }
+    }
+
     // D1에서 상태 업데이트
     await env.DB.prepare(`
       UPDATE reports 
@@ -2114,9 +2110,9 @@ app.patch('/api/reports/:id/confirm', async (c) => {
   }
 })
 
-// API: 시공 완료 상태 변경 [본사 전용]
+// API: 시공 완료 상태 변경 [로그인 필요 - 지사는 자기 데이터만]
 app.patch('/api/reports/:id/complete', async (c) => {
-  const auth = await requireHeadAuth(c)
+  const auth = await requireAuth(c)
   if (!auth.success) return auth.response
   try {
     const { env } = c
@@ -2324,7 +2320,8 @@ app.get('/api/reports/completed/list', async (c) => {
   if (!auth.success) return auth.response
   try {
     const { env } = c
-    
+    const user = auth.user as any
+
     if (!env.DB) {
       return c.json({
         success: false,
@@ -2333,20 +2330,52 @@ app.get('/api/reports/completed/list', async (c) => {
     }
     
     // D1에서 시공 완료된 문서만 조회
-    // status 컬럼이 없을 경우를 대비한 쿼리
+    // 지사 계정: 자기 branch_id 문서만
+    // 본사 + viewBranchId 있음: 해당 지사 문서만
+    // 본사 + viewBranchId 없음: 전체 조회
+    const viewBranchIdCompleted = c.req.query('viewBranchId')
     let results: any[]
     try {
-      const stmt = env.DB.prepare(`
-        SELECT 
-          id, report_id, customer_info, packages, package_positions,
-          install_date, install_time, install_address, notes,
-          installer_name, image_key, image_filename,
-          created_at, updated_at, status
-        FROM reports
-        WHERE status = 'completed'
-        ORDER BY install_date DESC, created_at DESC
-        LIMIT 1000
-      `)
+      let stmt
+      if (user.role === 'branch' && user.branchId) {
+        stmt = env.DB.prepare(`
+          SELECT 
+            id, report_id, customer_info, packages, package_positions,
+            install_date, install_time, install_address, notes,
+            installer_name, image_key, image_filename,
+            created_at, updated_at, status
+          FROM reports
+          WHERE status = 'completed' AND branch_id = ?
+          ORDER BY install_date DESC, created_at DESC
+          LIMIT 1000
+        `).bind(Number(user.branchId))
+      } else if (user.role === 'head' && viewBranchIdCompleted) {
+        // 본사가 특정 지사를 대리 접속 → 해당 지사 데이터만 표시
+        stmt = env.DB.prepare(`
+          SELECT 
+            id, report_id, customer_info, packages, package_positions,
+            install_date, install_time, install_address, notes,
+            installer_name, image_key, image_filename,
+            created_at, updated_at, status
+          FROM reports
+          WHERE status = 'completed' AND branch_id = ?
+          ORDER BY install_date DESC, created_at DESC
+          LIMIT 1000
+        `).bind(Number(viewBranchIdCompleted))
+      } else {
+        // 본사(head) 직접 접속 → 전체 조회
+        stmt = env.DB.prepare(`
+          SELECT 
+            id, report_id, customer_info, packages, package_positions,
+            install_date, install_time, install_address, notes,
+            installer_name, image_key, image_filename,
+            created_at, updated_at, status
+          FROM reports
+          WHERE status = 'completed'
+          ORDER BY install_date DESC, created_at DESC
+          LIMIT 1000
+        `)
+      }
       
       const queryResult = await stmt.all()
       results = queryResult.results
@@ -2393,53 +2422,52 @@ app.get('/api/reports/completed/list', async (c) => {
   }
 })
 
-// API: 시공 확인서 삭제 [본사 전용]
+// API: 시공 확인서 삭제 [로그인 필요 - 지사는 자기 데이터만]
 app.delete('/api/reports/:id', async (c) => {
-  const auth = await requireHeadAuth(c)
+  const auth = await requireAuth(c)
   if (!auth.success) return auth.response
   try {
     const { env } = c
     const reportId = c.req.param('id')
-    
+    const user = auth.user as any
+
     if (!env.DB) {
-      return c.json({ 
-        success: false, 
-        message: 'D1 데이터베이스가 연결되지 않았습니다.' 
-      }, 500)
+      return c.json({ success: false, message: 'D1 데이터베이스가 연결되지 않았습니다.' }, 500)
     }
-    
-    // D1에서 삭제 // UPDATED
-    await env.DB.prepare(`
-      DELETE FROM reports WHERE report_id = ?
-    `).bind(reportId).run()
-    
-    // R2에서 이미지 삭제 (있다면) // UPDATED
-    if (env.R2) {
-      const { results } = await env.DB.prepare(`
-        SELECT image_key FROM reports WHERE report_id = ?
-      `).bind(reportId).all()
-      
-      if (results.length > 0 && results[0].image_key) {
-        try {
-          await env.R2.delete(results[0].image_key)
-          console.log('Image deleted from R2:', results[0].image_key)
-        } catch (r2Error) {
-          console.error('R2 delete error (continuing):', r2Error)
-        }
+
+    // 삭제 전 이미지 키 먼저 조회 (R2 삭제용)
+    const { results: existing } = await env.DB.prepare(
+      `SELECT image_key, branch_id FROM reports WHERE report_id = ?`
+    ).bind(reportId).all()
+
+    if (existing.length === 0) {
+      return c.json({ success: false, message: '해당 문서를 찾을 수 없습니다.' }, 404)
+    }
+
+    // 지사 계정은 자기 branch_id 문서만 삭제 가능
+    if (user.role === 'branch' && user.branchId) {
+      if (Number(existing[0].branch_id) !== Number(user.branchId)) {
+        return c.json({ success: false, message: '다른 지사의 문서는 삭제할 수 없습니다.' }, 403)
       }
     }
-    
-    return c.json({ 
-      success: true, 
-      message: '시공 확인서가 삭제되었습니다.' 
-    })
-    
+
+    // D1에서 삭제
+    await env.DB.prepare(`DELETE FROM reports WHERE report_id = ?`).bind(reportId).run()
+
+    // R2에서 이미지 삭제 (있다면)
+    if (env.R2 && existing[0].image_key) {
+      try {
+        await env.R2.delete(existing[0].image_key)
+      } catch (r2Error) {
+        console.error('R2 delete error (continuing):', r2Error)
+      }
+    }
+
+    return c.json({ success: true, message: '시공 확인서가 삭제되었습니다.' })
+
   } catch (error) {
     console.error('Report delete error:', error)
-    return c.json({ 
-      success: false, 
-      message: '삭제 중 오류가 발생했습니다.',
-    }, 500)
+    return c.json({ success: false, message: '삭제 중 오류가 발생했습니다.' }, 500)
   }
 })
 
@@ -2635,18 +2663,25 @@ app.get('/ocr', (c) => {
     <body class="bg-gray-50">
         <div class="min-h-screen">
             <!-- Header -->
-            <header class="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-6 shadow-lg">
+            <header style="background: linear-gradient(135deg, #ffffff 0%, #f8faff 50%, #f0f4ff 100%); border-bottom: 1px solid rgba(99,102,241,0.12); box-shadow: 0 2px 20px rgba(99,102,241,0.08), 0 1px 4px rgba(0,0,0,0.04);" class="py-3">
                 <div class="container mx-auto px-4">
                     <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-4">
-                            <img src="/static/kvan-logo.png" alt="K-VAN" class="h-12 w-auto bg-white px-3 py-1 rounded-lg">
-                            <div>
-                                <h1 class="text-3xl font-bold flex items-center">
-                                    <i class="fas fa-clipboard-check mr-3"></i>
-                                    PV5 시공(예약) 확인서 시스템
-                                </h1>
-                                <p class="text-blue-100 mt-2">거래명세서 자동 인식 → 제품 선택 → 설치 일정 확정 → PDF/메일 발송</p>
+                        <!-- 로고 + 타이틀 -->
+                        <div class="flex items-center gap-3">
+                            <div style="background: #ffffff; border-radius: 12px; padding: 6px 12px; box-shadow: 0 1px 6px rgba(0,0,0,0.08); border: 1px solid rgba(0,0,0,0.06);">
+                                <img src="/static/kvan-logo.png" alt="K-VAN" class="h-8 w-auto">
                             </div>
+                            <div>
+                                <h1 class="font-bold flex items-center gap-2" style="font-size: 1.2rem; letter-spacing: -0.02em;">
+                                    <i class="fas fa-bus" style="color: #6366f1;"></i>
+                                    <span style="background: linear-gradient(90deg, #4f46e5, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-weight: 800;">케이밴 K-VAN</span>
+                                </h1>
+                                <p style="color: #94a3b8; font-size: 0.72rem; margin-top: 1px; letter-spacing: 0.02em;">PV5 시공관리 시스템</p>
+                            </div>
+                        </div>
+                        <!-- 유저 정보 + 로그아웃 -->
+                        <div class="flex items-center gap-3" id="headerUserArea">
+                            <!-- app.js에서 동적으로 채워짐 -->
                         </div>
                     </div>
                 </div>
@@ -3194,7 +3229,7 @@ app.get('/ocr', (c) => {
             </footer>
         </div>
 
-        <script src="/static/app.js?v=20260222d"></script>
+        <script src="/static/app.js?v=20260222n"></script>
     </body>
     </html>
   `)

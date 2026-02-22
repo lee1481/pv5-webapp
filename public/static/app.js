@@ -7,9 +7,15 @@ let allPackages = [];
 let packagePositions = {};
 let currentReportId = null;
 let allReports = [];
+let uploadedImageFile = null;
 
 let currentAssignments = [];
 let selectedAssignment = null; // 현재 선택된 접수 건
+
+// 본사가 특정 지사를 대리 접속할 때 URL에서 branchId 읽기
+// 예: /ocr?viewBranchId=3  → 서울/경북지사 데이터만 표시
+const _urlParams = new URLSearchParams(window.location.search);
+const viewBranchId = _urlParams.get('viewBranchId'); // null 이면 대리 접속 아님
 
 // 초기화
 document.addEventListener('DOMContentLoaded', async () => {
@@ -21,6 +27,34 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   // axios 헤더 재설정 (토큰 보장)
   axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+  // 헤더 유저 정보 + 로그아웃 버튼 렌더링
+  try {
+    const userStr = localStorage.getItem('user');
+    const userObj = userStr ? JSON.parse(userStr) : {};
+    const displayName = (userObj.branchName || '') + (userObj.username ? ' - ' + userObj.username : '');
+    const headerArea = document.getElementById('headerUserArea');
+    if (headerArea) {
+      headerArea.innerHTML = `
+        <div style="display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.15);">
+          <i class="fas fa-user-circle" style="color:#6366f1;font-size:1rem;"></i>
+          <span style="color:#4f46e5;font-size:0.8rem;font-weight:600;">${displayName}</span>
+        </div>
+        <button id="headerLogoutBtn"
+          style="display:flex;align-items:center;gap:6px;padding:6px 16px;border-radius:20px;font-size:0.8rem;font-weight:600;color:#ef4444;background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.2);cursor:pointer;transition:all 0.2s;"
+          onmouseover="this.style.background='rgba(239,68,68,0.14)';this.style.borderColor='rgba(239,68,68,0.4)'"
+          onmouseout="this.style.background='rgba(239,68,68,0.07)';this.style.borderColor='rgba(239,68,68,0.2)'">
+          <i class="fas fa-sign-out-alt"></i> 로그아웃
+        </button>`;
+      document.getElementById('headerLogoutBtn').addEventListener('click', async () => {
+        try { await axios.post('/api/auth/logout'); } catch(e) {}
+        localStorage.removeItem('pv5_reports');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/static/login';
+      });
+    }
+  } catch(e) { console.warn('Header user render error:', e); }
 
   await loadPackages();
   setupStepNavigation();
@@ -69,7 +103,9 @@ async function renderStep1AssignmentList() {
     console.log('[접수목록] 서버 검증 role:', serverUser.role, '| branchId:', serverUser.branchId);
 
     // 서버 검증된 role 기준으로 판단
-    if (serverUser.role === 'head') {
+    // 본사가 특정 지사를 대리 접속(viewBranchId 있음): 해당 지사 배정 목록 표시
+    // 본사가 직접 접속(viewBranchId 없음): 본사 안내 메시지
+    if (serverUser.role === 'head' && !viewBranchId) {
       container.innerHTML = `
         <div class="text-center py-16 text-gray-400">
           <i class="fas fa-building text-6xl mb-4 block text-blue-300"></i>
@@ -79,8 +115,12 @@ async function renderStep1AssignmentList() {
       return;
     }
 
-    // 지사 계정: 접수 목록 조회
-    const res = await axios.get('/api/assignments/my');
+    // 지사 계정 또는 본사 대리 접속: 해당 지사 배정 목록 조회
+    // 본사 대리 접속 시 branchId 파라미터 전달
+    const assignmentsUrl = (serverUser.role === 'head' && viewBranchId)
+      ? `/api/assignments?branchId=${viewBranchId}`
+      : '/api/assignments/my';
+    const res = await axios.get(assignmentsUrl);
     console.log('[접수목록] API 응답:', res.data.assignments?.length, '건');
     if (!res.data.success) throw new Error(res.data.error || 'API 실패');
 
@@ -118,10 +158,10 @@ function renderAssignmentCards(container, list) {
   let branchName = '';
   try { branchName = JSON.parse(localStorage.getItem('user') || '{}').branchName || ''; } catch(e) {}
 
-  const pending   = list.filter(a => a.status !== 'completed');
+  const pending   = list.filter(a => a.status === 'assigned');
   const completed = list.filter(a => a.status === 'completed');
 
-  if (list.length === 0) {
+  if (pending.length === 0 && completed.length === 0) {
     container.innerHTML = `
       <div class="text-center py-16 text-gray-400">
         <i class="fas fa-inbox text-6xl mb-4 block"></i>
@@ -245,14 +285,14 @@ function goToStep(step) {
   if (step === currentStep) return;
 
   if (step === 2) {
-    if (!selectedAssignment) { alert('접수 목록에서 항목을 선택해주세요.'); return; }
+    if (!selectedAssignment && !currentReportId) { alert('접수 목록에서 항목을 선택해주세요.'); return; }
     currentStep = 2; updateStepIndicator(); showCurrentSection();
     setTimeout(() => {
       if (allPackages.length === 0) loadPackages().then(() => showBrand('milwaukee'));
       else showBrand('milwaukee');
     }, 200);
   } else if (step === 3) {
-    if (!selectedAssignment) { alert('접수 목록에서 항목을 선택해주세요.'); return; }
+    if (!selectedAssignment && !currentReportId) { alert('접수 목록에서 항목을 선택해주세요.'); return; }
     if (selectedPackages.length === 0) { alert('제품을 선택해주세요.'); return; }
     currentStep = 3; updateStepIndicator(); showCurrentSection();
     // 주소 자동 채우기
@@ -1048,7 +1088,7 @@ function applyCustomTime() { // UPDATED
 // 단계 이동
 function nextStep(step) {
   // 유효성 검사
-  if (step === 2 && !selectedAssignment) {
+  if (step === 2 && !selectedAssignment && !currentReportId) {
     alert('접수 목록에서 항목을 선택해주세요.');
     return;
   }
@@ -1115,7 +1155,12 @@ function showCurrentSection() {
   document.getElementById('confirm-section').classList.toggle('hidden', currentStep !== 4);
   document.getElementById('manage-section').classList.toggle('hidden', currentStep !== 5);
   document.getElementById('revenue-section')?.classList.toggle('hidden', currentStep !== 6);
-  
+
+  // Step 1 진입 시 서버에서 최신 목록 새로고침 (상태 변경 반영)
+  if (currentStep === 1) {
+    renderStep1AssignmentList();
+  }
+
   // Step 5 진입 시 목록 로드
   if (currentStep === 5) {
     enterStep5();
@@ -1182,8 +1227,8 @@ function displayFinalPreview() {
           <i class="fas fa-user mr-2 text-blue-600"></i>고객 정보
         </h4>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-          <div><strong>접수일자:</strong> ${selectedAssignment?.order_date || '-'}</div>
-          <div><strong>상품명:</strong> ${selectedAssignment?.product_name || '-'}</div>
+          <div><strong>접수일자:</strong> ${selectedAssignment?.order_date || ocrData?.orderDate || '-'}</div>
+          <div><strong>상품명:</strong> ${selectedAssignment?.product_name || ocrData?.productName || selectedPackages.map(p => p.name || p.fullName).filter(Boolean).join(', ') || '-'}</div>
           <div><strong>고객명:</strong> ${selectedAssignment?.customer_name || document.getElementById('customerName')?.value || '-'}</div>
           <div><strong>연락처:</strong> ${selectedAssignment?.customer_phone || document.getElementById('customerPhone')?.value || '-'}</div>
           <div class="sm:col-span-2"><strong>주소:</strong> ${selectedAssignment?.customer_address || document.getElementById('installAddress')?.value || '-'}</div>
@@ -1502,6 +1547,16 @@ async function saveDraftReport() {
         }
         
         currentReportId = reportData.reportId;
+
+        // ★ assignment status → in_progress 로 변경 (1단계에서 카드 숨김)
+        if (selectedAssignment?.assignment_id) {
+          try {
+            await axios.patch(`/api/assignments/${selectedAssignment.assignment_id}/status`, { status: 'in_progress' });
+          } catch(e) { console.warn('assignment in_progress update failed:', e); }
+          selectedAssignment.status = 'in_progress';
+          const idx = currentAssignments.findIndex(x => x.assignment_id === selectedAssignment.assignment_id);
+          if (idx >= 0) currentAssignments[idx].status = 'in_progress';
+        }
         
         // 날짜 미정 여부에 따라 다른 메시지
         if (!installDate || installDate === '') {
@@ -1673,8 +1728,11 @@ async function saveReport() {
         if (selectedAssignment?.assignment_id) {
           try {
             await axios.patch(`/api/assignments/${selectedAssignment.assignment_id}/status`, { status: 'completed' });
-            selectedAssignment.status = 'completed';
           } catch(e) { console.warn('assignment complete update failed:', e); }
+          // 서버 응답 타이밍과 무관하게 로컬 상태 즉시 동기화
+          selectedAssignment.status = 'completed';
+          const idx = currentAssignments.findIndex(x => x.assignment_id === selectedAssignment.assignment_id);
+          if (idx >= 0) currentAssignments[idx].status = 'completed';
         }
 
         alert(`✅ 시공 확인서가 저장되었습니다!\n\n문서 ID: ${reportData.reportId}\n\n신규 접수를 시작합니다.`);
@@ -1743,12 +1801,16 @@ async function loadReportsList() {
   try {
     // 🔄 서버에서 먼저 불러오기 (Primary) // UPDATED
     try { // UPDATED
-      const response = await axios.get('/api/reports/list', { timeout: 10000 }); // UPDATED
-      if (response.data.success && response.data.reports.length > 0) { // UPDATED
+      // 본사 대리 접속 시 viewBranchId 파라미터 전달
+    const listUrl = viewBranchId
+      ? `/api/reports/list?viewBranchId=${viewBranchId}`
+      : '/api/reports/list';
+    const response = await axios.get(listUrl, { timeout: 10000 }); // UPDATED
+      if (response.data.success) { // ★ length > 0 제거: 서버 성공이면 0건도 그대로 표시
         console.log('✅ Loaded from server (D1):', response.data.reports.length, 'reports'); // UPDATED
         allReports = response.data.reports; // UPDATED
         
-        // 서버 데이터를 localStorage에 캐싱 // UPDATED
+        // 서버 데이터를 localStorage에 캐싱 (0건이면 캐시도 비움) // UPDATED
         try { // UPDATED
           localStorage.setItem('pv5_reports', JSON.stringify(allReports)); // UPDATED
           console.log('✅ Cached to localStorage'); // UPDATED
@@ -1765,7 +1827,7 @@ async function loadReportsList() {
       console.warn('⚠️ Server load failed, fallback to localStorage:', serverError); // UPDATED
     } // UPDATED
     
-    // 서버 실패 시 localStorage에서 불러오기 (Fallback) // UPDATED
+    // 서버 연결 실패 시에만 localStorage에서 불러오기 (Fallback) // UPDATED
     let localReports = [];
     try {
       localReports = JSON.parse(localStorage.getItem('pv5_reports') || '[]');
@@ -1992,8 +2054,19 @@ async function loadReport(reportId) {
     currentReportId = reportId;
     ocrData = report.customerInfo || {};
     selectedPackages = report.packages || [];
+    // 접수일자·상품명을 ocrData에 보완 (수정하기 모드에서 4단계 표시용)
+    if (!ocrData.orderDate && report.orderDate) ocrData.orderDate = report.orderDate;
+    if (!ocrData.productName && report.customerInfo?.productName) ocrData.productName = report.customerInfo.productName;
     
     // 입력 필드 복원
+    if (report.customerInfo?.receiverName) {
+      const el = document.getElementById('customerName');
+      if (el) el.value = report.customerInfo.receiverName;
+    }
+    if (report.customerInfo?.receiverPhone) {
+      const el = document.getElementById('customerPhone');
+      if (el) el.value = report.customerInfo.receiverPhone;
+    }
     if (report.installDate) document.getElementById('installDate').value = report.installDate;
     if (report.installTime) document.getElementById('installTime').value = report.installTime;
     if (report.installAddress) document.getElementById('installAddress').value = report.installAddress;
@@ -2021,10 +2094,10 @@ async function loadReport(reportId) {
       }
     }
     
-    alert(`✅ 문서를 불러왔습니다!\n\n고객명: ${ocrData.receiverName || '-'}\n\n1단계부터 다시 확인하고 수정할 수 있습니다.`);
+    alert(`✅ 문서를 불러왔습니다!\n\n고객명: ${ocrData.receiverName || '-'}\n\n3단계에서 확인하고 수정할 수 있습니다.`);
     
-    // 1단계로 이동
-    currentStep = 1;
+    // 3단계로 바로 이동 (제품이 없으면 2단계로)
+    currentStep = (selectedPackages && selectedPackages.length > 0) ? 3 : 2;
     updateStepIndicator();
     showCurrentSection();
     
@@ -2041,17 +2114,17 @@ async function deleteReport(reportId) {
   }
   
   try {
-    // 로컬스토리지에서 삭제
+    // 서버에서 먼저 삭제 (실패 시 중단)
+    const response = await axios.delete(`/api/reports/${reportId}`, { timeout: 10000 });
+    if (!response.data.success) {
+      alert('❌ 문서 삭제 실패: ' + (response.data.message || '오류가 발생했습니다.'));
+      return;
+    }
+
+    // 서버 삭제 성공 후 로컬스토리지에서도 삭제
     const localReports = JSON.parse(localStorage.getItem('pv5_reports') || '[]');
     const filteredReports = localReports.filter(r => r.reportId !== reportId && r.id !== reportId);
     localStorage.setItem('pv5_reports', JSON.stringify(filteredReports));
-    
-    // 서버에서도 삭제 시도
-    try {
-      await axios.delete(`/api/reports/${reportId}`, { timeout: 10000 });
-    } catch (error) {
-      console.warn('Server delete failed, local storage updated:', error);
-    }
     
     alert('✅ 문서가 삭제되었습니다.');
     
@@ -2060,7 +2133,7 @@ async function deleteReport(reportId) {
     
   } catch (error) {
     console.error('Delete report error:', error);
-    alert('❌ 문서 삭제 중 오류가 발생했습니다.');
+    alert('❌ 문서 삭제 중 오류가 발생했습니다.\n' + (error.response?.data?.message || error.message || ''));
   }
 }
 
@@ -2184,8 +2257,8 @@ async function showReportPreview(reportId) {
                   <i class="fas fa-user-circle mr-2 text-blue-600"></i>👤 고객 정보
                 </h4>
                 <div class="grid grid-cols-2 gap-4 text-base">
-                  <div class="bg-white p-3 rounded shadow-sm"><strong class="text-gray-700">출력일자:</strong> <span class="text-gray-900 font-semibold">${customerInfo.outputDate || '-'}</span></div>
-                  <div class="bg-white p-3 rounded shadow-sm"><strong class="text-gray-700">상품번호:</strong> <span class="text-gray-900 font-semibold">${customerInfo.productCode || '-'}</span></div>
+                  <div class="bg-white p-3 rounded shadow-sm"><strong class="text-gray-700">접수일자:</strong> <span class="text-gray-900 font-semibold">${report.createdAt ? new Date(report.createdAt).toLocaleDateString('ko-KR', {year:'numeric',month:'2-digit',day:'2-digit'}) : '-'}</span></div>
+                  <div class="bg-white p-3 rounded shadow-sm"><strong class="text-gray-700">상품명:</strong> <span class="text-gray-900 font-semibold">${packages.length > 0 ? packages.map(p => p.fullName || p.name || '').filter(Boolean).join(', ') : (customerInfo.productCode || '-')}</span></div>
                   <div class="bg-white p-3 rounded shadow-sm"><strong class="text-gray-700">고객명:</strong> <span class="text-blue-700 font-bold text-lg">${customerInfo.receiverName || '-'}</span></div>
                   <div class="bg-white p-3 rounded shadow-sm"><strong class="text-gray-700">연락처:</strong> <span class="text-blue-700 font-bold text-lg">${customerInfo.receiverPhone || '-'}</span></div>
                   <div class="col-span-2 bg-white p-3 rounded shadow-sm"><strong class="text-gray-700">주소:</strong> <span class="text-gray-900 font-semibold">${customerInfo.receiverAddress || '-'}</span></div>
@@ -2816,7 +2889,11 @@ async function completeReport(reportId) {
 // 매출 관리 목록 로드
 async function loadRevenueList(filterType = 'all', startDate = null, endDate = null) {
   try {
-    const response = await axios.get('/api/reports/completed/list');
+    // 본사 대리 접속 시 viewBranchId 파라미터 전달
+    const completedUrl = viewBranchId
+      ? `/api/reports/completed/list?viewBranchId=${viewBranchId}`
+      : '/api/reports/completed/list';
+    const response = await axios.get(completedUrl);
     
     if (response.data.success) {
       const reports = response.data.reports;

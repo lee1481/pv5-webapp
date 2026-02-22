@@ -11,6 +11,9 @@
         .status-badge-in_progress { background:#fef9c3; color:#b45309; }
         .status-badge-completed { background:#dcfce7; color:#16a34a; }
         input:focus, select:focus, textarea:focus { outline:none; box-shadow:0 0 0 3px rgba(59,130,246,.25); }
+        /* 수정 모달 */
+        #editModal { display:none; position:fixed; inset:0; z-index:50; background:rgba(0,0,0,.45); align-items:center; justify-content:center; }
+        #editModal.open { display:flex; }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -197,6 +200,7 @@
                             <th class="px-4 py-3 text-left font-semibold">담당 지사</th>
                             <th class="px-4 py-3 text-center font-semibold">상태</th>
                             <th class="px-4 py-3 text-left font-semibold">메모</th>
+                            <th class="px-4 py-3 text-center font-semibold">관리</th>
                         </tr>
                     </thead>
                     <tbody id="assignmentList">
@@ -241,6 +245,63 @@
             </div>
         </div>
     </div><!-- /container -->
+</div>
+
+<!-- ══ 수정 모달 ══════════════════════════════════════════════════════════ -->
+<div id="editModal">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-8">
+    <h3 class="text-xl font-bold text-gray-800 mb-6">
+      <i class="fas fa-edit text-blue-600 mr-2"></i>접수 정보 수정
+    </h3>
+    <div class="space-y-4">
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-gray-700 font-semibold mb-1 text-sm">접수일자</label>
+          <input type="date" id="editOrderDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+        </div>
+        <div>
+          <label class="block text-gray-700 font-semibold mb-1 text-sm">담당 지사 *</label>
+          <select id="editBranchId" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+            <option value="">지사 선택</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-gray-700 font-semibold mb-1 text-sm">주문자명 *</label>
+          <input type="text" id="editCustomerName" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="고객 이름">
+        </div>
+        <div>
+          <label class="block text-gray-700 font-semibold mb-1 text-sm">연락처</label>
+          <input type="tel" id="editPhone" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="010-0000-0000">
+        </div>
+      </div>
+      <div>
+        <label class="block text-gray-700 font-semibold mb-1 text-sm">주소</label>
+        <input type="text" id="editAddress" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="설치 주소">
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-gray-700 font-semibold mb-1 text-sm">상품명</label>
+          <input type="text" id="editProductName" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="상품명">
+        </div>
+        <div>
+          <label class="block text-gray-700 font-semibold mb-1 text-sm">메모</label>
+          <input type="text" id="editNotes" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="특이사항">
+        </div>
+      </div>
+    </div>
+    <div class="flex gap-3 mt-6">
+      <button onclick="submitEditAssignment()"
+              class="flex-1 bg-blue-600 text-white py-2.5 rounded-lg font-bold hover:bg-blue-700 transition">
+        <i class="fas fa-save mr-2"></i>저장
+      </button>
+      <button onclick="closeEditModal()"
+              class="px-6 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 font-semibold transition">
+        취소
+      </button>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
@@ -334,6 +395,81 @@
         }
     })
 
+    // ── 수정 모달 ────────────────────────────────────────────────────────────
+    let editingAssignmentId = null
+
+    function openEditModal(a) {
+        editingAssignmentId = a.assignment_id
+        document.getElementById('editOrderDate').value    = a.order_date || ''
+        document.getElementById('editCustomerName').value = a.customer_name || ''
+        document.getElementById('editPhone').value        = a.customer_phone || ''
+        document.getElementById('editAddress').value      = a.customer_address || ''
+        document.getElementById('editProductName').value  = a.product_name || ''
+        document.getElementById('editNotes').value        = a.notes || ''
+        // 지사 select 세팅
+        const sel = document.getElementById('editBranchId')
+        sel.innerHTML = '<option value="">지사 선택</option>'
+        document.querySelectorAll('#branchId option').forEach(opt => {
+            if (opt.value) sel.add(new Option(opt.text, opt.value, false, String(opt.value) === String(a.branch_id)))
+        })
+        document.getElementById('editModal').classList.add('open')
+    }
+
+    function closeEditModal() {
+        document.getElementById('editModal').classList.remove('open')
+        editingAssignmentId = null
+    }
+
+    async function submitEditAssignment() {
+        if (!editingAssignmentId) return
+        const customerName = document.getElementById('editCustomerName').value.trim()
+        const branchId     = document.getElementById('editBranchId').value
+        if (!customerName || !branchId) {
+            alert('주문자명과 담당 지사는 필수입니다.')
+            return
+        }
+        try {
+            const res = await axios.put(`/api/assignments/${editingAssignmentId}`, {
+                orderDate:    document.getElementById('editOrderDate').value,
+                customerName,
+                phone:        document.getElementById('editPhone').value.trim(),
+                address:      document.getElementById('editAddress').value.trim(),
+                productName:  document.getElementById('editProductName').value.trim(),
+                branchId:     parseInt(branchId),
+                notes:        document.getElementById('editNotes').value.trim(),
+            })
+            if (res.data.success) {
+                closeEditModal()
+                loadAssignments()
+                alert('✅ 접수 정보가 수정되었습니다.')
+            } else {
+                alert('❌ ' + (res.data.error || '수정 실패'))
+            }
+        } catch(e) {
+            alert('❌ ' + (e.response?.data?.error || '수정 중 오류가 발생했습니다.'))
+        }
+    }
+
+    async function deleteAssignment(assignmentId, customerName) {
+        if (!confirm(`⚠️ [${customerName}] 접수를 삭제하시겠습니까?\n\n삭제 후 복구할 수 없습니다.`)) return
+        try {
+            const res = await axios.delete(`/api/assignments/${assignmentId}`)
+            if (res.data.success) {
+                loadAssignments()
+                alert('✅ 접수가 삭제되었습니다.')
+            } else {
+                alert('❌ ' + (res.data.error || '삭제 실패'))
+            }
+        } catch(e) {
+            alert('❌ ' + (e.response?.data?.error || '삭제 중 오류가 발생했습니다.'))
+        }
+    }
+
+    // 모달 바깥 클릭 시 닫기
+    document.getElementById('editModal').addEventListener('click', function(e) {
+        if (e.target === this) closeEditModal()
+    })
+
     function resetForm() {
         document.getElementById('assignmentForm').reset()
         const today = new Date().toISOString().split('T')[0]
@@ -378,6 +514,16 @@
                         </span>
                     </td>
                     <td class="px-4 py-3 text-gray-500 text-xs max-w-xs truncate">${a.notes || '-'}</td>
+                    <td class="px-4 py-3 text-center whitespace-nowrap">
+                        <button onclick="openEditModal(${JSON.stringify(a).replace(/"/g,'&quot;')})"
+                                class="text-blue-600 hover:text-blue-800 mr-2" title="수정">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="deleteAssignment('${a.assignment_id}', '${a.customer_name}')"
+                                class="text-red-500 hover:text-red-700" title="삭제">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
                 </tr>
             `).join('')
         } catch(e) { console.error('loadAssignments:', e) }
