@@ -452,6 +452,21 @@ app.post('/api/auth/logout', (c) => {
   return c.json({ success: true, message: '로그아웃되었습니다.' })
 })
 
+// API: 로그인 잠금 해제 [본사 전용]
+app.post('/api/auth/unlock', async (c) => {
+  const auth = await requireHeadAuth(c)
+  if (!auth.success) return auth.response
+  try {
+    const { username } = await c.req.json()
+    if (!username) return c.json({ success: false, error: '사용자명을 입력해주세요.' }, 400)
+    const { env } = c
+    await clearLoginFail(env.REPORTS_KV, username)
+    return c.json({ success: true, message: `${username} 계정의 로그인 잠금이 해제되었습니다.` })
+  } catch (error: any) {
+    return c.json({ success: false, error: '잠금 해제 중 오류가 발생했습니다.' }, 500)
+  }
+})
+
 // ========================================
 // 지사 관리 API (본사 전용)
 // ========================================
@@ -2504,6 +2519,8 @@ app.get('/', (c) => {
 
 // OCR 모드 페이지 (기존 메인 기능)
 app.get('/ocr', (c) => {
+  c.header('Cache-Control', 'no-store, no-cache, must-revalidate')
+  c.header('Pragma', 'no-cache')
   return c.html(`
     <!DOCTYPE html>
     <html lang="ko">
@@ -3177,7 +3194,7 @@ app.get('/ocr', (c) => {
             </footer>
         </div>
 
-        <script src="/static/app.js?v=20260222b"></script>
+        <script src="/static/app.js?v=20260222c"></script>
     </body>
     </html>
   `)
