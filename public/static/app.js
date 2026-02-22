@@ -1894,8 +1894,12 @@ function displayReportsList(reports) {
     return;
   }
   
-  // 설치 날짜 빠른 순서로 정렬 (오름차순: 빠른 날짜가 위로)
+  // 정렬: 1)상태 우선순위(진행중 위, 완료 아래) 2)설치 날짜 오름차순
+  const statusOrder = { 'adjusting': 1, 'draft': 2, 'confirmed': 3, 'inst_confirmed': 4, 'completed': 5 };
   const sortedReports = [...reports].sort((a, b) => {
+    const sA = statusOrder[a.status] ?? 2;
+    const sB = statusOrder[b.status] ?? 2;
+    if (sA !== sB) return sA - sB;
     const dateA = a.install_date || a.installDate || '9999-12-31';
     const dateB = b.install_date || b.installDate || '9999-12-31';
     return dateA.localeCompare(dateB);
