@@ -247,13 +247,9 @@ async function startAssignment(assignmentId) {
 
   selectedAssignment = a;
 
-  // 진행중 상태로 변경
-  if (a.status === 'assigned') {
-    try {
-      await axios.patch(`/api/assignments/${assignmentId}/status`, { status: 'in_progress' });
-      a.status = 'in_progress';
-    } catch(e) { console.warn('status update failed:', e); }
-  }
+  // 접수 카드 클릭 시 상태는 변경하지 않음
+  // (상태 변경은 지사 저장/확정/완료 액션에서만 서버가 자동 처리)
+  console.log('[startAssignment] assignment selected:', assignmentId, 'current status:', a.status);
 
   // 3단계 고객정보 자동 채우기
   setTimeout(() => {
@@ -1560,14 +1556,13 @@ async function saveDraftReport() {
         
         currentReportId = reportData.reportId;
 
-        // ★ assignment status → in_progress 로 변경 (1단계에서 카드 숨김)
+        // ★ assignment 상태는 서버(/api/reports/save)에서 자동 동기화 처리
+        // - 날짜 없음: adjusting(조율 중), 날짜 있음: assigned(예약 접수 중)
         if (selectedAssignment?.assignment_id) {
-          try {
-            await axios.patch(`/api/assignments/${selectedAssignment.assignment_id}/status`, { status: 'in_progress' });
-          } catch(e) { console.warn('assignment in_progress update failed:', e); }
-          selectedAssignment.status = 'in_progress';
+          const syncedStatus = (!installDate || installDate === '') ? 'adjusting' : 'assigned';
+          selectedAssignment.status = syncedStatus;
           const idx = currentAssignments.findIndex(x => x.assignment_id === selectedAssignment.assignment_id);
-          if (idx >= 0) currentAssignments[idx].status = 'in_progress';
+          if (idx >= 0) currentAssignments[idx].status = syncedStatus;
         }
         
         // 날짜 미정 여부에 따라 다른 메시지
@@ -1736,15 +1731,12 @@ async function saveReport() {
         
         currentReportId = reportData.reportId;
 
-        // 접수 상태 → 완료로 변경
+        // ★ assignment 상태는 서버(/api/reports/save)에서 자동 동기화 처리
+        // 최종 저장(step4) 시 서버에서 confirmed(예약 확정) 로 자동 설정
         if (selectedAssignment?.assignment_id) {
-          try {
-            await axios.patch(`/api/assignments/${selectedAssignment.assignment_id}/status`, { status: 'completed' });
-          } catch(e) { console.warn('assignment complete update failed:', e); }
-          // 서버 응답 타이밍과 무관하게 로컬 상태 즉시 동기화
-          selectedAssignment.status = 'completed';
+          selectedAssignment.status = 'confirmed';
           const idx = currentAssignments.findIndex(x => x.assignment_id === selectedAssignment.assignment_id);
-          if (idx >= 0) currentAssignments[idx].status = 'completed';
+          if (idx >= 0) currentAssignments[idx].status = 'confirmed';
         }
 
         alert(`✅ 시공 확인서가 저장되었습니다!\n\n문서 ID: ${reportData.reportId}\n\n신규 접수를 시작합니다.`);

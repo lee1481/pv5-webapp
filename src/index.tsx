@@ -1655,17 +1655,32 @@ app.post('/api/reports/save', async (c) => {
 
     await env.DB.prepare(insertSQL).bind(...bindValues).run()
 
-    // assignment_id가 있으면 assignments 상태 동기화
-    // draft + 날짜없음 → adjusting(조율 중), draft + 날짜있음 → assigned(예약 접수 중)
+    // assignment_id가 있으면 assignments 상태 동기화 (5단계 완전 매핑)
+    // reports.status → assignments.status 매핑 규칙:
+    //   draft + 날짜없음 → adjusting (조율 중)
+    //   draft + 날짜있음 → assigned  (예약 접수 중)
+    //   confirmed        → in_progress (예약 확정)
+    //   inst_confirmed   → inst_confirmed (시공 확정)
+    //   completed        → completed (시공 완료)
     if (finalAssignmentId) {
       try {
-        const syncStatus = (finalStatus === 'draft' && !installDate) ? 'adjusting' : 'assigned'
+        let syncStatus: string
+        if (finalStatus === 'confirmed') {
+          syncStatus = 'in_progress'
+        } else if (finalStatus === 'inst_confirmed') {
+          syncStatus = 'inst_confirmed'
+        } else if (finalStatus === 'completed') {
+          syncStatus = 'completed'
+        } else {
+          // draft (날짜 여부로 구분)
+          syncStatus = (!installDate) ? 'adjusting' : 'assigned'
+        }
         await env.DB.prepare(`
           UPDATE assignments SET status = ? WHERE assignment_id = ?
         `).bind(syncStatus, finalAssignmentId).run()
-        console.log('Assignment synced to', syncStatus, 'on report save:', finalAssignmentId)
+        console.log('[Sync] Assignment', finalAssignmentId, 'updated to', syncStatus, '(report status:', finalStatus, ')')
       } catch (syncErr) {
-        console.warn('Assignment sync warning (save):', syncErr)
+        console.warn('[Sync] Assignment sync warning (save):', syncErr)
       }
     }
     
