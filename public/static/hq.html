@@ -7,9 +7,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        .status-badge-assigned  { background:#dbeafe; color:#2563eb; }
-        .status-badge-in_progress { background:#fef9c3; color:#b45309; }
-        .status-badge-completed { background:#dcfce7; color:#16a34a; }
+        .status-badge-adjusting    { background:#fef3c7; color:#d97706; }
+        .status-badge-assigned     { background:#dbeafe; color:#2563eb; }
+        .status-badge-in_progress  { background:#ede9fe; color:#7c3aed; }
+        .status-badge-inst_confirmed { background:#ffedd5; color:#ea580c; }
+        .status-badge-completed    { background:#dcfce7; color:#16a34a; }
         input:focus, select:focus, textarea:focus { outline:none; box-shadow:0 0 0 3px rgba(59,130,246,.25); }
         /* 수정 모달 */
         #editModal { display:none; position:fixed; inset:0; z-index:50; background:rgba(0,0,0,.45); align-items:center; justify-content:center; }
@@ -181,9 +183,11 @@
                 <select id="filterStatus" onchange="loadAssignments()"
                         class="px-4 py-2 border border-gray-300 rounded-lg text-sm">
                     <option value="">전체 상태</option>
-                    <option value="assigned">접수됨 (대기)</option>
-                    <option value="in_progress">진행 중</option>
-                    <option value="completed">완료</option>
+                    <option value="adjusting">조율 중</option>
+                    <option value="assigned">예약 접수 중</option>
+                    <option value="in_progress">예약 확정</option>
+                    <option value="inst_confirmed">시공 확정</option>
+                    <option value="completed">시공 완료</option>
                 </select>
             </div>
 
@@ -497,8 +501,8 @@
                 return
             }
 
-            const statusLabel = { assigned:'접수됨', in_progress:'진행 중', completed:'완료' }
-            const statusClass = { assigned:'status-badge-assigned', in_progress:'status-badge-in_progress', completed:'status-badge-completed' }
+            const statusLabel = { adjusting:'조율 중', assigned:'예약 접수 중', in_progress:'예약 확정', inst_confirmed:'시공 확정', completed:'시공 완료' }
+            const statusClass = { adjusting:'status-badge-adjusting', assigned:'status-badge-assigned', in_progress:'status-badge-in_progress', inst_confirmed:'status-badge-inst_confirmed', completed:'status-badge-completed' }
 
             tbody.innerHTML = list.map(a => `
                 <tr class="border-b hover:bg-gray-50 transition">
@@ -537,22 +541,24 @@
             const list = res.data.assignments
 
             document.getElementById('statTotal').textContent      = list.length
-            document.getElementById('statInProgress').textContent = list.filter(a => a.status === 'in_progress').length
+            document.getElementById('statInProgress').textContent = list.filter(a => ['in_progress','inst_confirmed'].includes(a.status)).length
             document.getElementById('statCompleted').textContent  = list.filter(a => a.status === 'completed').length
 
             const groups = {}
             list.forEach(a => {
-                if (!groups[a.branch_name]) groups[a.branch_name] = { assigned:0, in_progress:0, completed:0 }
-                groups[a.branch_name][a.status]++
+                if (!groups[a.branch_name]) groups[a.branch_name] = { adjusting:0, assigned:0, in_progress:0, inst_confirmed:0, completed:0 }
+                if (groups[a.branch_name][a.status] !== undefined) groups[a.branch_name][a.status]++
             })
 
             document.getElementById('branchStats').innerHTML = Object.entries(groups).map(([name, s]) => `
                 <div class="border border-gray-200 rounded-lg p-4">
                     <h4 class="font-bold text-gray-700 mb-3">${name}</h4>
-                    <div class="grid grid-cols-3 gap-3 text-center">
-                        <div><div class="text-2xl font-bold text-blue-600">${s.assigned||0}</div><div class="text-xs text-gray-500">대기</div></div>
-                        <div><div class="text-2xl font-bold text-yellow-600">${s.in_progress||0}</div><div class="text-xs text-gray-500">진행 중</div></div>
-                        <div><div class="text-2xl font-bold text-green-600">${s.completed||0}</div><div class="text-xs text-gray-500">완료</div></div>
+                    <div class="grid grid-cols-5 gap-2 text-center">
+                        <div><div class="text-xl font-bold text-yellow-600">${s.adjusting||0}</div><div class="text-xs text-gray-500">조율 중</div></div>
+                        <div><div class="text-xl font-bold text-blue-600">${s.assigned||0}</div><div class="text-xs text-gray-500">예약접수</div></div>
+                        <div><div class="text-xl font-bold text-purple-600">${s.in_progress||0}</div><div class="text-xs text-gray-500">예약확정</div></div>
+                        <div><div class="text-xl font-bold text-orange-600">${s.inst_confirmed||0}</div><div class="text-xs text-gray-500">시공확정</div></div>
+                        <div><div class="text-xl font-bold text-green-600">${s.completed||0}</div><div class="text-xs text-gray-500">시공완료</div></div>
                     </div>
                 </div>
             `).join('')

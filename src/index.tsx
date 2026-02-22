@@ -1655,13 +1655,15 @@ app.post('/api/reports/save', async (c) => {
 
     await env.DB.prepare(insertSQL).bind(...bindValues).run()
 
-    // assignment_id가 있으면 assignments 상태를 in_progress로 동기화
+    // assignment_id가 있으면 assignments 상태 동기화
+    // draft + 날짜없음 → adjusting(조율 중), draft + 날짜있음 → assigned(예약 접수 중)
     if (finalAssignmentId) {
       try {
+        const syncStatus = (finalStatus === 'draft' && !installDate) ? 'adjusting' : 'assigned'
         await env.DB.prepare(`
-          UPDATE assignments SET status = 'in_progress' WHERE assignment_id = ? AND status = 'assigned'
-        `).bind(finalAssignmentId).run()
-        console.log('Assignment synced to in_progress on report save:', finalAssignmentId)
+          UPDATE assignments SET status = ? WHERE assignment_id = ?
+        `).bind(syncStatus, finalAssignmentId).run()
+        console.log('Assignment synced to', syncStatus, 'on report save:', finalAssignmentId)
       } catch (syncErr) {
         console.warn('Assignment sync warning (save):', syncErr)
       }
@@ -1902,13 +1904,15 @@ app.get('/api/assignments/my', async (c) => {
       return c.json({ success: true, assignments: [] })
     }
 
-    // 완료된 항목은 마지막으로 정렬
+    // 5단계 상태 순서대로 정렬
     query += ` ORDER BY
       CASE a.status
-        WHEN 'assigned'    THEN 1
-        WHEN 'in_progress' THEN 2
-        WHEN 'completed'   THEN 3
-        ELSE 4
+        WHEN 'adjusting'       THEN 1
+        WHEN 'assigned'        THEN 2
+        WHEN 'in_progress'     THEN 3
+        WHEN 'inst_confirmed'  THEN 4
+        WHEN 'completed'       THEN 5
+        ELSE 6
       END,
       a.order_date ASC,
       a.assigned_at ASC`
@@ -2107,7 +2111,7 @@ app.patch('/api/reports/:id/confirm', async (c) => {
       WHERE report_id = ?
     `).bind(reportId).run()
 
-    // reports에 연결된 assignment_id로 assignments 상태도 동기화 (in_progress)
+    // reports에 연결된 assignment_id로 assignments 상태도 동기화 (예약 확정 → in_progress)
     try {
       const { results: reportRow } = await env.DB.prepare(
         `SELECT assignment_id FROM reports WHERE report_id = ?`
@@ -2116,7 +2120,7 @@ app.patch('/api/reports/:id/confirm', async (c) => {
         await env.DB.prepare(`
           UPDATE assignments SET status = 'in_progress' WHERE assignment_id = ?
         `).bind(reportRow[0].assignment_id).run()
-        console.log('Assignment synced to in_progress:', reportRow[0].assignment_id)
+        console.log('Assignment synced to in_progress (예약확정):', reportRow[0].assignment_id)
       }
     } catch (syncErr) {
       console.warn('Assignment sync warning (confirmed):', syncErr)
@@ -2161,7 +2165,7 @@ app.patch('/api/reports/:id/complete', async (c) => {
         WHERE report_id = ?
       `).bind(reportId).run()
 
-      // reports에 연결된 assignment_id로 assignments 상태도 동기화 (completed)
+      // reports에 연결된 assignment_id로 assignments 상태도 동기화 (시공완료 → completed)
       try {
         const { results: reportRow } = await env.DB.prepare(
           `SELECT assignment_id FROM reports WHERE report_id = ?`
@@ -2170,7 +2174,7 @@ app.patch('/api/reports/:id/complete', async (c) => {
           await env.DB.prepare(`
             UPDATE assignments SET status = 'completed' WHERE assignment_id = ?
           `).bind(reportRow[0].assignment_id).run()
-          console.log('Assignment synced to completed:', reportRow[0].assignment_id)
+          console.log('Assignment synced to completed (시공완료):', reportRow[0].assignment_id)
         }
       } catch (syncErr) {
         console.warn('Assignment sync warning (completed):', syncErr)
