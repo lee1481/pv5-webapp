@@ -197,12 +197,12 @@
                     <thead>
                         <tr class="bg-gray-50 border-b text-gray-600">
                             <th class="px-4 py-3 text-left font-semibold">접수일자</th>
+                            <th class="px-4 py-3 text-center font-semibold">상태</th>
                             <th class="px-4 py-3 text-left font-semibold">주문자명</th>
                             <th class="px-4 py-3 text-left font-semibold">연락처</th>
                             <th class="px-4 py-3 text-left font-semibold">주소</th>
                             <th class="px-4 py-3 text-left font-semibold">상품명</th>
                             <th class="px-4 py-3 text-left font-semibold">담당 지사</th>
-                            <th class="px-4 py-3 text-center font-semibold">상태</th>
                             <th class="px-4 py-3 text-left font-semibold">메모</th>
                             <th class="px-4 py-3 text-center font-semibold">관리</th>
                         </tr>
@@ -507,16 +507,16 @@
             tbody.innerHTML = list.map(a => `
                 <tr class="border-b hover:bg-gray-50 transition">
                     <td class="px-4 py-3 text-gray-700 whitespace-nowrap">${a.order_date || a.assigned_at?.split('T')[0] || '-'}</td>
-                    <td class="px-4 py-3 font-semibold text-gray-800">${a.customer_name}</td>
-                    <td class="px-4 py-3 text-gray-600 whitespace-nowrap">${a.customer_phone || '-'}</td>
-                    <td class="px-4 py-3 text-gray-600 max-w-xs truncate" title="${a.customer_address||''}">${a.customer_address || '-'}</td>
-                    <td class="px-4 py-3 text-gray-600">${a.product_name || '-'}</td>
-                    <td class="px-4 py-3 text-gray-600 whitespace-nowrap">${a.branch_name || '-'}</td>
                     <td class="px-4 py-3 text-center">
-                        <span class="px-2 py-1 rounded-full text-xs font-semibold ${statusClass[a.status] || ''}">
+                        <span class="px-2 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${statusClass[a.status] || ''}">
                             ${statusLabel[a.status] || a.status}
                         </span>
                     </td>
+                    <td class="px-4 py-3 font-semibold text-gray-800 whitespace-nowrap">${a.customer_name}</td>
+                    <td class="px-4 py-3 text-gray-600 whitespace-nowrap">${a.customer_phone || '-'}</td>
+                    <td class="px-4 py-3 text-gray-600 max-w-xs truncate" title="${a.customer_address||''}">${a.customer_address || '-'}</td>
+                    <td class="px-4 py-3 text-gray-600 whitespace-nowrap">${a.product_name || '-'}</td>
+                    <td class="px-4 py-3 text-gray-600 whitespace-nowrap">${a.branch_name || '-'}</td>
                     <td class="px-4 py-3 text-gray-500 text-xs max-w-xs truncate">${a.notes || '-'}</td>
                     <td class="px-4 py-3 text-center whitespace-nowrap">
                         <button onclick="openEditModal(${JSON.stringify(a).replace(/"/g,'&quot;')})"
