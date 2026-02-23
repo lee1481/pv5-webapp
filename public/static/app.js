@@ -3224,24 +3224,36 @@ function getMarginByPackageId(packageId) {
   return marginData[packageId] || null;
 }
 
-// 매출 데이터 Excel 다운로드
-function downloadRevenueExcel() {
-  // 현재 표시된 데이터 기반으로 다운로드
-  const revenueList = document.getElementById('revenueList');
-  const table = revenueList.querySelector('table');
-  
-  if (!table) {
-    alert('⚠️ 다운로드할 데이터가 없습니다.');
-    return;
+// 매출 데이터 Excel 다운로드 (6단계 버튼: exportRevenueToExcel 로 호출됨)
+function exportRevenueToExcel() {
+  try {
+    // tbody에서 데이터 행 추출
+    const tbody = document.getElementById('revenueTableBody');
+    if (!tbody || tbody.querySelectorAll('tr').length === 0) {
+      alert('⚠️ 다운로드할 매출 데이터가 없습니다.\n먼저 매출 현황을 조회해주세요.');
+      return;
+    }
+
+    // 테이블 전체를 찾아서 SheetJS로 변환
+    const table = tbody.closest('table');
+    if (!table) {
+      alert('⚠️ 테이블을 찾을 수 없습니다.');
+      return;
+    }
+
+    const wb = XLSX.utils.table_to_book(table, { sheet: '매출관리' });
+    const today = new Date().toISOString().split('T')[0];
+    const fileName = `PV5_매출관리_${today}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    alert(`✅ Excel 파일이 다운로드되었습니다!\n\n파일명: ${fileName}`);
+  } catch (err) {
+    console.error('exportRevenueToExcel error:', err);
+    alert('❌ Excel 다운로드 실패: ' + err.message);
   }
-  
-  // SheetJS를 이용한 Excel 생성
-  const wb = XLSX.utils.table_to_book(table, { sheet: "매출관리" });
-  const today = new Date().toISOString().split('T')[0];
-  XLSX.writeFile(wb, `PV5_매출관리_${today}.xlsx`);
-  
-  alert('✅ Excel 파일이 다운로드되었습니다!');
 }
+
+// 하위 호환 alias
+function downloadRevenueExcel() { exportRevenueToExcel(); }
 
 // D1 마이그레이션 자동 실행
 async function runMigration() {
