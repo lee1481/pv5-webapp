@@ -2662,51 +2662,69 @@ function resetForNewReport() {
 // Excel 내보내기
 async function exportToExcel() {
   try {
-    // ★ 서버(D1)에서 최신 데이터 가져오기 (localStorage는 캐시일 뿐)
-    let allReports = [];
-    try {
-      const token = localStorage.getItem('token');
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const viewBranchId = user.viewBranchId || '';
-      const url = viewBranchId
-        ? `/api/reports/list?viewBranchId=${viewBranchId}`
-        : '/api/reports/list';
-      const res = await axios.get(url, {
-        headers: { Authorization: `Bearer ${token}` },
-        timeout: 15000
-      });
-      if (res.data.success && res.data.reports.length > 0) {
-        allReports = res.data.reports;
+    // ★ 전역 allReports(5단계에서 이미 로드된 최신 서버 데이터) 우선 사용
+    // 없으면 서버 API 재호출 → 그래도 없으면 localStorage fallback
+    let excelReports = (allReports && allReports.length > 0) ? allReports : [];
+
+    if (excelReports.length === 0) {
+      try {
+        const listUrl = viewBranchId
+          ? `/api/reports/list?viewBranchId=${viewBranchId}`
+          : '/api/reports/list';
+        const res = await axios.get(listUrl, { timeout: 15000 });
+        if (res.data.success && res.data.reports.length > 0) {
+          excelReports = res.data.reports;
+        }
+      } catch (serverErr) {
+        console.warn('[Excel] 서버 조회 실패, localStorage fallback:', serverErr);
       }
-    } catch (serverErr) {
-      console.warn('[Excel] 서버 조회 실패, localStorage fallback:', serverErr);
     }
 
-    // 서버 실패 시 localStorage fallback
-    if (allReports.length === 0) {
-      allReports = JSON.parse(localStorage.getItem('pv5_reports') || '[]');
+    // 그래도 없으면 localStorage fallback
+    if (excelReports.length === 0) {
+      excelReports = JSON.parse(localStorage.getItem('pv5_reports') || '[]');
     }
 
-    if (allReports.length === 0) {
-      alert('⚠️ 내보낼 데이터가 없습니다.');
+    if (excelReports.length === 0) {
+      alert('⚠️ 내보낼 데이터가 없습니다.\n5단계에서 문서 목록을 먼저 불러와 주세요.');
       return;
     }
 
+    // 이하에서 excelReports 사용
+    const allReportsForExcel = excelReports;
+
     // Excel 데이터 준비
-    const excelData = allReports.map(report => {
-      const customerInfo = report.customerInfo || {};
+    const excelData = allReportsForExcel.map(report => {
+      // ★ customerInfo가 문자열로 온 경우(이중직렬화) 파싱 처리
+      let customerInfo = report.customerInfo || {};
+      if (typeof customerInfo === 'string') {
+        try { customerInfo = JSON.parse(customerInfo); } catch(e) { customerInfo = {}; }
+      }
+
       const packages = report.packages || [];
       const productNames = packages.map(pkg => pkg.fullName || pkg.name).filter(name => name && name !== '-').join(', ');
 
+      // ★ 모든 가능한 필드명 커버 (구버전/신버전 데이터 혼재 대비)
+      const phone = customerInfo.receiverPhone
+                 || customerInfo.phone
+                 || customerInfo.customerPhone
+                 || report.customerPhone
+                 || '-';
+      const address = customerInfo.receiverAddress
+                   || customerInfo.address
+                   || customerInfo.customerAddress
+                   || report.installAddress
+                   || '-';
+
       return {
         '문서ID':   report.reportId || report.id || '-',
-        '고객명':   customerInfo.receiverName || report.customerName || '-',
-        '연락처':   customerInfo.receiverPhone || customerInfo.phone || '-',
-        '주소':     customerInfo.receiverAddress || customerInfo.address || '-',
+        '고객명':   customerInfo.receiverName || customerInfo.name || report.customerName || '-',
+        '연락처':   phone,
+        '주소':     address,
         '설치날짜': report.installDate || '-',
         '설치시간': report.installTime || '-',
         '설치주소': report.installAddress || '-',
-        '제품명':   productNames || '-',
+        '제품명':   productNames || customerInfo.productName || '-',
         '특이사항': report.notes || '-',
         '작성자':   report.installerName || '-',
         '저장시간': report.createdAt || '-'
@@ -2737,7 +2755,7 @@ async function exportToExcel() {
     const fileName = `PV5_시공확인서_${new Date().toISOString().slice(0, 10)}.xlsx`;
     XLSX.writeFile(wb, fileName);
 
-    alert(`✅ Excel 파일을 내보냈습니다!\n\n문서 개수: ${allReports.length}개\n파일명: ${fileName}`);
+    alert(`✅ Excel 파일을 내보냈습니다!\n\n문서 개수: ${allReportsForExcel.length}개\n파일명: ${fileName}`);
 
   } catch (error) {
     console.error('Excel export error:', error);
