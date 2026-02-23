@@ -2686,6 +2686,41 @@ app.get('/ocr', (c) => {
           }
           .step.completed {
             border-bottom-color: #48bb78;
+          }
+          /* 모바일 스텝 인디케이터: 2열 그리드 */
+          @media (max-width: 767px) {
+            .step-indicator {
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 0;
+            }
+            .step {
+              padding: 0.6rem 0.3rem;
+              border-bottom: 2px solid #e2e8f0;
+              border-right: 1px solid #f1f5f9;
+              font-size: 0.68rem;
+            }
+            .step i {
+              font-size: 1.2rem !important;
+            }
+            .step div {
+              margin-top: 4px;
+              line-height: 1.3;
+            }
+          }
+          /* 모바일 헤더 로고+타이틀 세로 정렬 */
+          @media (max-width: 767px) {
+            .mobile-header-left {
+              flex-direction: column !important;
+              align-items: flex-start !important;
+              gap: 4px !important;
+            }
+            .mobile-header-right {
+              flex-direction: column !important;
+              align-items: flex-end !important;
+              gap: 4px !important;
+            }
+          }
             color: #48bb78;
           }
           
@@ -2748,20 +2783,20 @@ app.get('/ocr', (c) => {
                 <div class="container mx-auto px-4">
                     <div class="flex items-center justify-between">
                         <!-- 로고 + 타이틀 -->
-                        <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-3 mobile-header-left">
                             <div style="background: #ffffff; border-radius: 12px; padding: 6px 12px; box-shadow: 0 1px 6px rgba(0,0,0,0.08); border: 1px solid rgba(0,0,0,0.06);">
                                 <img src="/static/kvan-logo.png" alt="K-VAN" class="h-8 w-auto">
                             </div>
                             <div>
-                                <h1 class="font-bold flex items-center gap-2" style="font-size: 1.2rem; letter-spacing: -0.02em;">
-                                    <i class="fas fa-bus" style="color: #6366f1;"></i>
+                                <h1 class="font-bold flex items-center gap-2" style="font-size: 1.1rem; letter-spacing: -0.02em;">
+                                    <i class="fas fa-bus hidden sm:inline" style="color: #6366f1;"></i>
                                     <span style="background: linear-gradient(90deg, #4f46e5, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-weight: 800;">케이밴 K-VAN</span>
                                 </h1>
                                 <p style="color: #94a3b8; font-size: 0.72rem; margin-top: 1px; letter-spacing: 0.02em;">PV5 시공관리 시스템</p>
                             </div>
                         </div>
                         <!-- 유저 정보 + 로그아웃 -->
-                        <div class="flex items-center gap-3" id="headerUserArea">
+                        <div class="flex items-center gap-2 mobile-header-right" id="headerUserArea">
                             <!-- app.js에서 동적으로 채워짐 -->
                         </div>
                     </div>
@@ -2774,7 +2809,7 @@ app.get('/ocr', (c) => {
                 <div class="step-indicator bg-white rounded-lg shadow-md mb-8">
                     <div class="step active" id="step1" onclick="goToStep(1)" style="cursor: pointer;">
                         <i class="fas fa-upload text-2xl mb-2"></i>
-                        <div>1. 거래명세서 업로드</div>
+                        <div>1. 거래명세서</div>
                     </div>
                     <div class="step" id="step2" onclick="goToStep(2)" style="cursor: pointer;">
                         <i class="fas fa-box text-2xl mb-2"></i>
@@ -2782,15 +2817,15 @@ app.get('/ocr', (c) => {
                     </div>
                     <div class="step" id="step3" onclick="goToStep(3)" style="cursor: pointer;">
                         <i class="fas fa-calendar-alt text-2xl mb-2"></i>
-                        <div>3. 설치 정보 입력</div>
+                        <div>3. 설치 정보</div>
                     </div>
                     <div class="step" id="step4" onclick="goToStep(4)" style="cursor: pointer;">
                         <i class="fas fa-check-circle text-2xl mb-2"></i>
-                        <div>4. 확인 및 발송</div>
+                        <div>4. 확인·발송</div>
                     </div>
                     <div class="step" id="step5" onclick="goToStep(5)" style="cursor: pointer;">
                         <i class="fas fa-folder-open text-2xl mb-2"></i>
-                        <div>5. 저장 문서 관리</div>
+                        <div>5. 저장 문서</div>
                     </div>
                     <div class="step" id="step6" onclick="goToStep(6)" style="cursor: pointer;">
                         <i class="fas fa-chart-line text-2xl mb-2"></i>
@@ -3233,27 +3268,33 @@ app.get('/ocr', (c) => {
                         </div>
                     </div>
                     
-                    <!-- 통계 대시보드 (가로 한 줄 배치) -->
-                    <div class="grid grid-cols-3 gap-2 sm:gap-4 mb-6">
-                        <div class="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-3 sm:p-6 rounded-lg shadow-lg">
-                            <div class="text-center">
-                                <i class="fas fa-won-sign text-xl sm:text-3xl text-blue-200 opacity-50 mb-2"></i>
-                                <p class="text-blue-100 text-xs sm:text-base mb-1">총 매출액</p>
-                                <p class="text-lg sm:text-3xl font-bold truncate" id="totalRevenue">₩0</p>
+                    <!-- 통계 대시보드: 모바일 세로/PC 가로 -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
+                        <div class="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-4 sm:p-6 rounded-xl shadow-lg">
+                            <div class="flex items-center gap-4 sm:flex-col sm:items-center sm:gap-0 sm:text-center">
+                                <i class="fas fa-won-sign text-3xl text-blue-200 opacity-60 sm:mb-2"></i>
+                                <div>
+                                    <p class="text-blue-100 text-sm sm:text-base mb-1">총 매출액</p>
+                                    <p class="text-2xl sm:text-3xl font-bold" id="totalRevenue">₩0</p>
+                                </div>
                             </div>
                         </div>
-                        <div class="bg-gradient-to-br from-green-500 to-green-600 text-white p-3 sm:p-6 rounded-lg shadow-lg">
-                            <div class="text-center">
-                                <i class="fas fa-clipboard-check text-xl sm:text-3xl text-green-200 opacity-50 mb-2"></i>
-                                <p class="text-green-100 text-xs sm:text-base mb-1">시공 건수</p>
-                                <p class="text-lg sm:text-3xl font-bold truncate" id="totalCount">0건</p>
+                        <div class="bg-gradient-to-br from-green-500 to-green-600 text-white p-4 sm:p-6 rounded-xl shadow-lg">
+                            <div class="flex items-center gap-4 sm:flex-col sm:items-center sm:gap-0 sm:text-center">
+                                <i class="fas fa-clipboard-check text-3xl text-green-200 opacity-60 sm:mb-2"></i>
+                                <div>
+                                    <p class="text-green-100 text-sm sm:text-base mb-1">시공 건수</p>
+                                    <p class="text-2xl sm:text-3xl font-bold" id="totalCount">0건</p>
+                                </div>
                             </div>
                         </div>
-                        <div class="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-3 sm:p-6 rounded-lg shadow-lg">
-                            <div class="text-center">
-                                <i class="fas fa-chart-bar text-xl sm:text-3xl text-purple-200 opacity-50 mb-2"></i>
-                                <p class="text-purple-100 text-xs sm:text-base mb-1">평균 매출</p>
-                                <p class="text-lg sm:text-3xl font-bold truncate" id="averageRevenue">₩0</p>
+                        <div class="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-4 sm:p-6 rounded-xl shadow-lg">
+                            <div class="flex items-center gap-4 sm:flex-col sm:items-center sm:gap-0 sm:text-center">
+                                <i class="fas fa-chart-bar text-3xl text-purple-200 opacity-60 sm:mb-2"></i>
+                                <div>
+                                    <p class="text-purple-100 text-sm sm:text-base mb-1">평균 매출</p>
+                                    <p class="text-2xl sm:text-3xl font-bold" id="averageRevenue">₩0</p>
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -36,24 +36,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     const headerArea = document.getElementById('headerUserArea');
     if (headerArea) {
       const isHQ = (userObj.role === 'head');
+      const isMobile = window.innerWidth < 768;
       headerArea.innerHTML = `
-        <div style="display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.15);">
-          <i class="fas fa-user-circle" style="color:#6366f1;font-size:1rem;"></i>
-          <span style="color:#4f46e5;font-size:0.8rem;font-weight:600;">${displayName}</span>
+        <div style="display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:16px;background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.15);">
+          <i class="fas fa-user-circle" style="color:#6366f1;font-size:0.9rem;"></i>
+          <span style="color:#4f46e5;font-size:${isMobile?'0.7rem':'0.8rem'};font-weight:600;max-width:${isMobile?'70px':'none'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${displayName}</span>
         </div>
         ${isHQ ? `
         <button id="headerHomeBtn"
           onclick="window.location.href='/static/launcher'"
-          style="display:flex;align-items:center;gap:6px;padding:6px 16px;border-radius:20px;font-size:0.8rem;font-weight:600;color:#6366f1;background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.2);cursor:pointer;transition:all 0.2s;"
+          style="display:flex;align-items:center;gap:4px;padding:5px ${isMobile?'10px':'14px'};border-radius:16px;font-size:${isMobile?'0.72rem':'0.8rem'};font-weight:600;color:#6366f1;background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.2);cursor:pointer;transition:all 0.2s;"
           onmouseover="this.style.background='rgba(99,102,241,0.16)';this.style.borderColor='rgba(99,102,241,0.4)'"
           onmouseout="this.style.background='rgba(99,102,241,0.07)';this.style.borderColor='rgba(99,102,241,0.2)'">
-          <i class="fas fa-home"></i> 홈
+          <i class="fas fa-home"></i>${isMobile?'':' 홈'}
         </button>` : ''}
         <button id="headerLogoutBtn"
-          style="display:flex;align-items:center;gap:6px;padding:6px 16px;border-radius:20px;font-size:0.8rem;font-weight:600;color:#ef4444;background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.2);cursor:pointer;transition:all 0.2s;"
+          style="display:flex;align-items:center;gap:4px;padding:5px ${isMobile?'10px':'14px'};border-radius:16px;font-size:${isMobile?'0.72rem':'0.8rem'};font-weight:600;color:#ef4444;background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.2);cursor:pointer;transition:all 0.2s;"
           onmouseover="this.style.background='rgba(239,68,68,0.14)';this.style.borderColor='rgba(239,68,68,0.4)'"
           onmouseout="this.style.background='rgba(239,68,68,0.07)';this.style.borderColor='rgba(239,68,68,0.2)'">
-          <i class="fas fa-sign-out-alt"></i> 로그아웃
+          <i class="fas fa-sign-out-alt"></i>${isMobile?'':' 로그아웃'}
         </button>`;
       document.getElementById('headerLogoutBtn').addEventListener('click', async () => {
         try { await axios.post('/api/auth/logout'); } catch(e) {}
