@@ -2955,7 +2955,7 @@ async function completeReport(reportId) {
 }
 
 // 매출 관리 목록 로드
-async function loadRevenueList(filterType = 'all', startDate = null, endDate = null) {
+async function loadRevenueList(filterType = 'all', startDate = null, endDate = null, customerName = '') {
   try {
     // 본사 대리 접속 시 viewBranchId 파라미터 전달
     const completedUrl = viewBranchId
@@ -2976,6 +2976,15 @@ async function loadRevenueList(filterType = 'all', startDate = null, endDate = n
       
       // 날짜 필터링
       let filteredReports = reports;
+
+      // 고객명 필터
+      if (customerName && customerName.trim() !== '') {
+        const keyword = customerName.trim().toLowerCase();
+        filteredReports = filteredReports.filter(r => {
+          const name = (r.customerInfo?.receiverName || r.customerName || '').toLowerCase();
+          return name.includes(keyword);
+        });
+      }
       
       if (filterType === 'week') {
         const today = new Date();
@@ -3328,21 +3337,53 @@ async function runConfirmedStatusMigration() {
   }
 }
 
-// 검색 필터 적용
-function applyRevenueFilter() {
-  const filterType = document.getElementById('revenueFilterType')?.value || 'all';
-  const startDate = document.getElementById('revenueStartDate')?.value;
-  const endDate = document.getElementById('revenueEndDate')?.value;
-  
-  if (filterType === 'custom') {
-    if (!startDate || !endDate) {
-      alert('시작 날짜와 종료 날짜를 모두 선택해주세요.');
-      return;
-    }
-  }
-  
-  loadRevenueList(filterType, startDate, endDate);
+// ★ 검색 버튼 onclick="searchRevenue()" → 날짜 + 고객명 통합 검색
+function searchRevenue() {
+  const filterType = document.getElementById('revenuePeriodType')?.value || 'custom';
+  const startDate  = document.getElementById('revenueStartDate')?.value  || null;
+  const endDate    = document.getElementById('revenueEndDate')?.value    || null;
+  const customerName = document.getElementById('revenueSearchCustomer')?.value?.trim() || '';
+
+  // custom 선택 시 날짜 없으면 전체로 처리 (고객명만 있어도 검색 가능)
+  const effectiveFilter = (filterType === 'custom' && !startDate && !endDate) ? 'all' : filterType;
+
+  loadRevenueList(effectiveFilter, startDate, endDate, customerName);
 }
+
+// ★ 초기화 버튼 onclick="resetRevenueSearch()"
+function resetRevenueSearch() {
+  const periodEl   = document.getElementById('revenuePeriodType');
+  const startEl    = document.getElementById('revenueStartDate');
+  const endEl      = document.getElementById('revenueEndDate');
+  const customerEl = document.getElementById('revenueSearchCustomer');
+  if (periodEl)   periodEl.value   = 'custom';
+  if (startEl)    startEl.value    = '';
+  if (endEl)      endEl.value      = '';
+  if (customerEl) customerEl.value = '';
+  loadRevenueList('all', null, null, '');
+}
+
+// ★ 기간 선택 select onchange="updateRevenueFilters()"
+function updateRevenueFilters() {
+  const filterType = document.getElementById('revenuePeriodType')?.value || 'custom';
+  const startContainer = document.getElementById('revenueStartDate')?.closest('.grid');
+  // 직접 선택이 아닌 경우 날짜 필드 초기화
+  if (filterType !== 'custom') {
+    const startEl = document.getElementById('revenueStartDate');
+    const endEl   = document.getElementById('revenueEndDate');
+    if (startEl) startEl.value = '';
+    if (endEl)   endEl.value   = '';
+  }
+  // 선택 즉시 필터 적용
+  const customerName = document.getElementById('revenueSearchCustomer')?.value?.trim() || '';
+  const startDate = document.getElementById('revenueStartDate')?.value || null;
+  const endDate   = document.getElementById('revenueEndDate')?.value   || null;
+  const effective = (filterType === 'custom' && !startDate && !endDate) ? 'all' : filterType;
+  loadRevenueList(effective, startDate, endDate, customerName);
+}
+
+// 하위 호환 alias
+function applyRevenueFilter() { searchRevenue(); }
 
 // ========================================
 // ========================================
