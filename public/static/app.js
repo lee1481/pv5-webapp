@@ -180,10 +180,14 @@ function renderAssignmentCards(container, list) {
   let branchName = '';
   try { branchName = JSON.parse(localStorage.getItem('user') || '{}').branchName || ''; } catch(e) {}
 
+  // ★ pending: 아직 report 작업 미시작인 건만 (assigned만)
+  //   in_progress/adjusting/confirmed/inst_confirmed → 5단계에 저장됨 → 1단계 대기에서 숨김
+  // ★ completed: 시공 완료 건만 하단에 표시
   const pending   = list.filter(a => a.status === 'assigned');
+  const inProgress = list.filter(a => ['adjusting','in_progress','confirmed','inst_confirmed'].includes(a.status));
   const completed = list.filter(a => a.status === 'completed');
 
-  if (pending.length === 0 && completed.length === 0) {
+  if (pending.length === 0 && inProgress.length === 0 && completed.length === 0) {
     container.innerHTML = `
       <div class="text-center py-16 text-gray-400">
         <i class="fas fa-inbox text-6xl mb-4 block"></i>
@@ -239,10 +243,17 @@ function renderAssignmentCards(container, list) {
       </button>
     </div>
     <div class="space-y-3">
-      ${pending.map(makeCard).join('')}
+      ${pending.length === 0 ? '<p class="text-sm text-gray-400 py-2"><i class="fas fa-check-circle mr-1 text-green-400"></i>대기 중인 접수가 없습니다.</p>' : pending.map(makeCard).join('')}
+      ${inProgress.length > 0 ? `
+        <details class="mt-4" open>
+          <summary class="cursor-pointer text-sm text-indigo-500 font-semibold hover:text-indigo-700 select-none py-1">
+            <i class="fas fa-spinner mr-1"></i>진행 중인 건 ${inProgress.length}건 (5단계에서 확인)
+          </summary>
+          <div class="space-y-3 mt-3">${inProgress.map(makeCard).join('')}</div>
+        </details>` : ''}
       ${completed.length > 0 ? `
         <details class="mt-4">
-          <summary class="cursor-pointer text-sm text-gray-400 hover:text-gray-600 select-none">
+          <summary class="cursor-pointer text-sm text-gray-400 hover:text-gray-600 select-none py-1">
             <i class="fas fa-chevron-right mr-1"></i>완료된 건 ${completed.length}건 보기
           </summary>
           <div class="space-y-3 mt-3">${completed.map(makeCard).join('')}</div>
@@ -1523,7 +1534,7 @@ async function saveDraftReport() {
         receiverPhone:   selectedAssignment?.customer_phone   || document.getElementById('customerPhone')?.value || '',
         receiverAddress: selectedAssignment?.customer_address || installAddress,
         productName:     selectedAssignment?.product_name     || '',
-        assignmentId:    selectedAssignment?.assignment_id    || ''
+        assignmentId:    selectedAssignment?.assignment_id    || ocrData?.assignmentId || ''
       },
       packages: selectedPackages,
       packagePositions,
@@ -1535,7 +1546,7 @@ async function saveDraftReport() {
       attachmentImage: imageBase64,
       attachmentFileName: imageFileName,
       status: 'draft',
-      assignmentId: selectedAssignment?.assignment_id || null,
+      assignmentId: selectedAssignment?.assignment_id || ocrData?.assignmentId || null,
       createdAt: new Date().toISOString()
     };
     
@@ -1566,10 +1577,10 @@ async function saveDraftReport() {
         
         currentReportId = reportData.reportId;
 
-        // ★ assignment 상태는 서버(/api/reports/save)에서 자동 동기화 처리
-        // - 날짜 없음: adjusting(조율 중), 날짜 있음: assigned(예약 접수 중)
+        // ★ assignment 로컬 상태를 서버 동기화 규칙과 동일하게 업데이트
+        // 서버: draft+날짜없음 → adjusting, draft+날짜있음 → in_progress
         if (selectedAssignment?.assignment_id) {
-          const syncedStatus = (!installDate || installDate === '') ? 'adjusting' : 'assigned';
+          const syncedStatus = (!installDate || installDate === '') ? 'adjusting' : 'in_progress';
           selectedAssignment.status = syncedStatus;
           const idx = currentAssignments.findIndex(x => x.assignment_id === selectedAssignment.assignment_id);
           if (idx >= 0) currentAssignments[idx].status = syncedStatus;
@@ -1694,7 +1705,7 @@ async function saveReport() {
         receiverPhone:   selectedAssignment?.customer_phone   || document.getElementById('customerPhone')?.value || '',
         receiverAddress: selectedAssignment?.customer_address || installAddress,
         productName:     selectedAssignment?.product_name     || '',
-        assignmentId:    selectedAssignment?.assignment_id    || ''
+        assignmentId:    selectedAssignment?.assignment_id    || ocrData?.assignmentId || ''
       },
       packages: selectedPackages,
       packagePositions,
@@ -1705,7 +1716,7 @@ async function saveReport() {
       installerName,
       attachmentImage: imageBase64,
       attachmentFileName: imageFileName,
-      assignmentId: selectedAssignment?.assignment_id || null,
+      assignmentId: selectedAssignment?.assignment_id || ocrData?.assignmentId || null,
       createdAt: new Date().toISOString()
     };
     
@@ -2112,6 +2123,23 @@ async function loadReport(reportId) {
       }
     }
     
+    // ★ 핵심: report에 연결된 assignment 복원 (selectedAssignment 복원)
+    // loadReport 후 저장 시 assignmentId가 null이 되는 버그 방지
+    const reportAssignmentId = report.assignmentId || report.assignment_id || report.customerInfo?.assignmentId;
+    if (reportAssignmentId && currentAssignments && currentAssignments.length > 0) {
+      const linkedAssignment = currentAssignments.find(a => a.assignment_id === reportAssignmentId);
+      if (linkedAssignment) {
+        selectedAssignment = linkedAssignment;
+        console.log('[loadReport] selectedAssignment restored:', reportAssignmentId);
+      }
+    }
+    // currentAssignments가 비어있을 때는 assignment_id만 ocrData에 보존
+    if (reportAssignmentId && !selectedAssignment) {
+      if (!ocrData) ocrData = {};
+      ocrData.assignmentId = reportAssignmentId;
+      console.log('[loadReport] assignmentId preserved in ocrData:', reportAssignmentId);
+    }
+
     alert(`✅ 문서를 불러왔습니다!\n\n고객명: ${ocrData.receiverName || '-'}\n\n3단계에서 확인하고 수정할 수 있습니다.`);
     
     // 3단계로 바로 이동 (제품이 없으면 2단계로)
