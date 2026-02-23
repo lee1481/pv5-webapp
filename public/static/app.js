@@ -228,14 +228,14 @@ function renderAssignmentCards(container, list) {
   };
 
   container.innerHTML = `
-    <div class="mb-4 flex items-center justify-between">
-      <h3 class="font-bold text-gray-700 text-lg">
-        <i class="fas fa-clipboard-list text-blue-500 mr-2"></i>
-        배정된 접수 목록
-        <span class="ml-2 px-2.5 py-0.5 bg-blue-600 text-white rounded-full text-sm">${pending.length}건 대기</span>
-      </h3>
-      <button onclick="renderStep1AssignmentList()" class="text-sm text-gray-400 hover:text-blue-600">
-        <i class="fas fa-sync-alt mr-1"></i>새로고침
+    <div class="mb-4 flex items-center justify-between gap-2 flex-wrap">
+      <div class="flex items-center gap-2 flex-wrap">
+        <i class="fas fa-clipboard-list text-blue-500" style="font-size:1.1rem;"></i>
+        <span class="font-bold text-gray-700" style="font-size:1rem;white-space:nowrap;">배정된 접수 목록</span>
+        <span class="px-2 py-0.5 bg-blue-600 text-white rounded-full text-xs font-semibold" style="white-space:nowrap;">${pending.length}건 대기</span>
+      </div>
+      <button onclick="renderStep1AssignmentList()" class="flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 border border-gray-200 rounded-lg px-3 py-1.5 hover:border-blue-300 transition" style="white-space:nowrap;">
+        <i class="fas fa-sync-alt"></i> 새로고침
       </button>
     </div>
     <div class="space-y-3">
