@@ -457,10 +457,35 @@ export const kiaPackages: ProductPackage[] = [
   }
 ];
 
+// 워크스페이스 제품 패키지 (기본 사양)
+export const workspacePackages: ProductPackage[] = [
+  {
+    id: 'milwaukee-workspace',
+    brand: 'milwaukee',
+    name: 'PV5 밀워키 워크스페이스',
+    fullName: 'PV5 밀워키 워크스페이스',
+    description: '워크스페이스+팩아웃거치대2ea+팩아웃라지툴박스1ea+오픈형툴박스1ea+고용량2구콘센트+작업등',
+    price: 2230000,
+    image: '/static/images/milwaukee-workspace.jpg',
+    sections: []
+  },
+  {
+    id: 'kia-workspace',
+    brand: 'kia',
+    name: 'PV5 기아 워크스페이스',
+    fullName: 'PV5 기아 워크스페이스',
+    description: '워크스페이스+팩아웃거치대2ea+팩아웃라지툴박스1ea+오픈형툴박스1ea+고용량2구콘센트+작업등',
+    price: 1760000,
+    image: '/static/images/kia-workspace.jpg',
+    sections: []
+  }
+];
+
 // 전체 제품 패키지
 export const allPackages: ProductPackage[] = [
   ...milwaukeePackages,
-  ...kiaPackages
+  ...kiaPackages,
+  ...workspacePackages
 ];
 
 // ID로 패키지 찾기
