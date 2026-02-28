@@ -343,9 +343,28 @@ function goToStep(step) {
 // 제품 패키지 로드
 async function loadPackages() {
   try {
+    // 1. 패키지 기본 정보 로드
     const response = await axios.get('/api/packages');
     allPackages = response.data.packages;
     console.log('Loaded packages:', allPackages.length);
+
+    // 2. DB 가격 조회 후 병합 (본사 설정 가격 우선 적용)
+    try {
+      const priceRes = await axios.get('/api/packages/prices');
+      if (priceRes.data.success && priceRes.data.prices && priceRes.data.prices.length > 0) {
+        const priceMap = {};
+        priceRes.data.prices.forEach(p => { priceMap[p.package_id] = p.price; });
+        allPackages = allPackages.map(pkg => {
+          if (priceMap[pkg.id] !== undefined) {
+            return { ...pkg, price: priceMap[pkg.id] };
+          }
+          return pkg;
+        });
+        console.log('DB 가격 적용 완료');
+      }
+    } catch (priceErr) {
+      console.warn('DB 가격 조회 실패, 기본 가격 사용:', priceErr.message);
+    }
   } catch (error) {
     console.error('Failed to load packages:', error);
     alert('제품 정보를 불러오는데 실패했습니다.');

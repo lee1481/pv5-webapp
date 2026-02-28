@@ -48,6 +48,131 @@ app.get('/api/packages/:id', (c) => {
 })
 
 // ========================================
+// 제품 가격 관리 API (본사 전용 수정)
+// ========================================
+
+// 전체 가격 조회 (지사/본사 모두 접근 가능)
+app.get('/api/packages/prices', async (c) => {
+  try {
+    const { env } = c
+    if (!env.DB) return c.json({ error: 'DB 바인딩 없음' }, 500)
+
+    // DB에서 가격 조회
+    const result = await env.DB.prepare(
+      'SELECT package_id, package_name, price, updated_by, updated_at FROM packages_price ORDER BY package_id'
+    ).all()
+
+    // DB에 데이터 없으면 packages.ts 기본값으로 초기화
+    if (!result.results || result.results.length === 0) {
+      return c.json({ success: true, prices: [], message: '가격 데이터 없음 - 마이그레이션 필요' })
+    }
+
+    return c.json({ success: true, prices: result.results })
+  } catch (e: any) {
+    console.error('가격 조회 오류:', e)
+    return c.json({ success: false, error: e.message }, 500)
+  }
+})
+
+// 가격 수정 (본사만 가능)
+app.put('/api/packages/prices/:packageId', async (c) => {
+  try {
+    const { env } = c
+    if (!env.DB) return c.json({ error: 'DB 바인딩 없음' }, 500)
+
+    // 인증 확인
+    const authHeader = c.req.header('Authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ success: false, error: '인증 토큰이 필요합니다.' }, 401)
+    }
+    const token = authHeader.split(' ')[1]
+    const user = await verifyToken(token)
+    if (!user) return c.json({ success: false, error: '유효하지 않은 토큰입니다.' }, 401)
+
+    // 본사만 수정 가능
+    if (user.role !== 'head') {
+      return c.json({ success: false, error: '본사만 가격을 수정할 수 있습니다.' }, 403)
+    }
+
+    const packageId = c.req.param('packageId')
+    const body = await c.req.json()
+    const { price } = body
+
+    if (!price || isNaN(Number(price)) || Number(price) < 0) {
+      return c.json({ success: false, error: '올바른 가격을 입력해주세요.' }, 400)
+    }
+
+    await env.DB.prepare(
+      `UPDATE packages_price SET price = ?, updated_by = ?, updated_at = datetime('now') WHERE package_id = ?`
+    ).bind(Number(price), user.username, packageId).run()
+
+    console.log(`가격 수정: ${packageId} → ${price} (by ${user.username})`)
+    return c.json({ success: true, message: '가격이 수정되었습니다.', packageId, price: Number(price) })
+  } catch (e: any) {
+    console.error('가격 수정 오류:', e)
+    return c.json({ success: false, error: e.message }, 500)
+  }
+})
+
+// 가격 일괄 초기화 (본사만 가능 - DB에 데이터 없을 때)
+app.post('/api/packages/prices/init', async (c) => {
+  try {
+    const { env } = c
+    if (!env.DB) return c.json({ error: 'DB 바인딩 없음' }, 500)
+
+    const authHeader = c.req.header('Authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ success: false, error: '인증 토큰이 필요합니다.' }, 401)
+    }
+    const token = authHeader.split(' ')[1]
+    const user = await verifyToken(token)
+    if (!user) return c.json({ success: false, error: '유효하지 않은 토큰입니다.' }, 401)
+    if (user.role !== 'head') {
+      return c.json({ success: false, error: '본사만 실행 가능합니다.' }, 403)
+    }
+
+    // 테이블 생성 + 초기 데이터 삽입
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS packages_price (
+        package_id TEXT PRIMARY KEY,
+        package_name TEXT NOT NULL,
+        price INTEGER NOT NULL,
+        updated_by TEXT DEFAULT 'system',
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run()
+
+    const initData = [
+      ['milwaukee-workstation',    'PV5 밀워키 워크스테이션',    4850000],
+      ['milwaukee-smart',          'PV5 밀워키 스마트 에디션',   4490000],
+      ['milwaukee-3shelf-parts',   'PV5 밀워키 3단 부품선반',    968000],
+      ['milwaukee-3shelf-standard','PV5 밀워키 3단 선반',        1830000],
+      ['milwaukee-2shelf-partition','PV5 밀워키 격벽 2단선반',   1500000],
+      ['milwaukee-partition-panel','PV5 밀워키 격벽타공판',      1200000],
+      ['milwaukee-floor-board',    'PV5 밀워키 차바닥',          800000],
+      ['kia-workstation',          '기아 PV5 워크스테이션',      3390000],
+      ['kia-smart',                '기아 PV5 스마트 패키지',     3600000],
+      ['kia-3shelf-parts',         '기아 PV5 3단 부품선반',      880000],
+      ['kia-3shelf-standard',      '기아 PV5 3단 선반',          1210000],
+      ['kia-2shelf-partition',     '기아 PV5 격벽 2단선반',      1400000],
+      ['kia-partition-panel',      '기아 PV5 격벽타공판',        1100000],
+      ['kia-floor-board',          '기아 PV5 차바닥',            800000],
+    ]
+
+    for (const [id, name, price] of initData) {
+      await env.DB.prepare(
+        `INSERT OR IGNORE INTO packages_price (package_id, package_name, price) VALUES (?, ?, ?)`
+      ).bind(id, name, price).run()
+    }
+
+    return c.json({ success: true, message: '가격 초기화 완료', count: initData.length })
+  } catch (e: any) {
+    console.error('가격 초기화 오류:', e)
+    return c.json({ success: false, error: e.message }, 500)
+  }
+})
+
+// ========================================
 // JWT 인증 시스템 (Web Crypto API 사용)
 // ========================================
 
@@ -1677,28 +1802,30 @@ app.post('/api/reports/save', async (c) => {
 
     // assignment_id가 있으면 assignments 상태 동기화 (5단계 완전 매핑)
     // reports.status → assignments.status 매핑 규칙:
-    //   draft + 날짜없음 → adjusting (조율 중)
-    //   draft + 날짜있음 → assigned  (예약 접수 중)
-    //   confirmed        → in_progress (예약 확정)
-    //   inst_confirmed   → inst_confirmed (시공 확정)
-    //   completed        → completed (시공 완료)
+    //   draft + 날짜없음 → adjusting    (조율 중)    → 1단계 대기 목록에서 숨김
+    //   draft + 날짜있음 → in_progress  (예약 접수 중) → 1단계 대기 목록에서 숨김 ★핵심수정
+    //   confirmed        → in_progress  (예약 확정)  → 1단계 대기 목록에서 숨김
+    //   inst_confirmed   → inst_confirmed (시공 확정)→ 1단계 대기 목록에서 숨김
+    //   completed        → completed    (시공 완료)  → 1단계 완료 목록
+    // ★ 핵심: report가 한 번이라도 저장되면 1단계 대기(assigned)에서 무조건 제거
     if (finalAssignmentId) {
       try {
         let syncStatus: string
-        if (finalStatus === 'confirmed') {
-          syncStatus = 'in_progress'
+        if (finalStatus === 'completed') {
+          syncStatus = 'completed'
         } else if (finalStatus === 'inst_confirmed') {
           syncStatus = 'inst_confirmed'
-        } else if (finalStatus === 'completed') {
-          syncStatus = 'completed'
+        } else if (finalStatus === 'confirmed') {
+          syncStatus = 'in_progress'
         } else {
-          // draft (날짜 여부로 구분)
-          syncStatus = (!installDate) ? 'adjusting' : 'assigned'
+          // draft: 날짜 있든 없든 in_progress (1단계에서 사라져야 함)
+          // 날짜 없으면 adjusting(조율중), 날짜 있으면 in_progress(예약접수중)
+          syncStatus = (!installDate) ? 'adjusting' : 'in_progress'
         }
         await env.DB.prepare(`
           UPDATE assignments SET status = ? WHERE assignment_id = ?
         `).bind(syncStatus, finalAssignmentId).run()
-        console.log('[Sync] Assignment', finalAssignmentId, 'updated to', syncStatus, '(report status:', finalStatus, ')')
+        console.log('[Sync] Assignment', finalAssignmentId, 'updated to', syncStatus, '(report status:', finalStatus, ', date:', installDate, ')')
       } catch (syncErr) {
         console.warn('[Sync] Assignment sync warning (save):', syncErr)
       }
