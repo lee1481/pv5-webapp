@@ -35,20 +35,9 @@ app.get('/api/packages', (c) => {
   return c.json({ packages: allPackages })
 })
 
-// API: 특정 제품 패키지 조회
-app.get('/api/packages/:id', (c) => {
-  const id = c.req.param('id')
-  const pkg = getPackageById(id)
-  
-  if (!pkg) {
-    return c.json({ error: 'Package not found' }, 404)
-  }
-  
-  return c.json({ package: pkg })
-})
-
 // ========================================
 // 제품 가격 관리 API (본사 전용 수정)
+// ⚠️ 반드시 /api/packages/:id 보다 앞에 선언해야 함
 // ========================================
 
 // 전체 가격 조회 (지사/본사 모두 접근 가능)
@@ -170,6 +159,18 @@ app.post('/api/packages/prices/init', async (c) => {
     console.error('가격 초기화 오류:', e)
     return c.json({ success: false, error: e.message }, 500)
   }
+})
+
+// API: 특정 제품 패키지 조회 (⚠️ 가격 API들 뒤에 위치해야 함)
+app.get('/api/packages/:id', (c) => {
+  const id = c.req.param('id')
+  const pkg = getPackageById(id)
+  
+  if (!pkg) {
+    return c.json({ error: 'Package not found' }, 404)
+  }
+  
+  return c.json({ package: pkg })
 })
 
 // ========================================
