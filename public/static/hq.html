@@ -742,9 +742,25 @@
         // custom_packages id set
         const customIds = new Set(allCustomPkgs.map(p => p.package_id))
 
-        // packages_price 기준으로 전체 목록 구성
-        const milwaukeeItems = allPkgData.filter(p => p.package_id.startsWith('milwaukee'))
-        const kiaItems       = allPkgData.filter(p => p.package_id.startsWith('kia'))
+        // packages_price를 map으로 변환 (가격 조회용)
+        const priceMap = {}
+        allPkgData.forEach(p => { priceMap[p.package_id] = p })
+
+        // custom_packages를 packages_price 형식으로 변환하여 병합
+        const customAsPriceItems = allCustomPkgs.map(cp => ({
+            package_id:   cp.package_id,
+            package_name: cp.name,
+            price:        priceMap[cp.package_id] ? priceMap[cp.package_id].price : cp.price,
+            updated_by:   priceMap[cp.package_id] ? priceMap[cp.package_id].updated_by : 'system',
+            updated_at:   priceMap[cp.package_id] ? priceMap[cp.package_id].updated_at : cp.updated_at
+        }))
+        // packages_price 중 custom이 아닌 기본 제품만 추출
+        const baseItems = allPkgData.filter(p => !customIds.has(p.package_id))
+        // 기본 제품 + 커스텀 제품 합산
+        const allItems = [...baseItems, ...customAsPriceItems]
+
+        const milwaukeeItems = allItems.filter(p => p.package_id.startsWith('milwaukee'))
+        const kiaItems       = allItems.filter(p => p.package_id.startsWith('kia'))
 
         function buildRows(items, tbody) {
             if (items.length === 0) {
