@@ -75,8 +75,9 @@ app.put('/api/packages/prices/:packageId', async (c) => {
       return c.json({ success: false, error: '인증 토큰이 필요합니다.' }, 401)
     }
     const token = authHeader.split(' ')[1]
-    const user = await verifyToken(token)
-    if (!user) return c.json({ success: false, error: '유효하지 않은 토큰입니다.' }, 401)
+    const decoded = await verifyToken(token)
+    if (!decoded || !decoded.success || !decoded.user) return c.json({ success: false, error: '유효하지 않은 토큰입니다.' }, 401)
+    const user = decoded.user
 
     // 본사만 수정 가능
     if (user.role !== 'head') {
@@ -114,9 +115,10 @@ app.post('/api/packages/prices/init', async (c) => {
       return c.json({ success: false, error: '인증 토큰이 필요합니다.' }, 401)
     }
     const token = authHeader.split(' ')[1]
-    const user = await verifyToken(token)
-    if (!user) return c.json({ success: false, error: '유효하지 않은 토큰입니다.' }, 401)
-    if (user.role !== 'head') {
+    const decoded2 = await verifyToken(token)
+    if (!decoded2 || !decoded2.success || !decoded2.user) return c.json({ success: false, error: '유효하지 않은 토큰입니다.' }, 401)
+    const user2 = decoded2.user
+    if (user2.role !== 'head') {
       return c.json({ success: false, error: '본사만 실행 가능합니다.' }, 403)
     }
 
