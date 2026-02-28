@@ -288,7 +288,7 @@ function renderAssignmentCards(container, list) {
       ${inProgress.length > 0 ? `
         <details class="mt-4" open>
           <summary class="cursor-pointer text-sm text-indigo-500 font-semibold hover:text-indigo-700 select-none py-1">
-            <i class="fas fa-spinner mr-1"></i>진행 중인 건 ${inProgress.length}건 (5단계에서 확인)
+            <i class="fas fa-spinner mr-1"></i>진행 중인 건 ${inProgress.length}건 (이어하기로 계속 진행)
           </summary>
           <div class="space-y-3 mt-3">${inProgress.map(makeCard).join('')}</div>
         </details>` : ''}
@@ -2101,7 +2101,7 @@ function displayReportsList(reports) {
   }
   
   // 정렬: 1)상태 우선순위(진행중 위, 완료 아래) 2)설치 날짜 오름차순
-  const statusOrder = { 'adjusting': 1, 'draft': 2, 'confirmed': 3, 'inst_confirmed': 4, 'completed': 5 };
+  const statusOrder = { 'pending_report': 0, 'adjusting': 1, 'draft': 2, 'confirmed': 3, 'inst_confirmed': 4, 'completed': 5 };
   const sortedReports = [...reports].sort((a, b) => {
     const sA = statusOrder[a.status] ?? 2;
     const sB = statusOrder[b.status] ?? 2;
@@ -2155,7 +2155,9 @@ function displayReportsList(reports) {
           ${positionBadges ? `<div class="mb-2">${positionBadges}</div>` : ''} <!-- UPDATED -->
           <!-- 상태 배지 -->
           <div class="mb-2">
-            ${isDatePending ? 
+            ${report.status === 'pending_report' ?
+              '<span class="inline-block px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-semibold"><i class="fas fa-exclamation-circle mr-1"></i>작성 필요</span>' :
+              isDatePending ? 
               '<span class="inline-block px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm font-semibold"><i class="fas fa-hourglass-half mr-1"></i>조율 중</span>' :
               report.status === 'draft' || !report.status ? 
               '<span class="inline-block px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold"><i class="fas fa-clipboard-list mr-1"></i>예약 접수 중</span>' :
@@ -2173,6 +2175,12 @@ function displayReportsList(reports) {
         
         <!-- 버튼 영역: 데스크톱 (가로 배치), 모바일 (2×3 그리드) -->
         <div class="hidden md:flex md:space-x-2">
+          ${report.status === 'pending_report' ? `
+            <button onclick="resumeFromAssignment('${report.customerInfo?.assignmentId || ''}')"
+                    class="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 text-sm">
+              <i class="fas fa-play mr-1"></i>이어서 작성
+            </button>
+          ` : `
           <button onclick="showReportPreview('${reportId}')" 
                   class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm">
             <i class="fas fa-eye mr-1"></i>상세보기
@@ -2206,10 +2214,17 @@ function displayReportsList(reports) {
                   class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm">
             <i class="fas fa-trash mr-1"></i>삭제
           </button>
+          `}
         </div>
         
         <!-- 모바일 버튼 (2×3 그리드) -->
         <div class="md:hidden grid grid-cols-2 gap-2">
+          ${report.status === 'pending_report' ? `
+            <button onclick="resumeFromAssignment('${report.customerInfo?.assignmentId || ''}')"
+                    class="col-span-2 bg-orange-600 text-white px-4 py-3 rounded-lg hover:bg-orange-700 text-sm font-semibold">
+              <i class="fas fa-play mr-1"></i>이어서 작성
+            </button>
+          ` : `
           <button onclick="showReportPreview('${reportId}')" 
                   class="bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 text-sm font-semibold">
             <i class="fas fa-eye mr-1"></i>상세보기
@@ -2243,10 +2258,24 @@ function displayReportsList(reports) {
                   class="col-span-2 bg-red-600 text-white px-4 py-3 rounded-lg hover:bg-red-700 text-sm font-semibold">
             <i class="fas fa-trash mr-1"></i>삭제
           </button>
+          `}
         </div>
       </div>
     `;
   }).join('');
+}
+
+// 5단계에서 "이어서 작성" 클릭 → 해당 assignment 선택 후 2단계로 이동
+function resumeFromAssignment(assignmentId) {
+  if (!assignmentId) { alert('접수 정보를 찾을 수 없습니다.'); return; }
+  const a = currentAssignments.find(x => x.assignment_id === assignmentId);
+  if (!a) {
+    // currentAssignments에 없으면 1단계로 이동 후 선택 유도
+    alert('1단계로 이동합니다. "이어하기" 버튼을 눌러주세요.');
+    currentStep = 1; updateStepIndicator(); showCurrentSection();
+    return;
+  }
+  startAssignment(assignmentId);
 }
 
 // 문서 불러오기

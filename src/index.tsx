@@ -2144,37 +2144,107 @@ app.get('/api/reports/list', async (c) => {
     if (user.role === 'branch' && user.branchId) {
       stmt = env.DB.prepare(`
         SELECT 
-          id, report_id, customer_info, packages, package_positions,
-          install_date, install_time, install_address, notes,
-          installer_name, image_key, image_filename,
-          created_at, updated_at, status
-        FROM reports
-        WHERE branch_id = ?
+          r.id, r.report_id, r.customer_info, r.packages, r.package_positions,
+          r.install_date, r.install_time, r.install_address, r.notes,
+          r.installer_name, r.image_key, r.image_filename,
+          r.created_at, r.updated_at, r.status,
+          r.assignment_id as r_assignment_id
+        FROM reports r
+        WHERE r.branch_id = ?
+        UNION ALL
+        SELECT
+          NULL as id,
+          'ASG-PENDING-' || a.assignment_id as report_id,
+          json_object('receiverName', a.customer_name, 'receiverPhone', a.customer_phone,
+                      'receiverAddress', a.customer_address, 'productName', a.product_name,
+                      'assignmentId', a.assignment_id) as customer_info,
+          '[]' as packages, '{}' as package_positions,
+          NULL as install_date, NULL as install_time,
+          a.customer_address as install_address,
+          a.notes as notes, NULL as installer_name,
+          NULL as image_key, NULL as image_filename,
+          a.assigned_at as created_at, a.assigned_at as updated_at,
+          'pending_report' as status,
+          a.assignment_id as r_assignment_id
+        FROM assignments a
+        WHERE a.branch_id = ?
+          AND a.status IN ('in_progress','adjusting')
+          AND NOT EXISTS (
+            SELECT 1 FROM reports r2
+            WHERE r2.assignment_id = a.assignment_id
+              AND r2.branch_id = a.branch_id
+          )
         ORDER BY created_at DESC
         LIMIT 100
-      `).bind(Number(user.branchId))
+      `).bind(Number(user.branchId), Number(user.branchId))
     } else if (user.role === 'head' && viewBranchId) {
       // 본사가 특정 지사를 대리 접속 → 해당 지사 데이터만 표시
       stmt = env.DB.prepare(`
         SELECT 
-          id, report_id, customer_info, packages, package_positions,
-          install_date, install_time, install_address, notes,
-          installer_name, image_key, image_filename,
-          created_at, updated_at, status
-        FROM reports
-        WHERE branch_id = ?
+          r.id, r.report_id, r.customer_info, r.packages, r.package_positions,
+          r.install_date, r.install_time, r.install_address, r.notes,
+          r.installer_name, r.image_key, r.image_filename,
+          r.created_at, r.updated_at, r.status,
+          r.assignment_id as r_assignment_id
+        FROM reports r
+        WHERE r.branch_id = ?
+        UNION ALL
+        SELECT
+          NULL as id,
+          'ASG-PENDING-' || a.assignment_id as report_id,
+          json_object('receiverName', a.customer_name, 'receiverPhone', a.customer_phone,
+                      'receiverAddress', a.customer_address, 'productName', a.product_name,
+                      'assignmentId', a.assignment_id) as customer_info,
+          '[]' as packages, '{}' as package_positions,
+          NULL as install_date, NULL as install_time,
+          a.customer_address as install_address,
+          a.notes as notes, NULL as installer_name,
+          NULL as image_key, NULL as image_filename,
+          a.assigned_at as created_at, a.assigned_at as updated_at,
+          'pending_report' as status,
+          a.assignment_id as r_assignment_id
+        FROM assignments a
+        WHERE a.branch_id = ?
+          AND a.status IN ('in_progress','adjusting')
+          AND NOT EXISTS (
+            SELECT 1 FROM reports r2
+            WHERE r2.assignment_id = a.assignment_id
+              AND r2.branch_id = a.branch_id
+          )
         ORDER BY created_at DESC
         LIMIT 100
-      `).bind(Number(viewBranchId))
+      `).bind(Number(viewBranchId), Number(viewBranchId))
     } else {
       // 본사(head) 직접 접속 → 전체 조회
       stmt = env.DB.prepare(`
         SELECT 
-          id, report_id, customer_info, packages, package_positions,
-          install_date, install_time, install_address, notes,
-          installer_name, image_key, image_filename,
-          created_at, updated_at, status
-        FROM reports
+          r.id, r.report_id, r.customer_info, r.packages, r.package_positions,
+          r.install_date, r.install_time, r.install_address, r.notes,
+          r.installer_name, r.image_key, r.image_filename,
+          r.created_at, r.updated_at, r.status,
+          r.assignment_id as r_assignment_id
+        FROM reports r
+        UNION ALL
+        SELECT
+          NULL as id,
+          'ASG-PENDING-' || a.assignment_id as report_id,
+          json_object('receiverName', a.customer_name, 'receiverPhone', a.customer_phone,
+                      'receiverAddress', a.customer_address, 'productName', a.product_name,
+                      'assignmentId', a.assignment_id) as customer_info,
+          '[]' as packages, '{}' as package_positions,
+          NULL as install_date, NULL as install_time,
+          a.customer_address as install_address,
+          a.notes as notes, NULL as installer_name,
+          NULL as image_key, NULL as image_filename,
+          a.assigned_at as created_at, a.assigned_at as updated_at,
+          'pending_report' as status,
+          a.assignment_id as r_assignment_id
+        FROM assignments a
+        WHERE a.status IN ('in_progress','adjusting')
+          AND NOT EXISTS (
+            SELECT 1 FROM reports r2
+            WHERE r2.assignment_id = a.assignment_id
+          )
         ORDER BY created_at DESC
         LIMIT 100
       `)
