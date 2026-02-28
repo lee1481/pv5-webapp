@@ -12,6 +12,47 @@ let uploadedImageFile = null;
 let currentAssignments = [];
 let selectedAssignment = null; // 현재 선택된 접수 건
 
+// ── 악세사리 전역 상태 ──────────────────────────────────────────────────────
+let selectedAccessories = {}; // { 'rubber-strap': 2, 'hook-s': 1, 'hook-l': 3 }
+
+// 악세사리 마스터 데이터
+const ACCESSORIES = [
+  {
+    id: 'rubber-strap',
+    name: '고무스트랩',
+    unit: '1m',
+    unitLabel: 'm',
+    consumerPrice: 20000,   // 소비자가 1m당 2만원
+    costPrice: 8000,        // 원가 (10m=80,000 → 1m=8,000)
+    minQty: 1,
+    maxQty: 50,
+    description: '1m 단위 판매 · 소비자가 ₩20,000/m'
+  },
+  {
+    id: 'hook-s',
+    name: '후크걸이(소)',
+    unit: '1세트(5EA)',
+    unitLabel: '세트',
+    consumerPrice: 20000,   // 소비자가 1세트(5개) = 2만원
+    costPrice: 10000,       // 원가 1세트 = 10,000
+    minQty: 1,
+    maxQty: 20,
+    description: '1세트 = 5EA · 소비자가 ₩20,000/세트'
+  },
+  {
+    id: 'hook-l',
+    name: '후크걸이(대)',
+    unit: '1세트(5EA)',
+    unitLabel: '세트',
+    consumerPrice: 25000,   // 소비자가 1세트(5개) = 2만 5천원
+    costPrice: 10000,       // 원가 1세트 = 10,000
+    minQty: 1,
+    maxQty: 20,
+    description: '1세트 = 5EA · 소비자가 ₩25,000/세트'
+  }
+];
+
+
 // 본사가 특정 지사를 대리 접속할 때 URL에서 branchId 읽기
 // 예: /ocr?viewBranchId=3  → 서울/경북지사 데이터만 표시
 const _urlParams = new URLSearchParams(window.location.search);
@@ -876,9 +917,91 @@ function submitManualInput() {
 }
 
 
-// 브랜드별 제품 표시
-function showBrand(brand) {
-  console.log('showBrand called with:', brand);
+// ── 악세사리 관련 함수 ──────────────────────────────────────────────────────
+
+// 악세사리 카드 렌더링 (2단계 packageGrid 아래)
+function renderAccessories() {
+  const grid = document.getElementById('accessoryGrid');
+  if (!grid) return;
+
+  grid.innerHTML = ACCESSORIES.map(acc => {
+    const qty = selectedAccessories[acc.id] || 0;
+    const isSelected = qty > 0;
+    return `
+      <div style="border: 2px solid ${isSelected ? '#f97316' : '#e2e8f0'}; border-radius: 0.75rem; padding: 1.25rem; background: ${isSelected ? '#fff7ed' : 'white'}; transition: all 0.2s;" id="acc-card-${acc.id}">
+        <div style="margin-bottom: 0.75rem;">
+          <p style="font-weight: 700; font-size: 1rem; color: #1a202c; margin-bottom: 0.25rem;">${acc.name}</p>
+          <p style="font-size: 0.75rem; color: #f97316; font-weight: 600;">₩${acc.consumerPrice.toLocaleString('ko-KR')} / ${acc.unitLabel}</p>
+          <p style="font-size: 0.7rem; color: #9ca3af; margin-top: 0.2rem;">${acc.description}</p>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <button onclick="changeAccessoryQty('${acc.id}', -1)"
+                  style="width: 2rem; height: 2rem; border-radius: 50%; border: 2px solid #e2e8f0; background: white; font-size: 1.1rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #374151;"
+                  onmouseover="this.style.borderColor='#f97316';this.style.color='#f97316'"
+                  onmouseout="this.style.borderColor='#e2e8f0';this.style.color='#374151'">−</button>
+          <input type="number" id="acc-qty-${acc.id}" value="${qty}" min="0" max="${acc.maxQty}"
+                 onchange="setAccessoryQty('${acc.id}', parseInt(this.value)||0)"
+                 style="width: 3.5rem; text-align: center; border: 1px solid #d1d5db; border-radius: 0.375rem; padding: 0.25rem; font-size: 0.9rem; font-weight: 700; color: #1a202c;">
+          <button onclick="changeAccessoryQty('${acc.id}', +1)"
+                  style="width: 2rem; height: 2rem; border-radius: 50%; border: 2px solid #e2e8f0; background: white; font-size: 1.1rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #374151;"
+                  onmouseover="this.style.borderColor='#f97316';this.style.color='#f97316'"
+                  onmouseout="this.style.borderColor='#e2e8f0';this.style.color='#374151'">＋</button>
+          <span style="font-size: 0.8rem; color: #6b7280;">${acc.unitLabel}</span>
+          ${isSelected ? `<span style="font-size: 0.75rem; color: #f97316; font-weight: 600; margin-left: auto;">합계 ₩${(qty * acc.consumerPrice).toLocaleString('ko-KR')}</span>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// 악세사리 수량 ±1 버튼
+function changeAccessoryQty(accId, delta) {
+  const acc = ACCESSORIES.find(a => a.id === accId);
+  if (!acc) return;
+  const current = selectedAccessories[accId] || 0;
+  const newQty = Math.max(0, Math.min(acc.maxQty, current + delta));
+  setAccessoryQty(accId, newQty);
+}
+
+// 악세사리 수량 직접 설정
+function setAccessoryQty(accId, qty) {
+  qty = Math.max(0, qty);
+  if (qty === 0) {
+    delete selectedAccessories[accId];
+  } else {
+    selectedAccessories[accId] = qty;
+  }
+  renderAccessories();
+}
+
+// 악세사리 초기화 (새 문서 시작 시)
+function resetAccessories() {
+  selectedAccessories = {};
+  renderAccessories();
+}
+
+// 선택된 악세사리 목록 텍스트 (4단계 확인서용)
+function getAccessorySummary() {
+  const items = Object.entries(selectedAccessories)
+    .map(([id, qty]) => {
+      const acc = ACCESSORIES.find(a => a.id === id);
+      if (!acc) return null;
+      return `${acc.name} × ${qty}${acc.unitLabel} (₩${(qty * acc.consumerPrice).toLocaleString('ko-KR')})`;
+    })
+    .filter(Boolean);
+  return items.length > 0 ? items.join(', ') : '없음';
+}
+
+// 악세사리 총 소비자가 합계
+function getAccessoryTotalPrice() {
+  return Object.entries(selectedAccessories).reduce((sum, [id, qty]) => {
+    const acc = ACCESSORIES.find(a => a.id === id);
+    return sum + (acc ? acc.consumerPrice * qty : 0);
+  }, 0);
+}
+
+// ── 브랜드별 제품 표시
+function showBrand(brand) {  console.log('showBrand called with:', brand);
   console.log('allPackages:', allPackages.length);
   
   const tabs = document.querySelectorAll('.brand-tab');
@@ -1157,6 +1280,7 @@ function nextStep(step) {
     setTimeout(() => {
       if (allPackages.length === 0) loadPackages().then(() => showBrand('milwaukee'));
       else showBrand('milwaukee');
+      renderAccessories(); // 악세사리 카드 초기 렌더링
     }, 200);
   }
 
@@ -1326,6 +1450,41 @@ function displayFinalPreview() {
         </div>
       </div>
       
+      <!-- 악세사리 정보 -->
+      ${Object.keys(selectedAccessories).length > 0 ? `
+      <div class="mb-4 sm:mb-6 pb-4 sm:pb-6 border-b-2">
+        <h4 class="font-bold text-base sm:text-lg mb-3 text-gray-800">
+          <i class="fas fa-puzzle-piece mr-2 text-orange-500"></i>악세사리 추가 선택
+        </h4>
+        <table class="w-full text-sm">
+          <thead class="bg-orange-50">
+            <tr>
+              <th class="px-3 py-2 text-left">품목</th>
+              <th class="px-3 py-2 text-center">수량</th>
+              <th class="px-3 py-2 text-right">단가</th>
+              <th class="px-3 py-2 text-right">소계</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${Object.entries(selectedAccessories).map(([id, qty]) => {
+              const acc = ACCESSORIES.find(a => a.id === id);
+              if (!acc) return '';
+              return `<tr class="border-b">
+                <td class="px-3 py-2">${acc.name}</td>
+                <td class="px-3 py-2 text-center">${qty}${acc.unitLabel}</td>
+                <td class="px-3 py-2 text-right">₩${acc.consumerPrice.toLocaleString('ko-KR')}</td>
+                <td class="px-3 py-2 text-right font-semibold text-orange-600">₩${(acc.consumerPrice * qty).toLocaleString('ko-KR')}</td>
+              </tr>`;
+            }).join('')}
+            <tr class="bg-orange-50 font-bold">
+              <td colspan="3" class="px-3 py-2 text-right">악세사리 합계</td>
+              <td class="px-3 py-2 text-right text-orange-600">₩${getAccessoryTotalPrice().toLocaleString('ko-KR')}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      ` : ''}
+
       <!-- 자재 리스트 -->
       <div class="mb-4 sm:mb-6 pb-4 sm:pb-6 border-b-2">
         <h4 class="font-bold text-base sm:text-lg mb-3 text-gray-800">
@@ -1446,6 +1605,11 @@ async function sendEmail() {
         orderDate:       selectedAssignment.order_date
       } : {},
       packages: selectedPackages,
+      accessories: Object.entries(selectedAccessories).map(([id, qty]) => {
+        const acc = ACCESSORIES.find(a => a.id === id);
+        return acc ? { name: acc.name, qty, unitLabel: acc.unitLabel, consumerPrice: acc.consumerPrice, subtotal: acc.consumerPrice * qty } : null;
+      }).filter(Boolean),
+      accessoryTotal: getAccessoryTotalPrice(),
       installDate,
       installTime,
       installAddress,
@@ -2650,6 +2814,7 @@ function resetForNewReport() {
   selectedPackages = [];
   currentReportId = null;
   packagePositions = {};
+  resetAccessories(); // 악세사리 선택 초기화
   
   // 2. Step 3 입력 필드 초기화
   const installDate = document.getElementById('installDate');

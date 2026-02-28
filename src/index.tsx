@@ -1504,6 +1504,8 @@ app.post('/api/send-email', async (c) => {
       recipientEmail,
       customerInfo,
       packages,
+      accessories,
+      accessoryTotal,
       installDate,
       installTime,
       installAddress,
@@ -1573,6 +1575,36 @@ app.post('/api/send-email', async (c) => {
               <div class="section-title">📦 선택 제품</div>
               <ul>${packageList}</ul>
             </div>
+            
+            ${accessories && accessories.length > 0 ? `
+            <div class="section" style="border-left-color: #f97316;">
+              <div class="section-title" style="color: #ea580c;">🔧 악세사리 추가 선택</div>
+              <table style="width:100%; border-collapse:collapse; font-size:14px; margin-top:8px;">
+                <thead>
+                  <tr style="background:#fff7ed;">
+                    <th style="padding:8px; text-align:left; border-bottom:1px solid #fed7aa;">품목</th>
+                    <th style="padding:8px; text-align:center; border-bottom:1px solid #fed7aa;">수량</th>
+                    <th style="padding:8px; text-align:right; border-bottom:1px solid #fed7aa;">단가</th>
+                    <th style="padding:8px; text-align:right; border-bottom:1px solid #fed7aa;">소계</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${(accessories as any[]).map((acc: any) => `
+                  <tr>
+                    <td style="padding:8px; border-bottom:1px solid #f3f4f6;">${acc.name}</td>
+                    <td style="padding:8px; text-align:center; border-bottom:1px solid #f3f4f6;">${acc.qty}${acc.unitLabel}</td>
+                    <td style="padding:8px; text-align:right; border-bottom:1px solid #f3f4f6;">₩${acc.consumerPrice.toLocaleString('ko-KR')}</td>
+                    <td style="padding:8px; text-align:right; border-bottom:1px solid #f3f4f6; font-weight:bold; color:#ea580c;">₩${acc.subtotal.toLocaleString('ko-KR')}</td>
+                  </tr>
+                  `).join('')}
+                  <tr style="background:#fff7ed; font-weight:bold;">
+                    <td colspan="3" style="padding:8px; text-align:right;">악세사리 합계</td>
+                    <td style="padding:8px; text-align:right; color:#ea580c;">₩${(accessoryTotal || 0).toLocaleString('ko-KR')}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            ` : ''}
             
             <div class="section">
               <div class="section-title">📅 설치 정보</div>
@@ -2995,6 +3027,16 @@ app.get('/ocr', (c) => {
                     
                     <!-- 제품 패키지 카드 -->
                     <div id="packageGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+                    <!-- 악세사리 선택 섹션 -->
+                    <div class="mt-8 border-t border-gray-200 pt-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-1">
+                            <i class="fas fa-puzzle-piece text-orange-500 mr-2"></i>악세사리 추가 선택
+                            <span class="text-sm font-normal text-gray-500 ml-2">(선택사항)</span>
+                        </h3>
+                        <p class="text-xs text-gray-400 mb-4">수량 입력 후 추가하세요. 0이면 미선택으로 처리됩니다.</p>
+                        <div id="accessoryGrid" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+                    </div>
                 </div>
 
                 <!-- Step 3: 설치 정보 입력 -->
