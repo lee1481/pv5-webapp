@@ -243,8 +243,10 @@ app.post('/api/custom-packages', async (c) => {
   if ((auth.user as any).role !== 'head') return c.json({ success: false, error: '본사만 등록 가능합니다.' }, 403)
   try {
     const { env } = c
-    const { packageId, brand, name, fullName, description, price, imageUrl } = await c.req.json()
-    if (!packageId || !brand || !name || !price) return c.json({ success: false, error: '필수 값 누락' }, 400)
+    const { packageId: reqPackageId, brand, name, fullName, description, price, imageUrl } = await c.req.json()
+    if (!brand || !name || !price) return c.json({ success: false, error: '필수 값 누락' }, 400)
+    // packageId 자동 생성 (미전달 시)
+    const packageId = reqPackageId || `${brand}-custom-${Date.now()}`
     const username = (auth.user as any).username || 'head'
     await env.DB.prepare(`
       INSERT INTO custom_packages (package_id, brand, name, full_name, description, price, image_url, created_by, updated_by)
@@ -301,6 +303,46 @@ app.delete('/api/custom-packages/:id', async (c) => {
     return c.json({ success: true, message: '삭제되었습니다.' })
   } catch (e: any) {
     return c.json({ success: false, error: e.message }, 500)
+  }
+})
+
+// POST /api/upload/product-image : 제품 이미지 업로드 (본사만) → R2 저장 후 접근 키 반환
+app.post('/api/upload/product-image', async (c) => {
+  const auth = await requireAuth(c)
+  if (!auth.success) return auth.response
+  if ((auth.user as any).role !== 'head') return c.json({ success: false, error: '본사만 업로드 가능합니다.' }, 403)
+  try {
+    const { env } = c
+    const formData = await c.req.formData()
+    const file = formData.get('image') as File
+    if (!file) return c.json({ success: false, error: '이미지 파일이 없습니다.' }, 400)
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+    const imageKey = `product-images/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`
+    await env.R2.put(imageKey, file.stream(), {
+      httpMetadata: { contentType: file.type || 'image/jpeg' }
+    })
+    return c.json({ success: true, imageKey, imageUrl: `/api/product-image/${imageKey}` })
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message }, 500)
+  }
+})
+
+// GET /api/product-image/* : R2에서 제품 이미지 서빙
+app.get('/api/product-image/*', async (c) => {
+  try {
+    const { env } = c
+    const imageKey = c.req.path.replace('/api/product-image/', '')
+    const object = await env.R2.get(imageKey)
+    if (!object) return c.json({ error: 'Image not found' }, 404)
+    const contentType = object.httpMetadata?.contentType || 'image/jpeg'
+    return new Response(object.body, {
+      headers: {
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=31536000'
+      }
+    })
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500)
   }
 })
 

@@ -267,6 +267,7 @@
                     </h2>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- 브랜드 -->
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1">브랜드 *</label>
                         <select id="np-brand" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
@@ -274,31 +275,38 @@
                             <option value="kia">기아 순정형</option>
                         </select>
                     </div>
+                    <!-- 제품명 -->
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-1">제품 ID * <span class="text-xs text-gray-400">(영문+하이픈, 예: kia-workspace2)</span></label>
-                        <input id="np-id" type="text" placeholder="kia-workspace2"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-1">제품명 (짧게) *</label>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">제품명 *</label>
                         <input id="np-name" type="text" placeholder="PV5 기아 워크스페이스"
                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
                     </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-1">제품명 (전체)</label>
-                        <input id="np-fullname" type="text" placeholder="PV5 기아 순정형 워크스페이스"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                    </div>
+                    <!-- 소비자가 -->
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1">소비자가 (원) *</label>
                         <input id="np-price" type="number" placeholder="1760000" min="0" step="1000"
                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
                     </div>
+                    <!-- 이미지 업로드 -->
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-1">이미지 URL <span class="text-xs text-gray-400">(선택)</span></label>
-                        <input id="np-image" type="text" placeholder="/static/images/my-product.jpg"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">제품 이미지 <span class="text-xs text-gray-400">(선택)</span></label>
+                        <div class="flex items-center gap-2">
+                            <label class="flex-1 flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm cursor-pointer hover:bg-gray-50 transition">
+                                <i class="fas fa-upload text-gray-400"></i>
+                                <span id="np-image-label" class="text-gray-400 truncate">이미지 파일 선택</span>
+                                <input id="np-image-file" type="file" accept="image/*" class="hidden" onchange="previewProductImage(this)">
+                            </label>
+                            <div id="np-image-preview-wrap" class="hidden">
+                                <img id="np-image-preview" src="" alt="미리보기"
+                                     class="w-12 h-12 object-cover rounded-lg border border-gray-200">
+                            </div>
+                        </div>
+                        <!-- 업로드 상태 표시 -->
+                        <p id="np-image-status" class="mt-1 text-xs text-gray-400 hidden"></p>
+                        <!-- 업로드된 이미지 URL (숨김 저장) -->
+                        <input id="np-image-url" type="hidden" value="">
                     </div>
+                    <!-- 구성 설명 -->
                     <div class="md:col-span-2">
                         <label class="block text-sm font-semibold text-gray-700 mb-1">구성 설명</label>
                         <input id="np-desc" type="text" placeholder="격벽타공판 + 워크스페이스"
@@ -914,35 +922,76 @@
         } catch(e) { alert('삭제 중 오류가 발생했습니다.') }
     }
 
+    // 이미지 파일 선택 시 미리보기
+    function previewProductImage(input) {
+        const file = input.files[0]
+        if (!file) return
+        document.getElementById('np-image-label').textContent = file.name
+        const reader = new FileReader()
+        reader.onload = (e) => {
+            const img = document.getElementById('np-image-preview')
+            img.src = e.target.result
+            document.getElementById('np-image-preview-wrap').classList.remove('hidden')
+        }
+        reader.readAsDataURL(file)
+        // 숨김 URL 초기화 (아직 업로드 전)
+        document.getElementById('np-image-url').value = ''
+        document.getElementById('np-image-status').textContent = '제품 등록 시 자동 업로드됩니다.'
+        document.getElementById('np-image-status').classList.remove('hidden')
+    }
+
     // 신규 제품 등록
     async function registerPackage() {
-        const packageId = document.getElementById('np-id').value.trim()
-        const brand     = document.getElementById('np-brand').value
-        const name      = document.getElementById('np-name').value.trim()
-        const fullName  = document.getElementById('np-fullname').value.trim()
-        const price     = parseInt(document.getElementById('np-price').value)
-        const imageUrl  = document.getElementById('np-image').value.trim()
-        const desc      = document.getElementById('np-desc').value.trim()
+        const brand   = document.getElementById('np-brand').value
+        const name    = document.getElementById('np-name').value.trim()
+        const price   = parseInt(document.getElementById('np-price').value)
+        const desc    = document.getElementById('np-desc').value.trim()
+        const fileInput = document.getElementById('np-image-file')
 
-        if (!packageId || !name || isNaN(price)) {
-            alert('제품 ID, 제품명, 소비자가는 필수입니다.')
-            return
-        }
-        if (!/^[a-zA-Z0-9-]+$/.test(packageId)) {
-            alert('제품 ID는 영문, 숫자, 하이픈(-)만 사용 가능합니다.')
+        if (!name || isNaN(price)) {
+            alert('제품명, 소비자가는 필수입니다.')
             return
         }
         const token = localStorage.getItem('token')
+        let imageUrl = ''
+
+        // 이미지 파일이 있으면 먼저 R2에 업로드
+        if (fileInput.files[0]) {
+            try {
+                document.getElementById('np-image-status').textContent = '이미지 업로드 중...'
+                document.getElementById('np-image-status').classList.remove('hidden')
+                const formData = new FormData()
+                formData.append('image', fileInput.files[0])
+                const uploadRes = await axios.post('/api/upload/product-image', formData, {
+                    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+                })
+                if (uploadRes.data.success) {
+                    imageUrl = uploadRes.data.imageUrl
+                    document.getElementById('np-image-url').value = imageUrl
+                    document.getElementById('np-image-status').textContent = '✅ 이미지 업로드 완료'
+                } else {
+                    document.getElementById('np-image-status').textContent = '⚠️ 이미지 업로드 실패 (제품은 등록됩니다)'
+                }
+            } catch(e) {
+                document.getElementById('np-image-status').textContent = '⚠️ 이미지 업로드 실패 (제품은 등록됩니다)'
+            }
+        }
+
         try {
             const res = await axios.post('/api/custom-packages', {
-                packageId, brand, name, fullName: fullName || name,
+                brand, name, fullName: name,
                 description: desc, price, imageUrl
             }, { headers: { Authorization: `Bearer ${token}` } })
             if (res.data.success) {
                 // 입력 초기화
-                ;['np-id','np-name','np-fullname','np-price','np-image','np-desc'].forEach(id => {
-                    document.getElementById(id).value = ''
-                })
+                document.getElementById('np-name').value = ''
+                document.getElementById('np-price').value = ''
+                document.getElementById('np-desc').value = ''
+                document.getElementById('np-image-file').value = ''
+                document.getElementById('np-image-label').textContent = '이미지 파일 선택'
+                document.getElementById('np-image-preview-wrap').classList.add('hidden')
+                document.getElementById('np-image-url').value = ''
+                document.getElementById('np-image-status').classList.add('hidden')
                 await loadProductManagement()
                 alert(`✅ "${name}" 이(가) 등록되었습니다!\n즉시 전 지사 2단계에 표시됩니다.`)
             } else {
