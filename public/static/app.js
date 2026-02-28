@@ -1278,9 +1278,15 @@ function nextStep(step) {
   // 섹션별 초기화
   if (step === 2) {
     setTimeout(() => {
-      if (allPackages.length === 0) loadPackages().then(() => showBrand('milwaukee'));
-      else showBrand('milwaukee');
-      renderAccessories(); // 악세사리 카드 초기 렌더링
+      if (allPackages.length === 0) {
+        loadPackages().then(() => {
+          showBrand('milwaukee');
+          renderAccessories();
+        });
+      } else {
+        showBrand('milwaukee');
+        renderAccessories();
+      }
     }, 200);
   }
 
@@ -1327,6 +1333,11 @@ function showCurrentSection() {
   document.getElementById('confirm-section').classList.toggle('hidden', currentStep !== 4);
   document.getElementById('manage-section').classList.toggle('hidden', currentStep !== 5);
   document.getElementById('revenue-section')?.classList.toggle('hidden', currentStep !== 6);
+
+  // Step 2 진입 시 악세사리 항상 렌더링
+  if (currentStep === 2) {
+    setTimeout(() => renderAccessories(), 300);
+  }
 
   // Step 1 진입 시 서버에서 최신 목록 새로고침 (상태 변경 반영)
   if (currentStep === 1) {
