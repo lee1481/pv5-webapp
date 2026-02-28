@@ -57,7 +57,7 @@
             </button>
             <button onclick="showTab('prices')" id="tab-prices"
                     class="flex-1 px-6 py-4 font-semibold text-gray-500 hover:text-blue-600 transition">
-                <i class="fas fa-tags mr-2"></i>가격 관리
+                <i class="fas fa-box-open mr-2"></i>제품 관리
             </button>
         </div>
 
@@ -254,78 +254,128 @@
         </div>
 
         <!-- ══════════════════════════════════════════════
-             가격 관리 (본사 전용)
+             제품 관리 (본사 전용) - 가격 관리 통합
         ══════════════════════════════════════════════ -->
-        <div id="content-prices" class="hidden">
-            <div class="bg-white rounded-xl shadow-sm p-8">
-                <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-xl font-bold text-gray-800">
-                        <i class="fas fa-tags text-blue-600 mr-2"></i>제품 가격 관리
-                        <span class="ml-2 text-sm font-normal text-gray-500">본사 전용 · 수정 즉시 전 지사 반영</span>
-                    </h2>
-                    <button onclick="initPrices()"
-                            class="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm hover:bg-gray-200 transition">
-                        <i class="fas fa-redo mr-1"></i>초기값 복원
-                    </button>
-                </div>
+        <div id="content-prices" class="hidden space-y-6">
 
-                <!-- 안내 배너 -->
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex items-start gap-3">
-                    <i class="fas fa-info-circle text-blue-500 mt-0.5"></i>
-                    <div class="text-sm text-blue-700">
-                        <strong>가격 수정 방법:</strong> 금액을 클릭하여 수정 후 <kbd class="bg-blue-100 px-1 rounded">저장</kbd> 버튼을 누르세요.
-                        수정된 가격은 즉시 전 지사 2단계 화면에 반영됩니다.
+            <!-- ① 신규 제품 등록 카드 -->
+            <div class="bg-white rounded-xl shadow-sm p-8">
+                <div class="flex items-center justify-between mb-5">
+                    <h2 class="text-xl font-bold text-gray-800">
+                        <i class="fas fa-plus-circle text-green-600 mr-2"></i>신규 제품 등록
+                        <span class="ml-2 text-sm font-normal text-gray-500">본사 전용 · 등록 즉시 전 지사 2단계 반영</span>
+                    </h2>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">브랜드 *</label>
+                        <select id="np-brand" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            <option value="milwaukee">밀워키 에디션</option>
+                            <option value="kia">기아 순정형</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">제품 ID * <span class="text-xs text-gray-400">(영문+하이픈, 예: kia-workspace2)</span></label>
+                        <input id="np-id" type="text" placeholder="kia-workspace2"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">제품명 (짧게) *</label>
+                        <input id="np-name" type="text" placeholder="PV5 기아 워크스페이스"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">제품명 (전체)</label>
+                        <input id="np-fullname" type="text" placeholder="PV5 기아 순정형 워크스페이스"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">소비자가 (원) *</label>
+                        <input id="np-price" type="number" placeholder="1760000" min="0" step="1000"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">이미지 URL <span class="text-xs text-gray-400">(선택)</span></label>
+                        <input id="np-image" type="text" placeholder="/static/images/my-product.jpg"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">구성 설명</label>
+                        <input id="np-desc" type="text" placeholder="격벽타공판 + 워크스페이스"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
                     </div>
                 </div>
+                <div class="mt-4 flex justify-end">
+                    <button onclick="registerPackage()"
+                            class="px-6 py-2.5 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition text-sm">
+                        <i class="fas fa-plus mr-1"></i>제품 등록
+                    </button>
+                </div>
+            </div>
 
-                <!-- 밀워키 제품군 -->
+            <!-- ② 기존 제품 목록 + 가격 수정 -->
+            <div class="bg-white rounded-xl shadow-sm p-8">
+                <div class="flex items-center justify-between mb-5">
+                    <h2 class="text-xl font-bold text-gray-800">
+                        <i class="fas fa-box-open text-blue-600 mr-2"></i>전체 제품 관리
+                        <span class="ml-2 text-sm font-normal text-gray-500">가격 수정 · 표시/숨김 · 삭제</span>
+                    </h2>
+                    <button onclick="loadProductManagement()"
+                            class="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg text-sm hover:bg-gray-200 transition">
+                        <i class="fas fa-sync-alt mr-1"></i>새로고침
+                    </button>
+                </div>
+                <!-- 안내 -->
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-5 text-sm text-blue-700">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    가격 수정 후 <strong>저장</strong>하면 즉시 전 지사 2단계에 반영됩니다.
+                    커스텀 제품만 삭제 가능합니다.
+                </div>
+
+                <!-- 밀워키 -->
                 <div class="mb-8">
                     <h3 class="text-base font-bold text-gray-700 mb-3 flex items-center gap-2">
-                        <span class="inline-block w-3 h-3 rounded-full bg-red-500"></span>
-                        밀워키 에디션
+                        <span class="inline-block w-3 h-3 rounded-full bg-red-500"></span>밀워키 에디션
                     </h3>
                     <div class="overflow-hidden rounded-xl border border-gray-200">
                         <table class="w-full text-sm">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th class="text-left px-5 py-3 text-gray-600 font-semibold">제품명</th>
-                                    <th class="text-right px-5 py-3 text-gray-600 font-semibold w-48">현재 가격</th>
-                                    <th class="text-center px-5 py-3 text-gray-600 font-semibold w-32">관리</th>
+                                    <th class="text-left px-4 py-3 text-gray-600 font-semibold">제품명</th>
+                                    <th class="text-right px-4 py-3 text-gray-600 font-semibold w-44">소비자가</th>
+                                    <th class="text-center px-4 py-3 text-gray-600 font-semibold w-14">표시</th>
+                                    <th class="text-center px-4 py-3 text-gray-600 font-semibold w-36">관리</th>
                                 </tr>
                             </thead>
-                            <tbody id="priceTable-milwaukee" class="divide-y divide-gray-100"></tbody>
+                            <tbody id="pkgTable-milwaukee" class="divide-y divide-gray-100"></tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- 기아 제품군 -->
+                <!-- 기아 -->
                 <div>
                     <h3 class="text-base font-bold text-gray-700 mb-3 flex items-center gap-2">
-                        <span class="inline-block w-3 h-3 rounded-full bg-blue-500"></span>
-                        기아 순정형
+                        <span class="inline-block w-3 h-3 rounded-full bg-blue-500"></span>기아 순정형
                     </h3>
                     <div class="overflow-hidden rounded-xl border border-gray-200">
                         <table class="w-full text-sm">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th class="text-left px-5 py-3 text-gray-600 font-semibold">제품명</th>
-                                    <th class="text-right px-5 py-3 text-gray-600 font-semibold w-48">현재 가격</th>
-                                    <th class="text-center px-5 py-3 text-gray-600 font-semibold w-32">관리</th>
+                                    <th class="text-left px-4 py-3 text-gray-600 font-semibold">제품명</th>
+                                    <th class="text-right px-4 py-3 text-gray-600 font-semibold w-44">소비자가</th>
+                                    <th class="text-center px-4 py-3 text-gray-600 font-semibold w-14">표시</th>
+                                    <th class="text-center px-4 py-3 text-gray-600 font-semibold w-36">관리</th>
                                 </tr>
                             </thead>
-                            <tbody id="priceTable-kia" class="divide-y divide-gray-100"></tbody>
+                            <tbody id="pkgTable-kia" class="divide-y divide-gray-100"></tbody>
                         </table>
                     </div>
                 </div>
 
                 <!-- 변경 이력 -->
                 <div class="mt-8 bg-gray-50 rounded-xl p-5">
-                    <h3 class="text-sm font-bold text-gray-600 mb-3">
-                        <i class="fas fa-history mr-1"></i>최근 변경 내역
-                    </h3>
-                    <div id="priceHistory" class="text-xs text-gray-500 space-y-1">
-                        <p>가격을 로딩 중...</p>
-                    </div>
+                    <h3 class="text-sm font-bold text-gray-600 mb-3"><i class="fas fa-history mr-1"></i>최근 가격 변경 이력</h3>
+                    <div id="priceHistory" class="text-xs text-gray-500 space-y-1"><p>로딩 중...</p></div>
                 </div>
             </div>
         </div>
@@ -424,7 +474,7 @@
         document.getElementById(`tab-${tab}`).classList.add('text-blue-600','border-b-2','border-blue-600')
         if (tab === 'list') loadAssignments()
         else if (tab === 'dashboard') loadDashboard()
-        else if (tab === 'prices') loadPrices()
+        else if (tab === 'prices') loadProductManagement()
     }
 
     // ── 지사 목록 로드 ────────────────────────────────────────────────────────
@@ -649,174 +699,247 @@
     }
 
     // ══════════════════════════════════════════════════════════════
-    // 가격 관리 기능 (본사 전용)
+    // 제품 관리 (가격 관리 통합) - 본사 전용
     // ══════════════════════════════════════════════════════════════
+    let allPkgData = []   // 전체 패키지 캐시 (packages_price 포함)
+    let allCustomPkgs = [] // custom_packages DB 목록
 
-    // 가격 목록 로드
-    async function loadPrices() {
+    // 제품 관리 탭 진입 시 호출
+    async function loadProductManagement() {
+        await Promise.all([loadAllPrices(), loadCustomPackages()])
+        renderProductTables()
+    }
+
+    // packages_price 전체 로드
+    async function loadAllPrices() {
         try {
             const token = localStorage.getItem('token')
             const res = await axios.get('/api/packages/prices', {
                 headers: { Authorization: `Bearer ${token}` }
             })
-            if (!res.data.success) {
-                alert('가격 데이터를 불러오지 못했습니다.\n초기화 버튼을 눌러주세요.')
-                return
-            }
-            const prices = res.data.prices || []
-            renderPriceTable(prices)
-        } catch(e) {
-            console.error('loadPrices:', e)
-            // DB에 테이블 없으면 자동 초기화 시도
-            if (confirm('가격 데이터가 없습니다. 초기값으로 초기화할까요?')) {
-                await initPrices()
-            }
-        }
+            allPkgData = res.data.prices || []
+        } catch(e) { console.error('loadAllPrices:', e) }
     }
 
-    // 가격 테이블 렌더링
-    function renderPriceTable(prices) {
-        const milwaukeeBody = document.getElementById('priceTable-milwaukee')
-        const kiaBody = document.getElementById('priceTable-kia')
-        const historyDiv = document.getElementById('priceHistory')
+    // custom_packages DB 로드
+    async function loadCustomPackages() {
+        try {
+            const token = localStorage.getItem('token')
+            const res = await axios.get('/api/custom-packages', {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+            allCustomPkgs = res.data.packages || []
+        } catch(e) { console.error('loadCustomPackages:', e) }
+    }
 
+    // 테이블 렌더링 (밀워키 / 기아 분리)
+    function renderProductTables() {
+        const milwaukeeBody = document.getElementById('pkgTable-milwaukee')
+        const kiaBody       = document.getElementById('pkgTable-kia')
+        const historyDiv    = document.getElementById('priceHistory')
         if (!milwaukeeBody || !kiaBody) return
 
-        const milwaukeeItems = prices.filter(p => p.package_id.startsWith('milwaukee'))
-        const kiaItems = prices.filter(p => p.package_id.startsWith('kia'))
+        // custom_packages id set
+        const customIds = new Set(allCustomPkgs.map(p => p.package_id))
+
+        // packages_price 기준으로 전체 목록 구성
+        const milwaukeeItems = allPkgData.filter(p => p.package_id.startsWith('milwaukee'))
+        const kiaItems       = allPkgData.filter(p => p.package_id.startsWith('kia'))
 
         function buildRows(items, tbody) {
             if (items.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="3" class="text-center py-6 text-gray-400">데이터 없음</td></tr>`
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-gray-400">데이터 없음</td></tr>`
                 return
             }
-            tbody.innerHTML = items.map(p => `
-                <tr class="hover:bg-gray-50 transition" id="row-${p.package_id}">
-                    <td class="px-5 py-4 font-medium text-gray-800">${p.package_name}</td>
-                    <td class="px-5 py-4 text-right">
-                        <span id="display-${p.package_id}" class="text-blue-600 font-bold">
+            tbody.innerHTML = items.map(p => {
+                const isCustom = customIds.has(p.package_id)
+                return `
+                <tr class="hover:bg-gray-50 transition" id="pkgrow-${p.package_id}">
+                    <td class="px-4 py-3 font-medium text-gray-800">
+                        ${p.package_name}
+                        ${isCustom ? '<span class="ml-1.5 px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs">커스텀</span>' : ''}
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                        <span id="pkg-display-${p.package_id}" class="text-blue-600 font-bold">
                             ₩${Number(p.price).toLocaleString('ko-KR')}
                         </span>
-                        <input id="input-${p.package_id}" type="number"
-                               value="${p.price}"
-                               class="hidden w-36 text-right border border-blue-400 rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        <input id="pkg-input-${p.package_id}" type="number" value="${p.price}"
+                               class="hidden w-32 text-right border border-blue-400 rounded-lg px-2 py-1 text-sm"
                                min="0" step="1000">
                     </td>
-                    <td class="px-5 py-4 text-center">
-                        <button id="btn-edit-${p.package_id}"
-                                onclick="startEditPrice('${p.package_id}')"
-                                class="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold hover:bg-blue-200 transition">
-                            <i class="fas fa-pencil-alt mr-1"></i>수정
+                    <td class="px-4 py-3 text-center">
+                        ${isCustom ? `
+                        <button onclick="togglePkgActive('${p.package_id}')"
+                                class="px-2 py-1 text-xs rounded-lg font-semibold ${getPkgActive(p.package_id) ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">
+                            ${getPkgActive(p.package_id) ? '표시' : '숨김'}
+                        </button>` : '<span class="text-xs text-gray-400">기본</span>'}
+                    </td>
+                    <td class="px-4 py-3 text-center flex items-center justify-center gap-1 flex-wrap">
+                        <button id="pkg-btn-edit-${p.package_id}" onclick="startPkgEdit('${p.package_id}')"
+                                class="px-2.5 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold hover:bg-blue-200">
+                            <i class="fas fa-pencil-alt mr-0.5"></i>수정
                         </button>
-                        <button id="btn-save-${p.package_id}"
-                                onclick="savePrice('${p.package_id}')"
-                                class="hidden px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-semibold hover:bg-green-600 transition">
-                            <i class="fas fa-check mr-1"></i>저장
+                        <button id="pkg-btn-save-${p.package_id}" onclick="savePkgPrice('${p.package_id}')"
+                                class="hidden px-2.5 py-1.5 bg-green-500 text-white rounded-lg text-xs font-semibold hover:bg-green-600">
+                            <i class="fas fa-check mr-0.5"></i>저장
                         </button>
-                        <button id="btn-cancel-${p.package_id}"
-                                onclick="cancelEditPrice('${p.package_id}', ${p.price})"
-                                class="hidden ml-1 px-3 py-1.5 bg-gray-200 text-gray-600 rounded-lg text-xs font-semibold hover:bg-gray-300 transition">
+                        <button id="pkg-btn-cancel-${p.package_id}" onclick="cancelPkgEdit('${p.package_id}', ${p.price})"
+                                class="hidden px-2.5 py-1.5 bg-gray-200 text-gray-600 rounded-lg text-xs font-semibold hover:bg-gray-300">
                             취소
                         </button>
+                        ${isCustom ? `
+                        <button onclick="deleteCustomPkg('${p.package_id}', '${p.package_name}')"
+                                class="px-2.5 py-1.5 bg-red-100 text-red-600 rounded-lg text-xs font-semibold hover:bg-red-200">
+                            <i class="fas fa-trash"></i>
+                        </button>` : ''}
                     </td>
-                </tr>
-            `).join('')
+                </tr>`
+            }).join('')
         }
 
         buildRows(milwaukeeItems, milwaukeeBody)
         buildRows(kiaItems, kiaBody)
 
         // 변경 이력
-        const recent = prices
-            .filter(p => p.updated_by !== 'system')
+        const recent = allPkgData
+            .filter(p => p.updated_by && p.updated_by !== 'system')
             .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
             .slice(0, 5)
-
-        if (recent.length === 0) {
-            historyDiv.innerHTML = '<p class="text-gray-400">아직 수정 이력이 없습니다.</p>'
-        } else {
-            historyDiv.innerHTML = recent.map(p => `
-                <div class="flex justify-between items-center py-1 border-b border-gray-200 last:border-0">
+        historyDiv.innerHTML = recent.length === 0
+            ? '<p class="text-gray-400">아직 수정 이력이 없습니다.</p>'
+            : recent.map(p => `
+                <div class="flex justify-between items-center py-1 border-b border-gray-100 last:border-0">
                     <span class="font-medium text-gray-700">${p.package_name}</span>
                     <span class="text-blue-600 font-bold">₩${Number(p.price).toLocaleString('ko-KR')}</span>
-                    <span class="text-gray-400">${p.updated_by} · ${p.updated_at ? p.updated_at.slice(0,16) : ''}</span>
-                </div>
-            `).join('')
-        }
+                    <span class="text-gray-400">${p.updated_by} · ${(p.updated_at||'').slice(0,16)}</span>
+                </div>`).join('')
     }
 
-    // 수정 모드 진입
-    function startEditPrice(packageId) {
-        document.getElementById(`display-${packageId}`).classList.add('hidden')
-        document.getElementById(`input-${packageId}`).classList.remove('hidden')
-        document.getElementById(`btn-edit-${packageId}`).classList.add('hidden')
-        document.getElementById(`btn-save-${packageId}`).classList.remove('hidden')
-        document.getElementById(`btn-cancel-${packageId}`).classList.remove('hidden')
-        document.getElementById(`input-${packageId}`).focus()
+    function getPkgActive(packageId) {
+        const cp = allCustomPkgs.find(p => p.package_id === packageId)
+        return cp ? cp.is_active === 1 : true
     }
 
-    // 수정 취소
-    function cancelEditPrice(packageId, originalPrice) {
-        document.getElementById(`display-${packageId}`).classList.remove('hidden')
-        document.getElementById(`input-${packageId}`).classList.add('hidden')
-        document.getElementById(`btn-edit-${packageId}`).classList.remove('hidden')
-        document.getElementById(`btn-save-${packageId}`).classList.add('hidden')
-        document.getElementById(`btn-cancel-${packageId}`).classList.add('hidden')
-        document.getElementById(`input-${packageId}`).value = originalPrice
+    // 가격 수정 모드
+    function startPkgEdit(pid) {
+        document.getElementById(`pkg-display-${pid}`).classList.add('hidden')
+        document.getElementById(`pkg-input-${pid}`).classList.remove('hidden')
+        document.getElementById(`pkg-btn-edit-${pid}`).classList.add('hidden')
+        document.getElementById(`pkg-btn-save-${pid}`).classList.remove('hidden')
+        document.getElementById(`pkg-btn-cancel-${pid}`).classList.remove('hidden')
+        document.getElementById(`pkg-input-${pid}`).focus()
+    }
+    function cancelPkgEdit(pid, origPrice) {
+        document.getElementById(`pkg-display-${pid}`).classList.remove('hidden')
+        document.getElementById(`pkg-input-${pid}`).classList.add('hidden')
+        document.getElementById(`pkg-btn-edit-${pid}`).classList.remove('hidden')
+        document.getElementById(`pkg-btn-save-${pid}`).classList.add('hidden')
+        document.getElementById(`pkg-btn-cancel-${pid}`).classList.add('hidden')
+        document.getElementById(`pkg-input-${pid}`).value = origPrice
     }
 
-    // 가격 저장
-    async function savePrice(packageId) {
-        const inputEl = document.getElementById(`input-${packageId}`)
-        const newPrice = parseInt(inputEl.value)
-
-        if (isNaN(newPrice) || newPrice < 0) {
-            alert('올바른 가격을 입력해주세요.')
-            return
-        }
-
+    // 가격 저장 (packages_price + custom_packages 동기화)
+    async function savePkgPrice(pid) {
+        const newPrice = parseInt(document.getElementById(`pkg-input-${pid}`).value)
+        if (isNaN(newPrice) || newPrice < 0) { alert('올바른 가격을 입력해주세요.'); return }
         const token = localStorage.getItem('token')
+        const customIds = new Set(allCustomPkgs.map(p => p.package_id))
         try {
-            const res = await axios.put(`/api/packages/prices/${packageId}`, 
-                { price: newPrice },
-                { headers: { Authorization: `Bearer ${token}` } }
-            )
-            if (res.data.success) {
-                // 화면 업데이트
-                document.getElementById(`display-${packageId}`).textContent =
-                    `₩${newPrice.toLocaleString('ko-KR')}`
-                cancelEditPrice(packageId, newPrice)
-                // 이력 새로고침
-                await loadPrices()
-                alert(`✅ 가격이 수정되었습니다.\n전 지사 2단계에 즉시 반영됩니다.`)
+            if (customIds.has(pid)) {
+                // 커스텀 제품: PUT /api/custom-packages/:id
+                const cp = allCustomPkgs.find(p => p.package_id === pid)
+                await axios.put(`/api/custom-packages/${pid}`, {
+                    name: cp.name, fullName: cp.full_name,
+                    description: cp.description, price: newPrice,
+                    imageUrl: cp.image_url, isActive: cp.is_active
+                }, { headers: { Authorization: `Bearer ${token}` } })
             } else {
-                alert(`❌ 수정 실패: ${res.data.error}`)
+                // 기본 제품: PUT /api/packages/prices/:id
+                await axios.put(`/api/packages/prices/${pid}`, { price: newPrice },
+                    { headers: { Authorization: `Bearer ${token}` } })
             }
+            document.getElementById(`pkg-display-${pid}`).textContent = `₩${newPrice.toLocaleString('ko-KR')}`
+            cancelPkgEdit(pid, newPrice)
+            await loadAllPrices()
+            renderProductTables()
+            alert('✅ 가격이 수정되었습니다. 즉시 전 지사에 반영됩니다.')
         } catch(e) {
-            console.error('savePrice:', e)
+            console.error('savePkgPrice:', e)
             alert('가격 저장 중 오류가 발생했습니다.')
         }
     }
 
-    // 가격 초기화 (packages.ts 기본값으로)
-    async function initPrices() {
-        if (!confirm('모든 가격을 기본값으로 초기화할까요?\n수정된 가격이 있다면 사라집니다.')) return
+    // 표시/숨김 토글
+    async function togglePkgActive(pid) {
+        const cp = allCustomPkgs.find(p => p.package_id === pid)
+        if (!cp) return
+        const token = localStorage.getItem('token')
+        const newActive = cp.is_active === 1 ? 0 : 1
+        try {
+            await axios.put(`/api/custom-packages/${pid}`, {
+                name: cp.name, fullName: cp.full_name,
+                description: cp.description, price: cp.price,
+                imageUrl: cp.image_url, isActive: newActive
+            }, { headers: { Authorization: `Bearer ${token}` } })
+            await loadProductManagement()
+            alert(`✅ ${cp.name} 을(를) ${newActive ? '표시' : '숨김'} 처리했습니다.`)
+        } catch(e) { alert('처리 중 오류가 발생했습니다.') }
+    }
+
+    // 커스텀 제품 삭제
+    async function deleteCustomPkg(pid, name) {
+        if (!confirm(`"${name}" 을(를) 삭제할까요?\n지사 2단계에서 즉시 사라집니다.`)) return
         const token = localStorage.getItem('token')
         try {
-            const res = await axios.post('/api/packages/prices/init', {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            })
+            await axios.delete(`/api/custom-packages/${pid}`,
+                { headers: { Authorization: `Bearer ${token}` } })
+            await loadProductManagement()
+            alert('✅ 삭제되었습니다.')
+        } catch(e) { alert('삭제 중 오류가 발생했습니다.') }
+    }
+
+    // 신규 제품 등록
+    async function registerPackage() {
+        const packageId = document.getElementById('np-id').value.trim()
+        const brand     = document.getElementById('np-brand').value
+        const name      = document.getElementById('np-name').value.trim()
+        const fullName  = document.getElementById('np-fullname').value.trim()
+        const price     = parseInt(document.getElementById('np-price').value)
+        const imageUrl  = document.getElementById('np-image').value.trim()
+        const desc      = document.getElementById('np-desc').value.trim()
+
+        if (!packageId || !name || isNaN(price)) {
+            alert('제품 ID, 제품명, 소비자가는 필수입니다.')
+            return
+        }
+        if (!/^[a-zA-Z0-9-]+$/.test(packageId)) {
+            alert('제품 ID는 영문, 숫자, 하이픈(-)만 사용 가능합니다.')
+            return
+        }
+        const token = localStorage.getItem('token')
+        try {
+            const res = await axios.post('/api/custom-packages', {
+                packageId, brand, name, fullName: fullName || name,
+                description: desc, price, imageUrl
+            }, { headers: { Authorization: `Bearer ${token}` } })
             if (res.data.success) {
-                alert(`✅ ${res.data.message}`)
-                await loadPrices()
+                // 입력 초기화
+                ;['np-id','np-name','np-fullname','np-price','np-image','np-desc'].forEach(id => {
+                    document.getElementById(id).value = ''
+                })
+                await loadProductManagement()
+                alert(`✅ "${name}" 이(가) 등록되었습니다!\n즉시 전 지사 2단계에 표시됩니다.`)
             } else {
-                alert(`❌ 초기화 실패: ${res.data.error}`)
+                alert('❌ ' + (res.data.error || '등록 실패'))
             }
         } catch(e) {
-            console.error('initPrices:', e)
-            alert('초기화 중 오류가 발생했습니다.')
+            alert('등록 중 오류: ' + (e.response?.data?.error || e.message))
         }
     }
+
+    // 하위 호환: 기존 loadPrices, initPrices 함수명 유지 (다른 곳에서 참조 방지)
+    async function loadPrices() { await loadProductManagement() }
+    async function initPrices() { await loadProductManagement() }
 
 </script>
 </body>

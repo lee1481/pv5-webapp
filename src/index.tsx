@@ -31,8 +31,47 @@ app.get('/launcher', (c) => {
 })
 
 // API: 모든 제품 패키지 리스트
-app.get('/api/packages', (c) => {
-  return c.json({ packages: allPackages })
+app.get('/api/packages', async (c) => {
+  const { env } = c
+  // 기본 패키지 (packages.ts 하드코딩)
+  let combined = [...allPackages]
+  // custom_packages DB에서 활성화된 제품 병합
+  try {
+    if (env.DB) {
+      const { results } = await env.DB.prepare(
+        `SELECT * FROM custom_packages WHERE is_active = 1 ORDER BY brand, name`
+      ).all()
+      const customPkgs = (results as any[]).map((row: any) => ({
+        id: row.package_id,
+        brand: row.brand,
+        name: row.name,
+        fullName: row.full_name,
+        description: row.description || '',
+        price: row.price,
+        image: row.image_url || '',
+        sections: [],
+        isCustom: true
+      }))
+      combined = [...combined, ...customPkgs]
+    }
+  } catch (e) {
+    console.warn('custom_packages load failed (table may not exist yet):', e)
+  }
+  // packages_price DB 가격으로 덮어쓰기
+  try {
+    if (env.DB) {
+      const { results: priceResults } = await env.DB.prepare(
+        `SELECT package_id, price FROM packages_price`
+      ).all()
+      const priceMap: Record<string, number> = {}
+      ;(priceResults as any[]).forEach((r: any) => { priceMap[r.package_id] = r.price })
+      combined = combined.map(pkg => priceMap[pkg.id] !== undefined
+        ? { ...pkg, price: priceMap[pkg.id] } : pkg)
+    }
+  } catch (e) {
+    console.warn('packages_price load failed:', e)
+  }
+  return c.json({ packages: combined })
 })
 
 // ========================================
@@ -159,6 +198,108 @@ app.post('/api/packages/prices/init', async (c) => {
     return c.json({ success: true, message: '가격 초기화 완료', count: initData.length })
   } catch (e: any) {
     console.error('가격 초기화 오류:', e)
+    return c.json({ success: false, error: e.message }, 500)
+  }
+})
+
+// ── 커스텀 제품 관리 API (본사 전용) ──────────────────────────────────────
+
+// GET /api/custom-packages  : 전체 목록 (지사도 읽기 가능)
+app.get('/api/custom-packages', async (c) => {
+  const auth = await requireAuth(c)
+  if (!auth.success) return auth.response
+  try {
+    const { env } = c
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS custom_packages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        package_id TEXT UNIQUE NOT NULL,
+        brand TEXT NOT NULL,
+        name TEXT NOT NULL,
+        full_name TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        price INTEGER NOT NULL DEFAULT 0,
+        image_url TEXT DEFAULT '',
+        is_active INTEGER DEFAULT 1,
+        created_by TEXT DEFAULT 'system',
+        updated_by TEXT DEFAULT 'system',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run()
+    const { results } = await env.DB.prepare(
+      `SELECT * FROM custom_packages ORDER BY brand, name`
+    ).all()
+    return c.json({ success: true, packages: results })
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message }, 500)
+  }
+})
+
+// POST /api/custom-packages : 신규 등록 (본사만)
+app.post('/api/custom-packages', async (c) => {
+  const auth = await requireAuth(c)
+  if (!auth.success) return auth.response
+  if ((auth.user as any).role !== 'head') return c.json({ success: false, error: '본사만 등록 가능합니다.' }, 403)
+  try {
+    const { env } = c
+    const { packageId, brand, name, fullName, description, price, imageUrl } = await c.req.json()
+    if (!packageId || !brand || !name || !price) return c.json({ success: false, error: '필수 값 누락' }, 400)
+    const username = (auth.user as any).username || 'head'
+    await env.DB.prepare(`
+      INSERT INTO custom_packages (package_id, brand, name, full_name, description, price, image_url, created_by, updated_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(packageId, brand, name, fullName || name, description || '', price, imageUrl || '', username, username).run()
+    // packages_price 에도 동기화
+    await env.DB.prepare(`
+      INSERT OR REPLACE INTO packages_price (package_id, package_name, price, updated_by)
+      VALUES (?, ?, ?, ?)
+    `).bind(packageId, name, price, username).run()
+    return c.json({ success: true, message: '제품이 등록되었습니다.' })
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message }, 500)
+  }
+})
+
+// PUT /api/custom-packages/:id : 수정 (본사만) — 가격 포함
+app.put('/api/custom-packages/:id', async (c) => {
+  const auth = await requireAuth(c)
+  if (!auth.success) return auth.response
+  if ((auth.user as any).role !== 'head') return c.json({ success: false, error: '본사만 수정 가능합니다.' }, 403)
+  try {
+    const { env } = c
+    const packageId = c.req.param('id')
+    const { name, fullName, description, price, imageUrl, isActive } = await c.req.json()
+    const username = (auth.user as any).username || 'head'
+    await env.DB.prepare(`
+      UPDATE custom_packages
+      SET name=?, full_name=?, description=?, price=?, image_url=?,
+          is_active=?, updated_by=?, updated_at=datetime('now')
+      WHERE package_id=?
+    `).bind(name, fullName || name, description || '', price, imageUrl || '', isActive ?? 1, username, packageId).run()
+    // packages_price 도 동기화
+    await env.DB.prepare(`
+      INSERT OR REPLACE INTO packages_price (package_id, package_name, price, updated_by)
+      VALUES (?, ?, ?, ?)
+    `).bind(packageId, name, price, username).run()
+    return c.json({ success: true, message: '수정되었습니다.' })
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message }, 500)
+  }
+})
+
+// DELETE /api/custom-packages/:id : 삭제 (본사만)
+app.delete('/api/custom-packages/:id', async (c) => {
+  const auth = await requireAuth(c)
+  if (!auth.success) return auth.response
+  if ((auth.user as any).role !== 'head') return c.json({ success: false, error: '본사만 삭제 가능합니다.' }, 403)
+  try {
+    const { env } = c
+    const packageId = c.req.param('id')
+    await env.DB.prepare(`DELETE FROM custom_packages WHERE package_id = ?`).bind(packageId).run()
+    await env.DB.prepare(`DELETE FROM packages_price WHERE package_id = ?`).bind(packageId).run()
+    return c.json({ success: true, message: '삭제되었습니다.' })
+  } catch (e: any) {
     return c.json({ success: false, error: e.message }, 500)
   }
 })
