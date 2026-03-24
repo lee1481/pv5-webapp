@@ -2102,8 +2102,8 @@ app.post('/api/reports/save', async (c) => {
     console.log('env.DB:', env.DB)
     console.log('finalReportId:', finalReportId)
     
-    // branch_id: 지사 계정이면 자기 branchId, 본사면 null
-    const branchId = (auth.user.role === 'branch' && auth.user.branchId) ? auth.user.branchId : null
+    // branch_id: 지사 계정이면 자기 branchId, 본사면 null (일단 기본값)
+    let branchId = (auth.user.role === 'branch' && auth.user.branchId) ? auth.user.branchId : null
     const finalStatus = status || 'draft'
 
     // assignmentId: 요청값 → customerInfo.assignmentId → 기존 DB값 순으로 우선순위 적용
@@ -2111,6 +2111,36 @@ app.post('/api/reports/save', async (c) => {
     let finalAssignmentId = (assignmentId && assignmentId !== '') ? assignmentId
       : (customerInfo?.assignmentId && customerInfo.assignmentId !== '') ? customerInfo.assignmentId
       : null
+
+    // branch_id 보완: 본사 계정이라 branchId=null이고 assignmentId가 있으면
+    // assignments 테이블에서 branch_id를 가져와 reports에도 동일하게 저장
+    if (!branchId && finalAssignmentId) {
+      try {
+        const { results: asgRows } = await env.DB.prepare(
+          `SELECT branch_id FROM assignments WHERE assignment_id = ?`
+        ).bind(finalAssignmentId).all()
+        if (asgRows.length > 0 && asgRows[0].branch_id) {
+          branchId = asgRows[0].branch_id as number
+          console.log('[Save] branch_id resolved from assignment:', branchId)
+        }
+      } catch (e) {
+        console.warn('[Save] Could not resolve branch_id from assignment:', e)
+      }
+    }
+    // branch_id 보완: 기존 report에 branch_id가 있으면 보존 (덮어쓰기 방지)
+    if (!branchId && finalReportId) {
+      try {
+        const { results: rptRows } = await env.DB.prepare(
+          `SELECT branch_id FROM reports WHERE report_id = ?`
+        ).bind(finalReportId).all()
+        if (rptRows.length > 0 && rptRows[0].branch_id) {
+          branchId = rptRows[0].branch_id as number
+          console.log('[Save] branch_id preserved from existing report:', branchId)
+        }
+      } catch (e) {
+        console.warn('[Save] Could not preserve branch_id from report:', e)
+      }
+    }
 
     // 기존 report가 있으면 DB의 assignment_id 보존 (빈 값으로 덮어쓰기 방지)
     if (!finalAssignmentId) {
