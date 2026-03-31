@@ -23,15 +23,34 @@
 - **GitHub**: https://github.com/lee1481/pv5-webapp (브랜치: dev-multi-tenant)
 
 ## 버전 정보
-- **현재 버전**: v4.5
-- **마지막 업데이트**: 2026-03-14
+- **현재 버전**: v4.6
+- **마지막 업데이트**: 2026-03-24
 - **활성 브랜치**: `dev-multi-tenant`
 
 ---
 
 ## 최근 업데이트 내역 (최신순)
 
-### 2026-03-14 (v4.5) - 최신 🚀
+### 2026-03-24 (v4.6) - 최신 🚀
+- ✅ **D1 Time Travel로 원본 데이터 완전 복구**
+  - 새 앱 개발 과정에서 꼬인 DB를 3월 13일 시점으로 롤백
+  - reports 17건 (2월~3월 실제 시공 데이터) 완전 복구
+  - assignments 19건 완전 복구
+- ✅ **reports.branch_id 누락 버그 수정**
+  - 본사 계정으로 접수 시 branch_id가 null로 저장되던 버그 수정
+  - assignments.branch_id를 자동 상속하여 저장
+  - 기존 null 데이터 7건 일괄 복구
+- ✅ **branches 테이블 컬럼 복구**
+  - Time Travel 복구 후 누락된 phone, username, password 컬럼 재추가
+  - branch_contacts 테이블 재생성
+- ✅ **GitHub 저장소 완전 분리**
+  - 케이밴 시공예약: `lee1481/pv5-webapp` (dev-multi-tenant 브랜치)
+  - 케이밴 악세서리: `lee1481/kia-accessories` (별도 저장소 분리 완료)
+- ✅ **로컬 폴더 분리**
+  - 케이밴 시공예약: `/home/user/kvan-pv5`
+  - 케이밴 악세서리: `/home/user/webapp`
+
+### 2026-03-14 (v4.5)
 - ✅ **솔라피 SMS 다건 발송 정상 작동 확인**
   - 엔드포인트: `/messages/v4/send` + `message` 단수 루프 방식 확정
   - 각 발송마다 독립적인 HMAC-SHA256 서명 생성 (중복 서명 차단 대응)
@@ -279,21 +298,21 @@ CREATE TABLE assignments (
 - **Dev URL**: https://dev-multi-tenant.pv5-webapp.pages.dev
 - **프로젝트명**: `pv5-webapp`
 - **활성 브랜치**: `dev-multi-tenant`
-- **마지막 배포**: 2026-03-14
+- **마지막 배포**: 2026-03-24
 
 ## 개발 환경 명령어
 ```bash
 # 빌드
-cd /home/user/webapp && npm run build
+cd /home/user/kvan-pv5 && npm run build
 
 # 로컬 D1 마이그레이션
-cd /home/user/webapp && npm run db:migrate:local
+cd /home/user/kvan-pv5 && npm run db:migrate:local
 
 # PM2로 개발 서버 시작
-cd /home/user/webapp && pm2 start ecosystem.config.cjs
+cd /home/user/kvan-pv5 && pm2 start ecosystem.config.cjs
 
 # 배포
-cd /home/user/webapp && npx wrangler pages deploy dist --project-name pv5-webapp
+cd /home/user/kvan-pv5 && npx wrangler pages deploy dist --project-name pv5-webapp
 ```
 
 ## 아직 구현되지 않은 기능
